@@ -26,22 +26,17 @@ const app = express();
 // --- Middleware Setup ---
 
 
-
-const allowedOrigins = [
-  // 'http://localhost:3000', // for local development
-  'https://esepapertrading.vercel.app'// replace with your real Vercel URL
-];
+const allowedOrigins = ['http://localhost:3000', 'https://26a5e1a49d1c.ngrok-free.app'];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps, curl, etc.)
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true // optional, use if you're sending cookies or auth headers
+  credentials: false
 }));
 
 
@@ -50,6 +45,7 @@ app.use(cors({
 // This should be one of the first middleware to run.
 app.use(morgan('dev')); 
 
+app.use(express.static('public')); 
 // 3. Body Parser
 app.use(express.json({ limit: '10mb' }));
 

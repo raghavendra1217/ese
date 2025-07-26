@@ -4,8 +4,8 @@ import {
     Center, SimpleGrid, Button, useToast, Image, Modal,
     ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, useDisclosure, Divider, Flex
 } from '@chakra-ui/react';
-import { useAuth } from '../AppContext';
-import NavBar from '../components/NavBar';
+import { useAuth } from '../../AppContext';
+import NavBar from '../../components/NavBar';
 
 const TradeApprovalCard = ({ trade, onApprove, url }) => {
     const cardBg = useColorModeValue('white', 'gray.700');

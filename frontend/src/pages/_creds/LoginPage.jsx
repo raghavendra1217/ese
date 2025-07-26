@@ -17,7 +17,7 @@ import {
   HStack,
   useToast,
 } from '@chakra-ui/react';
-import { useAuth } from '../AppContext';
+import { useAuth } from '../../AppContext';
 
 const LoginPage = ({ url }) => {
   const { login } = useAuth();

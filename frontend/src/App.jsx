@@ -10,20 +10,21 @@ import AuthLayout from './components/AuthLayout';
 import RouteGuard from './components/RouteGuard';
 
 // Import All Pages
-import LoginPage from './pages/LoginPage';
-import RegistrationPage from './pages/RegistrationPage';
-import PaymentPage from './pages/PaymentPage';
-import AdminDashboard from './pages/AdminDashboard';
-import VendorDashboard from './pages/VendorDashboard';
+import LoginPage from './pages/_creds/LoginPage';
+import RegistrationPage from './pages/_creds/RegistrationPage';
+import PaymentPage from './pages/_creds/PaymentPage';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import VendorDashboard from './pages/vendor/VendorDashboard';
 import EmployeeDashboard from './pages/EmployeeDashboard';
-import ManageApprovalsPage from './pages/ManageApprovalsPage';
-import ManageProductsPage from './pages/ManageProductsPage';
-import ViewProductsPage from './pages/ViewProductsPage';
-import ManageTradingApprovalsPage from './pages/ManageTradingApprovalsPage';
-import PurchaseHistoryPage from './pages/PurchaseHistoryPage';
-import ProductTradingPage from './pages/ProductTradingPage';
+import ManageApprovalsPage from './pages/admin/ManageApprovalsPage';
+import ManageProductsPage from './pages/admin/ManageProductsPage';
+import BuyProduct from './pages/vendor/BuyProduct';
+import ManageTradingApprovalsPage from './pages/admin/ManageTradingApprovalsPage';
+import PurchaseHistoryPage from './pages/vendor/PurchaseHistoryPage';
+import ProductTradingPage from './pages/vendor/ProductTradingPage';
+// import Wallet from './pages/WalletPage';
 
-const url = "https://esepapertrading.onrender.com";
+const url = "http://localhost:5000";
 
 function App() {
   return (
@@ -50,11 +51,12 @@ function App() {
 
               {/* Vendor Routes */}
               <Route path="/vendor/dashboard" element={<VendorDashboard url={url} />} />
-              <Route path="/vendor/products" element={<ViewProductsPage url={url} />} />
+              <Route path="/vendor/products" element={<BuyProduct url={url} />} />
+              {/* <Route path="/vendor/wallet" element={<WalletPage />} /> */}
 
               {/* Employee Routes */}
               <Route path="/employee/dashboard" element={<EmployeeDashboard url={url} />} />
-              <Route path="/purchase-history" element={<PurchaseHistoryPage url={url} />} />
+              <Route path="/vendor/purchase-history" element={<PurchaseHistoryPage url={url} />} />
               <Route path="/product-trading" element={<ProductTradingPage url={url} />} />
             </Route>
 

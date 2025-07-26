@@ -5,7 +5,7 @@ import {
     NumberInput, NumberInputField, NumberInputStepper, NumberIncrementStepper, NumberDecrementStepper, Divider,
     FormControl, FormLabel, Input
 } from '@chakra-ui/react';
-import { useAuth } from '../AppContext';
+import { useAuth } from '../../AppContext';
 
 // --- MODAL 2: FOR PAYMENT (FIXED) ---
 const PaymentModal = ({ isOpen, onClose, tradeDetails, onPaymentSubmit, isLoading }) => {
@@ -120,7 +120,7 @@ const PurchaseModal = ({ isOpen, onClose, product, onProceed }) => {
 
 
 // --- MAIN PAGE COMPONENT (UPDATED LOGIC) ---
-const ViewProductsPage = ({ url }) => {
+const BuyProduct = ({ url }) => {
     const { token } = useAuth();
     const toast = useToast();
     const [products, setProducts] = useState([]);
@@ -247,4 +247,4 @@ const ViewProductsPage = ({ url }) => {
     );
 };
 
-export default ViewProductsPage;
+export default BuyProduct;

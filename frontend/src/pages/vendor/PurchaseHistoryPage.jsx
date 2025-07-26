@@ -5,7 +5,7 @@ import {
   Box, VStack, Heading, Text, Spinner, Alert, AlertIcon, SimpleGrid,
   Container, Image, Badge, Flex, Divider
 } from '@chakra-ui/react';
-import { useAuth } from '../AppContext';
+import { useAuth } from '../../AppContext';
 
 // A dedicated component to display a single purchase record cleanly.
 const PurchaseCard = ({ purchase, url }) => (

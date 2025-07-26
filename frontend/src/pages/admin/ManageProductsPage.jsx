@@ -6,7 +6,7 @@ import {
     FormControl, FormLabel, Input, Select, NumberInput, NumberInputField, AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay
 } from '@chakra-ui/react';
 import { EditIcon, DeleteIcon, AddIcon } from '@chakra-ui/icons';
-import { useAuth } from '../AppContext';
+import { useAuth } from '../../AppContext';
 
 const ProductModal = ({ isOpen, onClose, onSave, product, isEditing }) => {
     // Defines the starting values for a NEW product.

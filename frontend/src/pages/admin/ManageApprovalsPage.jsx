@@ -6,7 +6,7 @@ import {
     Center, SimpleGrid, Button, useToast, Image, Modal,
     ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, useDisclosure, Divider
 } from '@chakra-ui/react';
-import { useAuth } from '../AppContext';
+import { useAuth } from '../../AppContext';
 
 const VendorApprovalCard = ({ vendor, onApprove, url }) => {
     const cardBg = useColorModeValue('white', 'gray.700');

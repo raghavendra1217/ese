@@ -1,27 +1,67 @@
-// src/components/NavBar.jsx
-
 import React from 'react';
-import { VStack, Button, IconButton, useColorMode, Spacer, Divider, useColorModeValue, Box } from '@chakra-ui/react';
+import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
+import { VStack, Button, IconButton, Spacer, Tooltip, Box, Divider } from '@chakra-ui/react';
 import { SunIcon, MoonIcon } from '@chakra-ui/icons';
 import { useAuth } from '../AppContext';
-import { useNavigate, useLocation } from 'react-router-dom';
+import {
+    FaUserShield, FaCheckDouble, FaBoxOpen, FaStore, FaUserTie,
+    FaSignInAlt, FaUserPlus, FaPowerOff
+} from 'react-icons/fa';
+
+// --- Reusable Icon Component (same as in AdminNavBar) ---
+// This makes each navigation item consistent
+const SidebarIcon = ({ icon, label, to = "#", onClick, active = false, colorScheme = 'blue' }) => (
+    <Tooltip label={label} placement="right" hasArrow>
+        <Button
+            as={to !== "#" ? RouterLink : 'button'}
+            to={to}
+            onClick={onClick}
+            justifyContent="center"
+            w="full"
+            py={6}
+            variant={active ? 'solid' : 'ghost'}
+            colorScheme={active ? colorScheme : 'gray'}
+            color={active ? 'white' : 'gray.400'}
+            _hover={{ bg: 'gray.700', color: 'white' }}
+            aria-label={label}
+        >
+            {icon}
+        </Button>
+    </Tooltip>
+);
+
 
 const NavBar = () => {
   const { user, logout } = useAuth();
-  const { colorMode, toggleColorMode } = useColorMode();
   const navigate = useNavigate();
   const location = useLocation();
-
-  const navBg = useColorModeValue('gray.800', 'white');
-  const navItemColor = useColorModeValue('gray.300', 'gray.600');
-  const hoverBg = useColorModeValue('whiteAlpha.400', 'blackAlpha.200');
-  const activeBg = useColorModeValue('whiteAlpha.300', 'blackAlpha.200');
-  const dividerColor = useColorModeValue('whiteAlpha.400', 'blackAlpha.400');
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
+
+  // Define links for different roles to keep the JSX cleaner
+  const adminLinks = [
+    { icon: <FaUserShield size={22} />, label: "Admin Dashboard", to: "/admin/dashboard", colorScheme: 'blue' },
+    { icon: <FaCheckDouble size={20} />, label: "Approvals", to: "/admin/manage-approvals", colorScheme: 'blue' },
+    { icon: <FaBoxOpen size={20} />, label: "Products", to: "/admin/manage-products", colorScheme: 'blue' }
+  ];
+
+  const vendorLinks = [
+    { icon: <FaStore size={22} />, label: "Vendor Dashboard", to: "/vendor/dashboard", colorScheme: 'teal' },
+    { icon: <FaBoxOpen size={20} />, label: "My Products", to: "/vendor/products", colorScheme: 'teal' }
+  ];
+
+  const employeeLinks = [
+    { icon: <FaUserTie size={22} />, label: "Employee Dashboard", to: "/employee/dashboard", colorScheme: 'green' }
+  ];
+
+  const guestLinks = [
+    { icon: <FaSignInAlt size={22} />, label: "Login", to: "/login", colorScheme: 'teal' },
+    { icon: <FaUserPlus size={22} />, label: "Register", to: "/register", colorScheme: 'teal', activePaths: ['/register', '/payment'] }
+  ];
+
 
   return (
     <VStack
@@ -31,47 +71,64 @@ const NavBar = () => {
       position="fixed"
       left={0}
       top={0}
-      bg={navBg}
+      bg="gray.900" // Using fixed dark theme for consistency
       boxShadow="md"
-      spacing={6}
+      spacing={2} // Reduced spacing for a tighter look
       py={6}
       zIndex={10}
     >
-      <Box boxSize="40px" bg="teal.400" borderRadius="md" onClick={() => navigate('/')} cursor="pointer" />
-      <Divider borderColor={dividerColor} />
-
+      {/* Logo/Home Button */}
+      <Tooltip label="Home" placement="right" hasArrow>
+        <Box as={RouterLink} to="/" boxSize="40px" bg="teal.400" borderRadius="md" cursor="pointer" mb={4} _hover={{ opacity: 0.9 }}/>
+      </Tooltip>
+      
+      {/* Role-based navigation */}
       {user ? (
         <>
-          {/* Role-based navigation */}
-          {user.role === 'admin' && (
-            <>
-              <Button onClick={() => navigate('/admin/dashboard')} variant={location.pathname === '/admin/dashboard' ? 'solid' : 'ghost'} colorScheme="blue" h="120px" sx={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} aria-label="Admin Dashboard" color={navItemColor} _hover={{ bg: hoverBg }} _active={{ bg: activeBg }}>Admin</Button>
-              <Button onClick={() => navigate('/admin/manage-approvals')} variant={location.pathname === '/admin/manage-approvals' ? 'solid' : 'ghost'} colorScheme="blue" h="120px" sx={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} aria-label="Approvals" color={navItemColor} _hover={{ bg: hoverBg }} _active={{ bg: activeBg }}>Approvals</Button>
-              <Button onClick={() => navigate('/admin/manage-products')} variant={location.pathname === '/admin/manage-products' ? 'solid' : 'ghost'} colorScheme="blue" h="120px" sx={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} aria-label="Products" color={navItemColor} _hover={{ bg: hoverBg }} _active={{ bg: activeBg }}>Products</Button>
-            </>
-          )}
-          {user.role === 'vendor' && (
-            <>
-              <Button onClick={() => navigate('/vendor/dashboard')} variant={location.pathname === '/vendor/dashboard' ? 'solid' : 'ghost'} colorScheme="teal" h="120px" sx={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} aria-label="Vendor Dashboard" color={navItemColor} _hover={{ bg: hoverBg }} _active={{ bg: activeBg }}>Vendor</Button>
-              <Button onClick={() => navigate('/vendor/products')} variant={location.pathname === '/vendor/products' ? 'solid' : 'ghost'} colorScheme="teal" h="120px" sx={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} aria-label="Products" color={navItemColor} _hover={{ bg: hoverBg }} _active={{ bg: activeBg }}>Products</Button>
-            </>
-          )}
-          {user.role === 'employee' && (
-            <Button onClick={() => navigate('/employee/dashboard')} variant={location.pathname === '/employee/dashboard' ? 'solid' : 'ghost'} colorScheme="green" h="120px" sx={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} aria-label="Employee Dashboard" color={navItemColor} _hover={{ bg: hoverBg }} _active={{ bg: activeBg }}>Employee</Button>
-          )}
+          {user.role === 'admin' && adminLinks.map(link => (
+            <SidebarIcon key={link.to} {...link} active={location.pathname === link.to} />
+          ))}
+          {user.role === 'vendor' && vendorLinks.map(link => (
+            <SidebarIcon key={link.to} {...link} active={location.pathname === link.to} />
+          ))}
+          {user.role === 'employee' && employeeLinks.map(link => (
+            <SidebarIcon key={link.to} {...link} active={location.pathname === link.to} />
+          ))}
+          
           <Spacer />
-          <Button onClick={handleLogout} colorScheme="red" w="100%" variant="ghost" color="red.400" _hover={{ bg: hoverBg }} _active={{ bg: activeBg }}>Logout</Button>
+
+          {/* Logout Button */}
+          <SidebarIcon icon={<FaPowerOff />} label="Logout" onClick={handleLogout} colorScheme="red" />
         </>
       ) : (
         <>
-          <Button onClick={() => navigate('/login')} variant={location.pathname === '/login' ? 'solid' : 'ghost'} colorScheme="teal" h="120px" sx={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} aria-label="Login" color={navItemColor} _hover={{ bg: hoverBg }} _active={{ bg: activeBg }}>Login</Button>
-          <Button onClick={() => navigate('/register')} variant={['/register', '/payment'].includes(location.pathname) ? 'solid' : 'ghost'} colorScheme="teal" h="120px" sx={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }} aria-label="Register" color={navItemColor} _hover={{ bg: hoverBg }} _active={{ bg: activeBg }}>Register</Button>
+          {/* Guest (Logged Out) Links */}
+          {guestLinks.map(link => (
+             <SidebarIcon 
+                key={link.to} 
+                {...link} 
+                active={link.activePaths ? link.activePaths.includes(location.pathname) : location.pathname === link.to} 
+             />
+          ))}
         </>
       )}
 
-      {!user && <Spacer />}
+      <Spacer />
+      <Divider borderColor="gray.700" />
 
-      <IconButton aria-label="Toggle color mode" icon={colorMode === 'light' ? <SunIcon /> : <MoonIcon />} onClick={toggleColorMode} variant="ghost" color={navItemColor} _hover={{ bg: hoverBg }} _active={{ bg: activeBg }} />
+      {/* Color Mode Toggle - Kept for utility */}
+      <Tooltip label="Toggle Theme" placement="right" hasArrow>
+          <IconButton
+            aria-label="Toggle color mode"
+            icon={location.pathname.startsWith('/admin') ? <SunIcon /> : <MoonIcon />}
+            onClick={() => {}} // Placeholder: You might want to connect this to a global state
+            variant="ghost"
+            color="gray.400"
+            w="full"
+            py={6}
+            _hover={{ bg: 'gray.700', color: 'white' }}
+          />
+      </Tooltip>
     </VStack>
   );
 };

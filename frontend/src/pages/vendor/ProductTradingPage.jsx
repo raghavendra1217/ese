@@ -7,7 +7,7 @@ import {
     ModalHeader, ModalBody, ModalFooter, ModalCloseButton, Input, HStack, useToast, FormControl, FormLabel,
     Divider
 } from '@chakra-ui/react';
-import { useAuth } from '../AppContext';
+import { useAuth } from '../../AppContext';
 import { useNavigate } from 'react-router-dom';
 
 // --- Modal Component for the entire Purchase Flow ---
