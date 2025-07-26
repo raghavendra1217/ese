@@ -69,7 +69,9 @@ app.use('/api/trading', tradingRoutes);
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/images/products',express.static(path.join(__dirname, 'public/images/products')));
 
-
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/build/index.html'));
+});
 
 // --- Server Start-up Logic ---
 const startServer = async () => {
