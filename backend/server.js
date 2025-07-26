@@ -26,7 +26,7 @@ const app = express();
 // --- Middleware Setup ---
 
 
-const allowedOrigins = ['http://localhost:3000', 'https://26a5e1a49d1c.ngrok-free.app'];
+const allowedOrigins = ['http://localhost:3000', 'https://esepapertrading.vercel.app'];
 
 app.use(cors({
   origin: function (origin, callback) {
