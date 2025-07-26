@@ -24,7 +24,7 @@ import PurchaseHistoryPage from './pages/vendor/PurchaseHistoryPage';
 import ProductTradingPage from './pages/vendor/ProductTradingPage';
 // import Wallet from './pages/WalletPage';
 
-const url = "http://localhost:5000";
+const url = "https://esepapertrading.onrender.com";
 
 function App() {
   return (
