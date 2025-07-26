@@ -11,7 +11,7 @@ const StatCard = ({ icon, label, value, iconBgColor = 'blue.500' }) => {
             <Box p={3} borderRadius="lg" bg={iconBgColor} color="white" mr={4}>{icon}</Box>
             <Box>
                 <Text fontSize="sm" color={labelColor}>{label}</Text>
-                <Heading size="md" color={valueColor}>{value.toLocaleString()}</Heading>
+                <Heading size="md" color={valueColor}>{value}</Heading>
             </Box>
         </Flex>
     );
