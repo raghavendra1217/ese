@@ -28,4 +28,11 @@ router.post('/initiate', protect, tradingController.initiateTrade);
 // This route runs when the user clicks the final "Submit Proof" button.
 router.post('/submit-proof', protect, uploadProof.single('paymentScreenshot'), tradingController.submitProof);
 
+
+// --- NEW ROUTE ADDED HERE ---
+// @route   GET /api/trading/history
+// @desc    Gets the purchase history for the currently logged-in vendor.
+router.get('/history', protect, tradingController.getPurchaseHistory);
+
+
 module.exports = router;

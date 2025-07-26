@@ -213,7 +213,7 @@ const ViewProductsPage = () => {
                     {products.map(product => (
                         <VStack key={product.product_id} borderWidth="1px" borderRadius="lg" p={4} spacing={4} align="stretch" justify="space-between">
                             <Box>
-                                <Image src={`http://localhost:5000${product.product_image_url}`} h="150px" w="full" objectFit="cover" borderRadius="md" fallbackSrc="https://via.placeholder.com/150" />
+                                <Image src={`/${product.product_image_url}`} h="150px" w="full" objectFit="cover" borderRadius="md" fallbackSrc="https://via.placeholder.com/150" />
                                 <Heading size="md" mt={4}>{product.paper_type}</Heading>
                                 <Text>Size: {product.size} | GSM: {product.gsm}</Text>
                                 <Text>Available: <strong>{product.available_stock} units</strong></Text>

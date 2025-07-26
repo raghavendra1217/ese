@@ -95,4 +95,7 @@ router.get(
     productController.getAvailableProducts
 );
 
+router.get('/stats/available-count', protect, productController.getAvailableProductCount);
+
+
 module.exports = router;

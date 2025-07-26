@@ -54,10 +54,12 @@ app.use('/api/resumes', resumeRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/vendor', vendorRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/trade', tradingRoutes);
+app.use('/api/trading', tradingRoutes);
 
 // 5. Static Folder for Uploads
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/images/products',express.static(path.join(__dirname, 'public/images/products')));
+
 
 
 // --- Server Start-up Logic ---
@@ -67,7 +69,7 @@ const startServer = async () => {
     const result = await db.query('SELECT NOW()');
     console.log(`✅ Database connection successful. DB time: ${result.rows[0].now}`);
 
-    app.listen(PORT, () => {
+    app.listen(PORT,'0.0.0.0', () => {
       console.log('----------------------------------------------------');
       console.log(`🚀 API Server is live at: http://localhost:${PORT}`);
       console.log('🗒️  Request logging is enabled.');

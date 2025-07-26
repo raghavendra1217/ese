@@ -231,7 +231,7 @@ const ManageProductsPage = () => {
                         <Tbody>
                             {products.map(p => (
                                 <Tr key={p.product_id}>
-                                    <Td><Image src={`http://localhost:5000${p.product_image_url}`} boxSize="50px" objectFit="cover" fallbackSrc="https://via.placeholder.com/50" /></Td>
+                                    <Td><Image src={`${process.env.REACT_APP_API_BASE_URL}${p.product_image_url}`} boxSize="50px" objectFit="cover" fallbackSrc="https://via.placehold" /></Td>
                                     <Td>{p.product_id}</Td>
                                     <Td>{p.paper_type}</Td>
                                     <Td>{p.gsm}</Td>

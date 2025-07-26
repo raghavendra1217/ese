@@ -1,7 +1,5 @@
-// Example path: src/pages/VendorDashboard.js
-
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import {
     Box, Flex, VStack, Grid, Heading, Text, Button, IconButton, Input, InputGroup,
     InputLeftElement, useColorModeValue, Spacer, Tooltip
@@ -14,7 +12,7 @@ import { HiOutlineMail } from 'react-icons/hi';
 import { BsPersonCheckFill, BsCart3, BsCheckCircle } from 'react-icons/bs';
 import { useAuth } from '../AppContext';
 
-// --- Vendor-Specific Reusable Components (No changes needed here) ---
+// --- Vendor-Specific Reusable Components ---
 
 const VendorSidebarIcon = ({ icon, label, to = "#", active = false }) => (
     <Tooltip label={label} placement="right" hasArrow>
@@ -26,10 +24,11 @@ const VendorSidebarIcon = ({ icon, label, to = "#", active = false }) => (
 
 const VendorNavBar = () => {
     const { logout } = useAuth();
-    const location = window.location;
+    const location = useLocation();
     return (
         <VStack as="nav" h="100vh" w="80px" position="fixed" left={0} top={0} bg="gray.900" boxShadow="md" spacing={2} py={6} zIndex={10}>
-            <VendorSidebarIcon icon={<GoHome size={22} />} label="Dashboard" to="/vendor/dashboard" active={location.pathname.startsWith('/vendor/dashboard')} />
+            <VendorSidebarIcon icon={<GoHome size={22} />} label="Dashboard" to="/vendor/dashboard" active={location.pathname === '/vendor/dashboard'} />
+            <VendorSidebarIcon icon={<BsCart3 size={20} />} label="Products" to="/vendor/products" active={location.pathname === '/vendor/products'} />
             <VendorSidebarIcon icon={<FaFolder size={20} />} label="My Resumes" to="#" />
             <VendorSidebarIcon icon={<GoGraph size={20} />} label="My Payouts" to="#" />
             <Spacer />
@@ -41,11 +40,25 @@ const VendorNavBar = () => {
     );
 };
 
-const StatCard = ({ icon, label, value, iconBgColor = 'blue.500' }) => {
+const StatCard = ({ icon, label, value, iconBgColor = 'blue.500', to = null }) => {
     const cardBg = useColorModeValue('white', 'gray.700');
     const labelColor = useColorModeValue('gray.500', 'gray.400');
     const valueColor = useColorModeValue('gray.900', 'white');
-    return ( <Flex bg={cardBg} p={4} borderRadius="lg" boxShadow="sm" align="center"> <Box p={3} borderRadius="lg" bg={iconBgColor} color="white" mr={4}>{icon}</Box> <Box> <Text fontSize="sm" color={labelColor}>{label}</Text> <Heading size="md" color={valueColor}>{value.toLocaleString()}</Heading> </Box> </Flex> );
+    const hoverStyles = { transform: 'translateY(-3px)', boxShadow: 'xl', cursor: 'pointer' };
+
+    return (
+        <Flex
+            as={to ? RouterLink : 'div'} to={to} bg={cardBg} p={4} borderRadius="lg"
+            boxShadow="sm" align="center" transition="all 0.2s ease-in-out"
+            _hover={to ? hoverStyles : {}}
+        >
+            <Box p={3} borderRadius="lg" bg={iconBgColor} color="white" mr={4}>{icon}</Box>
+            <Box>
+                <Text fontSize="sm" color={labelColor}>{label}</Text>
+                <Heading size="md" color={valueColor}>{value}</Heading>
+            </Box>
+        </Flex>
+    );
 };
 
 const ProductStatCard = ({ value }) => {
@@ -55,7 +68,7 @@ const ProductStatCard = ({ value }) => {
     return (
         <Flex bg={cardBg} p={4} borderRadius="lg" boxShadow="sm" direction="column" justify="space-between" minH="130px">
             <Box>
-                <Text fontSize="sm" color="gray.500">Available Products</Text>
+                <Text fontSize="sm" color="gray.500">Products Available to Buy</Text>
                 <Heading size="md" color={valueColor}>{value.toLocaleString()}</Heading>
             </Box>
             <Button colorScheme="blue" w="full" mt={2} onClick={() => navigate('/vendor/products')}>
@@ -65,46 +78,57 @@ const ProductStatCard = ({ value }) => {
     );
 };
 
-// --- Main Dashboard Content Area (This is where the fix is) ---
+// --- Main Dashboard Content Area ---
 
 const VendorDashboardContent = () => {
     const { user, token } = useAuth();
     const [stats, setStats] = useState({
         assignedResumes: 0, completedResumes: 0, availableProducts: 0, purchasedProducts: 0,
-        purchasedValue: 0, pendingPayOuts: 0,
-        // Placeholders can still have defaults
-        pendingEmployeeApprovals: 0, availableVacancies: 10, employeesOnHold: 8,
-        receivedBill: '0', pendingBill: 0, totalPayouts: 0,
+        purchasedValue: 0, pendingPayOuts: 0, pendingTradeApprovals: 0,
+        availableVacancies: 10, employeesOnHold: 8, receivedBill: '384.5',
+        pendingBill: 0, totalPayouts: 4578.58,
     });
     
-    // --- THE FIX IS HERE ---
+    // --- UPDATED: fetchAllStats now uses separate try/catch blocks ---
     const fetchAllStats = useCallback(async () => {
         if (!token) return;
+        const headers = { 'Authorization': `Bearer ${token}` };
+
+        // --- Block 1: Fetch Vendor-Specific Stats ---
         try {
-            // 1. We only need ONE API call because the backend controller is efficient.
-            const response = await fetch('/api/vendor/dashboard-stats', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
+            const response = await fetch('/api/vendor/dashboard-stats', { headers });
             if (!response.ok) {
-                // Try to get a more specific error message from the backend
-                const errorData = await response.json().catch(() => ({ message: 'Failed to fetch dashboard data.' }));
-                throw new Error(errorData.message);
+                throw new Error('Failed to fetch vendor stats.');
             }
-            
-            const fetchedStats = await response.json();
-            
-            // 2. We update the state with the complete object from the single API call.
+            const vendorStats = await response.json();
             setStats(prevStats => ({
-                ...prevStats, // Keep any placeholder values
-                ...fetchedStats, // Overwrite with fresh data from the server
+                ...prevStats,
+                ...vendorStats,
+                purchasedProducts: vendorStats.approvedPurchasesCount,
+                purchasedValue: vendorStats.approvedPurchasesValue,
             }));
-
-        } catch (error) { 
-            console.error("Failed to fetch dashboard stats:", error);
-            // Optionally, show a toast notification to the user here
+        } catch (error) {
+            console.error("Error fetching VENDOR stats:", error);
+            // Optionally show a toast for this specific error
         }
-    }, [token]); // This function only re-creates itself if the token changes
+
+        // --- Block 2: Fetch Product Count Stats ---
+        try {
+            const response = await fetch('/api/products/stats/available-count', { headers });
+            if (!response.ok) {
+                throw new Error('Failed to fetch product count.');
+            }
+            const productCountStats = await response.json();
+            console.log("Response from /api/products/stats/available-count:", productCountStats);
+            setStats(prevStats => ({
+                ...prevStats,
+                ...productCountStats,
+            }));
+        } catch (error) {
+            console.error("Error fetching PRODUCT COUNT stats:", error);
+            // Optionally show a toast for this specific error
+        }
+    }, [token]);
 
     useEffect(() => {
         fetchAllStats();
@@ -113,7 +137,15 @@ const VendorDashboardContent = () => {
             window.removeEventListener('focus', fetchAllStats);
         };
     }, [fetchAllStats]);
-    // --- END OF FIX ---
+
+        useEffect(() => {
+        fetchAllStats();
+        // Optional: Refreshes data when the user focuses on the window again
+        window.addEventListener('focus', fetchAllStats);
+        return () => {
+            window.removeEventListener('focus', fetchAllStats);
+        };
+    }, [fetchAllStats]);
 
     const mainBg = useColorModeValue('#F9FAFB', 'gray.800');
     const cardBg = useColorModeValue('white', 'gray.700');
@@ -123,34 +155,83 @@ const VendorDashboardContent = () => {
     return (
         <Box flex="1" ml="80px" p={{ base: 4, md: 8 }} bg={mainBg}>
             <Flex justify="space-between" align="center" mb={8}>
-                <InputGroup w={{ base: '100%', md: 'sm' }}><InputLeftElement pointerEvents="none" children={<SearchIcon color="gray.400" />} /><Input type="text" placeholder="Search..." bg={cardBg} borderRadius="md" /></InputGroup>
-                <Flex align="center" gap={4}><IconButton variant="ghost" aria-label="Mail" icon={<HiOutlineMail size={24} />} /><IconButton variant="ghost" aria-label="Notifications" icon={<IoMdNotificationsOutline size={24} />} /><Flex align="center" gap={2}><FaRegUserCircle size={28} /><Text fontWeight="semibold" display={{ base: 'none', sm: 'block' }}>Hello, {user?.email.split('@')[0] || 'Vendor'}</Text></Flex></Flex>
+                <InputGroup w={{ base: '100%', md: 'sm' }}>
+                    <InputLeftElement pointerEvents="none" children={<SearchIcon color="gray.400" />} />
+                    <Input type="text" placeholder="Search..." bg={cardBg} borderRadius="md" />
+                </InputGroup>
+                <Flex align="center" gap={4}>
+                    <IconButton variant="ghost" aria-label="Mail" icon={<HiOutlineMail size={24} />} />
+                    <IconButton variant="ghost" aria-label="Notifications" icon={<IoMdNotificationsOutline size={24} />} />
+                    <Flex align="center" gap={2}>
+                        <FaRegUserCircle size={28} />
+                        <Text fontWeight="semibold" display={{ base: 'none', sm: 'block' }}>Hello, {user?.email.split('@')[0] || 'Vendor'}</Text>
+                    </Flex>
+                </Flex>
             </Flex>
+            
             <Box as="section" mb={8}>
-                <Flex justify="space-between" align="center" mb={4}><Box><Heading as="h1" size="xl" color={textColor}>Vendor Dashboard</Heading><Text color={secondaryTextColor}>Your Performance Overview</Text></Box></Flex>
+                <Flex justify="space-between" align="center" mb={4}>
+                    <Box>
+                        <Heading as="h1" size="xl" color={textColor}>Vendor Dashboard</Heading>
+                        <Text color={secondaryTextColor}>Your Performance Overview</Text>
+                    </Box>
+                </Flex>
                 <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={6}>
-                    <StatCard label="Available Vacancies" value={stats.availableVacancies} icon={<FaUsers size={24} />} iconBgColor="blue.500" />
-                    <StatCard label="Pending Employee Approvals" value={stats.pendingEmployeeApprovals} icon={<BsPersonCheckFill size={24} />} iconBgColor="orange.500" />
-                    <StatCard label="Assigned Resumes" value={stats.assignedResumes} icon={<BsCart3 size={24} />} iconBgColor="green.500" />
-                    <StatCard label="Completed Resumes" value={stats.completedResumes} icon={<BsCheckCircle size={24} />} iconBgColor="purple.500" />
-                    <StatCard label="Employees on Hold" value={stats.employeesOnHold} icon={<BsPersonCheckFill size={24} />} iconBgColor="sky.500" />
+                    {/* Real Data Fetched from API */}
+                    <StatCard label="Assigned Resumes" value={stats.assignedResumes.toLocaleString()} icon={<BsCart3 size={24} />} iconBgColor="green.500" />
+                    <StatCard label="Completed Resumes" value={stats.completedResumes.toLocaleString()} icon={<BsCheckCircle size={24} />} iconBgColor="purple.500" />
+                    <StatCard label="Pending Payouts" value={stats.pendingPayOuts.toLocaleString()} icon={<GoGraph size={24} />} iconBgColor="orange.500" />
+                    
+                    {/* Dummy/Placeholder Stats Retained as Requested */}
+                    <StatCard label="Available Vacancies" value={stats.availableVacancies.toLocaleString()} icon={<FaUsers size={24} />} iconBgColor="blue.500" />
+                    <StatCard label="Employees on Hold" value={stats.employeesOnHold.toLocaleString()} icon={<BsPersonCheckFill size={24} />} iconBgColor="sky.500" />
                     <StatCard label="Received Bill" value={stats.receivedBill} icon={<BsCart3 size={24} />} iconBgColor="green.500" />
-                    <StatCard label="Pending Bill" value={stats.pendingBill} icon={<BsCheckCircle size={24} />} iconBgColor="purple.500" />
+                    <StatCard label="Pending Bill" value={stats.pendingBill.toLocaleString()} icon={<BsCheckCircle size={24} />} iconBgColor="purple.500" />
                 </Grid>
             </Box>
-            <Box as="section" mb={8}><Flex justify="space-between" align="center" mb={4}><Heading as="h2" size="lg" color={secondaryTextColor}>TRADING</Heading></Flex><Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={6}>
-                <ProductStatCard value={stats.availableProducts} />
-                <StatCard label="Purchased Products" value={stats.purchasedProducts} icon={<BsPersonCheckFill size={24} />} iconBgColor="sky.500" />
-                <StatCard label="Purchased Value" value={stats.purchasedValue} icon={<BsCart3 size={24} />} iconBgColor="green.500" />
-                <StatCard label="Pending Pay Outs" value={stats.pendingPayOuts} icon={<BsCheckCircle size={24} />} iconBgColor="purple.500" />
+
+            <Box as="section" mb={8}>
+                <Flex justify="space-between" align="center" mb={4}>
+                    <Heading as="h2" size="lg" color={secondaryTextColor}>TRADING</Heading>
+                </Flex>
+                <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={6}>
+                    <ProductStatCard value={stats.availableProducts} />
+                    <StatCard 
+                        label="My Approved Purchases" 
+                        value={stats.purchasedProducts.toLocaleString()} 
+                        icon={<BsPersonCheckFill size={24} />} 
+                        iconBgColor="sky.500"
+                        to="/vendor/my-purchases" // Makes the card a clickable link
+                    />
+                    <StatCard label="Total Spent" value={stats.purchasedValue.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })} icon={<BsCart3 size={24} />} iconBgColor="green.500" />
+                    <StatCard label="Purchases Pending Approval" value={stats.pendingTradeApprovals.toLocaleString()} icon={<BsCheckCircle size={24} />} iconBgColor="purple.500" />
                 </Grid>
             </Box>
-            <Grid templateColumns={{ base: '1fr', lg: '2fr 1fr' }} gap={6}><Box bg={cardBg} p={6} borderRadius="lg" boxShadow="sm"><Flex justify="space-between" align="center" mb={4}><Heading size="md">Performance Statistics</Heading><Button size="sm" colorScheme="green" variant="outline">Export</Button></Flex><Box h="250px" bg={useColorModeValue('gray.100', 'gray.600')} borderRadius="md"></Box></Box><Flex direction="column" bg="blue.600" color="white" p={6} borderRadius="lg" boxShadow="sm"><Flex justify="space-between" align="start"><Box><Heading size="md">Total Payouts</Heading><Text color="blue.200">This Month</Text></Box><Button size="sm" colorScheme="blue" variant="solid" bg="blue.500" _hover={{bg: 'blue.400'}}>Details</Button></Flex><Spacer /><Heading size="2xl">{stats.totalPayouts.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</Heading></Flex></Grid>
+
+            <Grid templateColumns={{ base: '1fr', lg: '2fr 1fr' }} gap={6}>
+                <Box bg={cardBg} p={6} borderRadius="lg" boxShadow="sm">
+                    <Flex justify="space-between" align="center" mb={4}>
+                        <Heading size="md">Performance Statistics</Heading>
+                        <Button size="sm" colorScheme="green" variant="outline">Export</Button>
+                    </Flex>
+                    <Box h="250px" bg={useColorModeValue('gray.100', 'gray.600')} borderRadius="md"></Box>
+                </Box>
+                <Flex direction="column" bg="blue.600" color="white" p={6} borderRadius="lg" boxShadow="sm">
+                    <Flex justify="space-between" align="start">
+                        <Box>
+                            <Heading size="md">Total Payouts</Heading>
+                            <Text color="blue.200">This Month</Text>
+                        </Box>
+                        <Button size="sm" colorScheme="blue" variant="solid" bg="blue.500" _hover={{bg: 'blue.400'}}>Details</Button>
+                    </Flex>
+                    <Spacer />
+                    <Heading size="2xl">{stats.totalPayouts.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</Heading>
+                </Flex>
+            </Grid>
         </Box>
     );
 };
 
-// --- Main Component Export (No changes here) ---
 const VendorDashboard = () => (
     <Flex minH="100vh" bg={useColorModeValue('gray.50', 'gray.900')}>
         <VendorNavBar />

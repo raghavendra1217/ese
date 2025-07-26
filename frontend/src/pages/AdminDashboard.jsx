@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+// UPDATED: Import useLocation for better route matching in the NavBar
+import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import {
     Box, Flex, VStack, Grid, Heading, Text, Button, IconButton, Input, InputGroup,
-    InputLeftElement, useColorModeValue, Spacer, Link, Tooltip, useToast
+    InputLeftElement, useColorModeValue, Spacer, Tooltip, useToast
 } from '@chakra-ui/react';
 import { SearchIcon } from '@chakra-ui/icons';
-import { FaUsers, FaRegUserCircle, FaRegBuilding, FaChartBar, FaFolder, FaCog, FaAngleDown, FaPowerOff } from 'react-icons/fa';
+import { FaUsers, FaRegUserCircle, FaChartBar, FaFolder, FaCog, FaAngleDown, FaPowerOff } from 'react-icons/fa';
 import { GoHome, GoGraph } from 'react-icons/go';
 import { IoMdNotificationsOutline } from 'react-icons/io';
 import { HiOutlineMail } from 'react-icons/hi';
@@ -24,17 +25,19 @@ const SidebarIcon = ({ icon, label, to = "#", active = false }) => (
 
 const NavBar = () => {
     const { logout } = useAuth();
-    const location = window.location;
+    // Using the useLocation hook is the standard way to get the current path
+    const location = useLocation(); 
     return (
         <VStack as="nav" h="100vh" w="80px" position="fixed" left={0} top={0} bg="gray.900" boxShadow="md" spacing={2} py={6} zIndex={10}>
             <SidebarIcon icon={<GoHome size={22} />} label="Dashboard" to="/admin/dashboard" active={location.pathname === '/admin/dashboard'} />
-            <SidebarIcon icon={<BsPersonCheckFill size={20} />} label="Approvals" to="/admin/manage-approvals" active={location.pathname === '/admin/manage-approvals'} />
+            <SidebarIcon icon={<BsPersonCheckFill size={20} />} label="Vendor Approvals" to="/admin/manage-approvals" active={location.pathname === '/admin/manage-approvals'} />
             
-            {/* UPDATED: Added link to the new Manage Products page */}
+            {/* --- NEW LINK FOR TRADING APPROVALS --- */}
+            <SidebarIcon icon={<GoGraph size={20} />} label="Trading Approvals" to="/admin/manage-trading-approvals" active={location.pathname === '/admin/manage-trading-approvals'} />
+            
             <SidebarIcon icon={<BsCart3 size={20} />} label="Products" to="/admin/manage-products" active={location.pathname === '/admin/manage-products'} />
             
             <SidebarIcon icon={<FaUsers size={20} />} label="Members" to="#" />
-            <SidebarIcon icon={<FaFolder size={20} />} label="Projects" to="#" />
             <Spacer />
             <SidebarIcon icon={<FaCog size={20} />} label="Settings" to="#" />
             <Tooltip label="Logout" placement="right" hasArrow>
@@ -96,7 +99,6 @@ const ApprovalStatCard = ({ value }) => {
     return ( <Flex bg={cardBg} p={4} borderRadius="lg" boxShadow="sm" direction="column" justify="space-between" minH="130px"> <Box> <Text fontSize="sm" color="gray.500">Pending Vendor Approvals</Text> <Heading size="md" color={valueColor}>{value.toLocaleString()}</Heading> </Box> <Button colorScheme="orange" w="full" mt={2} onClick={() => navigate('/admin/manage-approvals')} > Manage Approvals </Button> </Flex> );
 };
 
-// --- NEW Interactive Product Card ---
 const ProductStatCard = ({ value }) => {
     const cardBg = useColorModeValue('white', 'gray.700');
     const valueColor = useColorModeValue('gray.900', 'white');
@@ -114,6 +116,25 @@ const ProductStatCard = ({ value }) => {
     );
 };
 
+// --- NEW INTERACTIVE CARD FOR TRADE APPROVALS ---
+const TradeApprovalStatCard = ({ value }) => {
+    const cardBg = useColorModeValue('white', 'gray.700');
+    const valueColor = useColorModeValue('gray.900', 'white');
+    const navigate = useNavigate();
+    return (
+        <Flex bg={cardBg} p={4} borderRadius="lg" boxShadow="sm" direction="column" justify="space-between" minH="130px">
+            <Box>
+                <Text fontSize="sm" color="gray.500">Pending Trade Approvals</Text>
+                <Heading size="md" color={valueColor}>{value.toLocaleString()}</Heading>
+            </Box>
+            <Button colorScheme="teal" w="full" mt={2} onClick={() => navigate('/admin/manage-trading-approvals')}>
+                Manage Trades
+            </Button>
+        </Flex>
+    );
+};
+
+
 // --- Main Dashboard Component Wrapper ---
 const AdminDashboard = () => (
     <Flex minH="100vh" bg={useColorModeValue('gray.50', 'gray.900')}>
@@ -125,10 +146,12 @@ const AdminDashboard = () => (
 // --- Dashboard Content Area ---
 const DashboardContent = () => {
     const { token } = useAuth();
+    // UPDATED: Added pendingTradeApprovals to the initial state
     const [stats, setStats] = useState({
         uploadedResume: 0, 
         pendingForApproval: 0, 
         pendingVendorApprovals: 0,
+        pendingTradeApprovals: 0, // <-- New state
         availableProducts: 0,
         // Other dummy stats for layout purposes
         availableVacancies: 10, membersInLive: 8, verifiedResumes: 769, 
@@ -136,30 +159,32 @@ const DashboardContent = () => {
         purchasedProducts: 22, purchasedValue: 1245, 
         pendingPayOuts: 576, totalPayouts: 4578.58,
     });
-    
-    const fetchAllStats = async () => {
+
+        const fetchAllStats = async () => {
         if (!token) return;
 
         try {
             const headers = { 'Authorization': `Bearer ${token}` };
 
-            // Fetch from all three endpoints concurrently
+            // Fetch from all three endpoints concurrently for better performance
             const [resumeResponse, adminResponse, productResponse] = await Promise.all([
                 fetch('/api/resumes/stats/dashboard', { headers }),
                 fetch('/api/admin/stats/dashboard', { headers }),
                 fetch('/api/products/stats/dashboard', { headers })
             ]);
 
+            // Check if all API calls were successful
             if (!resumeResponse.ok || !adminResponse.ok || !productResponse.ok) {
+                // You can add more specific error handling here if needed
                 throw new Error('Failed to fetch all dashboard data.');
             }
 
             const resumeStats = await resumeResponse.json();
-            // THE FIX: Correctly call .json() on adminResponse
             const adminStats = await adminResponse.json(); 
             const productStats = await productResponse.json();
 
-            // Merge all results into the state
+            // Merge all results into the state. The new `pendingTradeApprovals` key
+            // from the backend API will be automatically included.
             setStats(prevStats => ({
                 ...prevStats,
                 ...resumeStats,
@@ -168,11 +193,16 @@ const DashboardContent = () => {
             }));
         } catch (error) { 
             console.error("Failed to fetch dashboard stats:", error);
+            // Optionally, you could show a toast message to the user on failure
         }
     };
     
     useEffect(() => {
-        fetchAllStats();
+        // Fetch stats when the component mounts or the auth token changes
+        if (token) {
+            fetchAllStats();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token]);
 
     const mainBg = useColorModeValue('#F9FAFB', 'gray.800');
@@ -182,10 +212,33 @@ const DashboardContent = () => {
 
     return (
         <Box flex="1" ml="80px" p={{ base: 4, md: 8 }} bg={mainBg}>
-            <Flex justify="space-between" align="center" mb={8}><InputGroup w={{ base: '100%', md: 'sm' }}><InputLeftElement pointerEvents="none" children={<SearchIcon color="gray.400" />} /><Input type="text" placeholder="Search..." bg={cardBg} borderRadius="md" /></InputGroup><Flex align="center" gap={4}><IconButton variant="ghost" aria-label="Mail" icon={<HiOutlineMail size={24} />} /><IconButton variant="ghost" aria-label="Notifications" icon={<IoMdNotificationsOutline size={24} />} /><IconButton variant="ghost" aria-label="Analytics" icon={<FaChartBar size={20} />} /><Flex align="center" gap={2}><FaRegUserCircle size={28} /><Text fontWeight="semibold" display={{ base: 'none', sm: 'block' }}>Hello,admin</Text></Flex></Flex></Flex>
+            <Flex justify="space-between" align="center" mb={8}>
+                <InputGroup w={{ base: '100%', md: 'sm' }}>
+                    <InputLeftElement pointerEvents="none" children={<SearchIcon color="gray.400" />} />
+                    <Input type="text" placeholder="Search..." bg={cardBg} borderRadius="md" />
+                </InputGroup>
+                <Flex align="center" gap={4}>
+                    <IconButton variant="ghost" aria-label="Mail" icon={<HiOutlineMail size={24} />} />
+                    <IconButton variant="ghost" aria-label="Notifications" icon={<IoMdNotificationsOutline size={24} />} />
+                    <IconButton variant="ghost" aria-label="Analytics" icon={<FaChartBar size={20} />} />
+                    <Flex align="center" gap={2}>
+                        <FaRegUserCircle size={28} />
+                        <Text fontWeight="semibold" display={{ base: 'none', sm: 'block' }}>Hello, admin</Text>
+                    </Flex>
+                </Flex>
+            </Flex>
             
             <Box as="section" mb={8}>
-                <Flex justify="space-between" align="center" mb={4}><Box><Heading as="h1" size="xl" color={textColor}>Dashboard</Heading><Text color={secondaryTextColor}>Resume Uploading</Text></Box><Flex gap={2}><Button variant="outline">Manage</Button><Button colorScheme="blue">Add Member</Button></Flex></Flex>
+                <Flex justify="space-between" align="center" mb={4}>
+                    <Box>
+                        <Heading as="h1" size="xl" color={textColor}>Dashboard</Heading>
+                        <Text color={secondaryTextColor}>Resume Uploading</Text>
+                    </Box>
+                    <Flex gap={2}>
+                        <Button variant="outline">Manage</Button>
+                        <Button colorScheme="blue">Add Member</Button>
+                    </Flex>
+                </Flex>
                 <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={6}>
                     <StatCard label="Available Vacancies" value={stats.availableVacancies} icon={<FaUsers size={24} />} iconBgColor="blue.500" />
                     <ApprovalStatCard value={stats.pendingVendorApprovals} />
@@ -199,24 +252,41 @@ const DashboardContent = () => {
             </Box>
 
             <Box as="section" mb={8}>
-                <Flex justify="space-between" align="center" mb={4}><Heading as="h2" size="lg" color={secondaryTextColor}>TRADING</Heading><Flex gap={2}><Button variant="outline">Manage</Button><Button colorScheme="blue">Add Member</Button></Flex></Flex>
+                <Flex justify="space-between" align="center" mb={4}>
+                    <Heading as="h2" size="lg" color={secondaryTextColor}>TRADING</Heading>
+                    <Flex gap={2}>
+                        <Button variant="outline">Manage</Button>
+                        <Button colorScheme="blue">Add Member</Button>
+                    </Flex>
+                </Flex>
                 <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={6}>
-                    {/* UPDATED: Use the new interactive ProductStatCard here */}
+                    {/* UPDATED: Add the new interactive TradeApprovalStatCard here */}
+                    <TradeApprovalStatCard value={stats.pendingTradeApprovals} />
                     <ProductStatCard value={stats.availableProducts} />
                     <StatCard label="Purchased Products" value={stats.purchasedProducts} icon={<BsPersonCheckFill size={24} />} iconBgColor="sky.500" />
                     <StatCard label="Purchased Value" value={stats.purchasedValue} icon={<BsCart3 size={24} />} iconBgColor="green.500" />
-                    <StatCard label="Pending Pay Outs" value={stats.pendingPayOuts} icon={<BsCheckCircle size={24} />} iconBgColor="purple.500" />
                 </Grid>
             </Box>
 
             <Grid templateColumns={{ base: '1fr', lg: '2fr 1fr' }} gap={6}>
                 <Box bg={cardBg} p={6} borderRadius="lg" boxShadow="sm">
-                    <Flex justify="space-between" align="center" mb={4}><Heading size="md">User Statistics</Heading><Flex gap={2}><Button size="sm" colorScheme="green" variant="outline">Export</Button><Button size="sm" colorScheme="blue" variant="outline" leftIcon={<BsPrinter />}>Print</Button></Flex></Flex>
-                    <Box h="250px" bg={useColorModeValue('gray.100', 'gray.600')} borderRadius="md"></Box>
+                    <Flex justify="space-between" align="center" mb={4}>
+                        <Heading size="md">User Statistics</Heading>
+                        <Flex gap={2}>
+                            <Button size="sm" colorScheme="green" variant="outline">Export</Button>
+                            <Button size="sm" colorScheme="blue" variant="outline" leftIcon={<BsPrinter />}>Print</Button>
+                        </Flex>
+                    </Flex>
+                    <Box h="250px" bg={useColorModeValue('gray.100', 'gray.600')} borderRadius="md">
+                        {/* Placeholder for a chart */}
+                    </Box>
                 </Box>
                 <Flex direction="column" bg="blue.600" color="white" p={6} borderRadius="lg" boxShadow="sm">
                     <Flex justify="space-between" align="start">
-                        <Box><Heading size="md">Pay Outs</Heading><Text color="blue.200">June 30 - July 15</Text></Box>
+                        <Box>
+                            <Heading size="md">Pay Outs</Heading>
+                            <Text color="blue.200">June 30 - July 15</Text>
+                        </Box>
                         <Button size="sm" colorScheme="blue" variant="solid" bg="blue.500" _hover={{bg: 'blue.400'}} rightIcon={<FaAngleDown />}>Export</Button>
                     </Flex>
                     <Spacer />
