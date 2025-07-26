@@ -7,7 +7,7 @@ import {
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 
-const PaymentPage = () => {
+const PaymentPage = ({ url }) => {
   const toast = useToast();
   const navigate = useNavigate();
   const paymentScreenshotRef = useRef(null);
@@ -59,7 +59,7 @@ const PaymentPage = () => {
 
     try {
         // THE FIX: The API endpoint is corrected from '/api/vendor/...' to '/api/auth/...'
-        const response = await fetch('/api/auth/submit-payment', {
+        const response = await fetch(`${url}/api/auth/submit-payment`, {
             method: 'POST',
             body: paymentData,
         });

@@ -80,67 +80,64 @@ const ProductStatCard = ({ value }) => {
 
 // --- Main Dashboard Content Area ---
 
-const VendorDashboardContent = () => {
+const VendorDashboardContent = ({ url }) => {
     const { user, token } = useAuth();
-    const [stats, setStats] = useState({
-        assignedResumes: 0, completedResumes: 0, availableProducts: 0, purchasedProducts: 0,
-        purchasedValue: 0, pendingPayOuts: 0, pendingTradeApprovals: 0,
-        availableVacancies: 10, employeesOnHold: 8, receivedBill: '384.5',
-        pendingBill: 0, totalPayouts: 4578.58,
-    });
-    
-    // --- UPDATED: fetchAllStats now uses separate try/catch blocks ---
+    // Individual useState hooks for each dashboard variable, no localStorage
+    const [assignedResumes, setAssignedResumes] = useState(0);
+    const [completedResumes, setCompletedResumes] = useState(0);
+    const [availableProducts, setAvailableProducts] = useState(0);
+    const [purchasedProducts, setPurchasedProducts] = useState(0);
+    const [purchasedValue, setPurchasedValue] = useState(0);
+    const [pendingPayOuts, setPendingPayOuts] = useState(0);
+    const [pendingTradeApprovals, setPendingTradeApprovals] = useState(0);
+    const [availableVacancies, setAvailableVacancies] = useState(10);
+    const [employeesOnHold, setEmployeesOnHold] = useState(8);
+    const [receivedBill, setReceivedBill] = useState('384.5');
+    const [pendingBill, setPendingBill] = useState(0);
+    const [totalPayouts, setTotalPayouts] = useState(4578.58);
+
     const fetchAllStats = useCallback(async () => {
         if (!token) return;
         const headers = { 'Authorization': `Bearer ${token}` };
 
-        // --- Block 1: Fetch Vendor-Specific Stats ---
+        // Fetch Vendor Dashboard Stats
         try {
-            const response = await fetch('/api/vendor/dashboard-stats', { headers });
+            const response = await fetch(`${url}/api/vendor/stats/dashboard`, { headers });
             if (!response.ok) {
-                throw new Error('Failed to fetch vendor stats.');
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             const vendorStats = await response.json();
-            setStats(prevStats => ({
-                ...prevStats,
-                ...vendorStats,
-                purchasedProducts: vendorStats.approvedPurchasesCount,
-                purchasedValue: vendorStats.approvedPurchasesValue,
-            }));
+            setAssignedResumes(vendorStats.assignedResumes ?? 0);
+            setCompletedResumes(vendorStats.completedResumes ?? 0);
+            setAvailableProducts(vendorStats.availableProducts ?? 0);
+            setPurchasedProducts(vendorStats.purchasedProducts ?? 0);
+            setPurchasedValue(vendorStats.purchasedValue ?? 0);
+            setPendingTradeApprovals(vendorStats.pendingTradeApprovals ?? 0);
+            setPendingPayOuts(vendorStats.pendingPayOuts ?? 0);
+            setAvailableVacancies(vendorStats.availableVacancies ?? 10);
+            setEmployeesOnHold(vendorStats.employeesOnHold ?? 8);
+            setReceivedBill(vendorStats.receivedBill ?? '384.5');
+            setPendingBill(vendorStats.pendingBill ?? 0);
+            setTotalPayouts(vendorStats.totalPayouts ?? 4578.58);
         } catch (error) {
             console.error("Error fetching VENDOR stats:", error);
-            // Optionally show a toast for this specific error
         }
 
-        // --- Block 2: Fetch Product Count Stats ---
+        // Fetch Available Products Count
         try {
-            const response = await fetch('/api/products/stats/available-count', { headers });
+            const response = await fetch(`${url}/api/products/stats/available-count`, { headers });
             if (!response.ok) {
-                throw new Error('Failed to fetch product count.');
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             const productCountStats = await response.json();
-            console.log("Response from /api/products/stats/available-count:", productCountStats);
-            setStats(prevStats => ({
-                ...prevStats,
-                ...productCountStats,
-            }));
+            setAvailableProducts(productCountStats.availableCount ?? 0);
         } catch (error) {
             console.error("Error fetching PRODUCT COUNT stats:", error);
-            // Optionally show a toast for this specific error
         }
-    }, [token]);
+    }, [token, url]);
 
     useEffect(() => {
         fetchAllStats();
-        window.addEventListener('focus', fetchAllStats);
-        return () => {
-            window.removeEventListener('focus', fetchAllStats);
-        };
-    }, [fetchAllStats]);
-
-        useEffect(() => {
-        fetchAllStats();
-        // Optional: Refreshes data when the user focuses on the window again
         window.addEventListener('focus', fetchAllStats);
         return () => {
             window.removeEventListener('focus', fetchAllStats);
@@ -178,15 +175,15 @@ const VendorDashboardContent = () => {
                 </Flex>
                 <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={6}>
                     {/* Real Data Fetched from API */}
-                    <StatCard label="Assigned Resumes" value={stats.assignedResumes.toLocaleString()} icon={<BsCart3 size={24} />} iconBgColor="green.500" />
-                    <StatCard label="Completed Resumes" value={stats.completedResumes.toLocaleString()} icon={<BsCheckCircle size={24} />} iconBgColor="purple.500" />
-                    <StatCard label="Pending Payouts" value={stats.pendingPayOuts.toLocaleString()} icon={<GoGraph size={24} />} iconBgColor="orange.500" />
+                    <StatCard label="Assigned Resumes" value={assignedResumes.toLocaleString()} icon={<BsCart3 size={24} />} iconBgColor="green.500" />
+                    <StatCard label="Completed Resumes" value={completedResumes.toLocaleString()} icon={<BsCheckCircle size={24} />} iconBgColor="purple.500" />
+                    <StatCard label="Pending Payouts" value={pendingPayOuts.toLocaleString()} icon={<GoGraph size={24} />} iconBgColor="orange.500" />
                     
                     {/* Dummy/Placeholder Stats Retained as Requested */}
-                    <StatCard label="Available Vacancies" value={stats.availableVacancies.toLocaleString()} icon={<FaUsers size={24} />} iconBgColor="blue.500" />
-                    <StatCard label="Employees on Hold" value={stats.employeesOnHold.toLocaleString()} icon={<BsPersonCheckFill size={24} />} iconBgColor="sky.500" />
-                    <StatCard label="Received Bill" value={stats.receivedBill} icon={<BsCart3 size={24} />} iconBgColor="green.500" />
-                    <StatCard label="Pending Bill" value={stats.pendingBill.toLocaleString()} icon={<BsCheckCircle size={24} />} iconBgColor="purple.500" />
+                    <StatCard label="Available Vacancies" value={availableVacancies.toLocaleString()} icon={<FaUsers size={24} />} iconBgColor="blue.500" />
+                    <StatCard label="Employees on Hold" value={employeesOnHold.toLocaleString()} icon={<BsPersonCheckFill size={24} />} iconBgColor="sky.500" />
+                    <StatCard label="Received Bill" value={receivedBill} icon={<BsCart3 size={24} />} iconBgColor="green.500" />
+                    <StatCard label="Pending Bill" value={pendingBill.toLocaleString()} icon={<BsCheckCircle size={24} />} iconBgColor="purple.500" />
                 </Grid>
             </Box>
 
@@ -195,16 +192,16 @@ const VendorDashboardContent = () => {
                     <Heading as="h2" size="lg" color={secondaryTextColor}>TRADING</Heading>
                 </Flex>
                 <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={6}>
-                    <ProductStatCard value={stats.availableProducts} />
+                    <ProductStatCard value={availableProducts} />
                     <StatCard 
                         label="My Approved Purchases" 
-                        value={stats.purchasedProducts.toLocaleString()} 
+                        value={purchasedProducts.toLocaleString()} 
                         icon={<BsPersonCheckFill size={24} />} 
                         iconBgColor="sky.500"
-                        to="/vendor/my-purchases" // Makes the card a clickable link
+                        to="/my-purchases" // Makes the card a clickable link
                     />
-                    <StatCard label="Total Spent" value={stats.purchasedValue.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })} icon={<BsCart3 size={24} />} iconBgColor="green.500" />
-                    <StatCard label="Purchases Pending Approval" value={stats.pendingTradeApprovals.toLocaleString()} icon={<BsCheckCircle size={24} />} iconBgColor="purple.500" />
+                    <StatCard label="Total Spent" value={purchasedValue.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })} icon={<BsCart3 size={24} />} iconBgColor="green.500" />
+                    <StatCard label="Purchases Pending Approval" value={pendingTradeApprovals.toLocaleString()} icon={<BsCheckCircle size={24} />} iconBgColor="purple.500" />
                 </Grid>
             </Box>
 
@@ -225,17 +222,17 @@ const VendorDashboardContent = () => {
                         <Button size="sm" colorScheme="blue" variant="solid" bg="blue.500" _hover={{bg: 'blue.400'}}>Details</Button>
                     </Flex>
                     <Spacer />
-                    <Heading size="2xl">{stats.totalPayouts.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</Heading>
+                    <Heading size="2xl">{totalPayouts.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</Heading>
                 </Flex>
             </Grid>
         </Box>
     );
 };
 
-const VendorDashboard = () => (
+const VendorDashboard = ({ url }) => (
     <Flex minH="100vh" bg={useColorModeValue('gray.50', 'gray.900')}>
         <VendorNavBar />
-        <VendorDashboardContent />
+        <VendorDashboardContent url={url} />
     </Flex>
 );
 

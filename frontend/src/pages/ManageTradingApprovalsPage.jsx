@@ -7,14 +7,14 @@ import {
 import { useAuth } from '../AppContext';
 import NavBar from '../components/NavBar';
 
-const TradeApprovalCard = ({ trade, onApprove }) => {
+const TradeApprovalCard = ({ trade, onApprove, url }) => {
     const cardBg = useColorModeValue('white', 'gray.700');
     const { isOpen, onOpen, onClose } = useDisclosure();
 
-    // --- FIX: Construct the full image URL using the environment variable ---
+    // --- FIX: Construct the full image URL using the url prop ---
     // The 'trade.payment_url' from the database is a relative path like '/proof/some-image.png'
     // We prepend the backend's base URL to make it a complete, absolute URL.
-    const fullImageUrl = `${process.env.REACT_APP_API_BASE_URL}${trade.payment_url}`;
+    const fullImageUrl = `${url}${trade.payment_url}`;
 
     return (
         <>
@@ -58,7 +58,7 @@ const TradeApprovalCard = ({ trade, onApprove }) => {
     );
 };
 
-const ManageTradingApprovalsPage = () => {
+const ManageTradingApprovalsPage = ({ url }) => {
     const mainBg = useColorModeValue('#F9FAFB', 'gray.800');
     const textColor = useColorModeValue('gray.800', 'white');
     const secondaryTextColor = useColorModeValue('gray.500', 'gray.400');
@@ -72,7 +72,7 @@ const ManageTradingApprovalsPage = () => {
         if (!token) return;
         setIsLoading(true);
         try {
-            const response = await fetch('/api/admin/pending-trades', {
+            const response = await fetch(`${url}/api/admin/pending-trades`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!response.ok) throw new Error('Failed to fetch pending trades.');
@@ -83,7 +83,7 @@ const ManageTradingApprovalsPage = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [token, toast]);
+    }, [token, toast, url]);
 
     useEffect(() => {
         fetchPendingTrades();
@@ -91,7 +91,7 @@ const ManageTradingApprovalsPage = () => {
 
     const handleApprove = async (tradeId) => {
         try {
-            const response = await fetch(`/api/admin/approve-trade/${tradeId}`, {
+            const response = await fetch(`${url}/api/admin/approve-trade/${tradeId}`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -119,7 +119,7 @@ const ManageTradingApprovalsPage = () => {
                     ) : trades.length > 0 ? (
                         <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
                             {trades.map(trade => (
-                                <TradeApprovalCard key={trade.trade_id} trade={trade} onApprove={handleApprove} />
+                                <TradeApprovalCard key={trade.trade_id} trade={trade} onApprove={handleApprove} url={url} />
                             ))}
                         </SimpleGrid>
                     ) : (

@@ -19,9 +19,11 @@ import EmployeeDashboard from './pages/EmployeeDashboard';
 import ManageApprovalsPage from './pages/ManageApprovalsPage';
 import ManageProductsPage from './pages/ManageProductsPage';
 import ViewProductsPage from './pages/ViewProductsPage';
-// --- 1. IMPORT THE NEW PAGE ---
 import ManageTradingApprovalsPage from './pages/ManageTradingApprovalsPage';
 import PurchaseHistoryPage from './pages/PurchaseHistoryPage';
+import ProductTradingPage from './pages/ProductTradingPage';
+
+const url = "https://esepapertrading.onrender.com";
 
 function App() {
   return (
@@ -30,35 +32,32 @@ function App() {
         <BrowserRouter>
           <Routes>
             {/* --- Group 1: Public-Only Routes --- */}
-            {/* The guard protects these from logged-in users. */}
             <Route element={<RouteGuard isPrivate={false} />}>
               <Route element={<AuthLayout />}>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegistrationPage />} />
-                <Route path="/payment" element={<PaymentPage />} />
+                <Route path="/login" element={<LoginPage url={url} />} />
+                <Route path="/register" element={<RegistrationPage url={url} />} />
+                <Route path="/payment" element={<PaymentPage url={url} />} />
               </Route>
             </Route>
 
             {/* --- Group 2: Private Routes --- */}
-            {/* The guard protects these from logged-out users. */}
             <Route element={<RouteGuard isPrivate={true} />}>
               {/* Admin Routes */}
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/manage-approvals" element={<ManageApprovalsPage />} />
-              <Route path="/admin/manage-products" element={<ManageProductsPage />} />
-              
-              {/* --- 2. ADD THE NEW ROUTE HERE --- */}
-              <Route path="/admin/manage-trading-approvals" element={<ManageTradingApprovalsPage />} />
+              <Route path="/admin/dashboard" element={<AdminDashboard url={url} />} />
+              <Route path="/admin/manage-approvals" element={<ManageApprovalsPage url={url} />} />
+              <Route path="/admin/manage-products" element={<ManageProductsPage url={url} />} />
+              <Route path="/admin/manage-trading-approvals" element={<ManageTradingApprovalsPage url={url} />} />
 
               {/* Vendor Routes */}
-              <Route path="/vendor/dashboard" element={<VendorDashboard />} />
-              <Route path="/vendor/products" element={<ViewProductsPage />} />
-              <Route path="/my-purchases" element={<PurchaseHistoryPage />} />
-              
+              <Route path="/vendor/dashboard" element={<VendorDashboard url={url} />} />
+              <Route path="/vendor/products" element={<ViewProductsPage url={url} />} />
+
               {/* Employee Routes */}
-              <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
+              <Route path="/employee/dashboard" element={<EmployeeDashboard url={url} />} />
+              <Route path="/purchase-history" element={<PurchaseHistoryPage url={url} />} />
+              <Route path="/product-trading" element={<ProductTradingPage url={url} />} />
             </Route>
-            
+
             {/* --- Fallback Route --- */}
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>

@@ -14,7 +14,7 @@ const validateAadharNumber = (aadhar) => /^\d{12}$/.test(aadhar);
 const validatePanCardNumber = (pan) => /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan);
 // ---
 
-const RegistrationPage = () => {
+const RegistrationPage = ({ url }) => {
   const toast = useToast();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -94,7 +94,7 @@ const RegistrationPage = () => {
     try {
       // This is now a REAL API call to your backend.
       // The URL '/api/auth/register' matches your authRoutes.js file.
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch(`${url}/api/auth/register`, {
         method: 'POST',
         body: uploadData, // FormData with all the details and the photo
       });

@@ -1,18 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const { protect, authorize } = require('../middleware/authMiddleware');
 
 // =======================================================
 // --- VENDOR MANAGEMENT ROUTES ---
 // =======================================================
-router.get('/pending-vendors', adminController.getPendingVendors);
-router.put('/approve-vendor/:vendorId', adminController.approveVendor);
+router.get('/pending-vendors', protect, authorize('admin'), adminController.getPendingVendors);
+router.put('/approve-vendor/:vendorId', protect, authorize('admin'), adminController.approveVendor);
 
 
 // =======================================================
 // --- DASHBOARD STATS ROUTE ---
 // =======================================================
-router.get('/stats/dashboard', adminController.getAdminDashboardStats);
+router.get('/stats/dashboard', protect, authorize('admin'), adminController.getAdminDashboardStats);
 
 
 
@@ -22,10 +23,10 @@ router.get('/stats/dashboard', adminController.getAdminDashboardStats);
 
 // This route gets the list of trades waiting for approval.
 // It will fix the 404 Not Found error.
-router.get('/pending-trades', adminController.getPendingTrades);
+router.get('/pending-trades', protect, authorize('admin'), adminController.getPendingTrades);
 
 // This route handles the action of approving a specific trade.
-router.put('/approve-trade/:tradeId', adminController.approveTrade);
+router.put('/approve-trade/:tradeId', protect, authorize('admin'), adminController.approveTrade);
 
 
 module.exports = router;

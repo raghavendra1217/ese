@@ -8,7 +8,7 @@ import {
 } from '@chakra-ui/react';
 import { useAuth } from '../AppContext';
 
-const VendorApprovalCard = ({ vendor, onApprove }) => {
+const VendorApprovalCard = ({ vendor, onApprove, url }) => {
     const cardBg = useColorModeValue('white', 'gray.700');
     const { isOpen, onOpen, onClose } = useDisclosure();
     const [currentImage, setCurrentImage] = useState('');
@@ -50,8 +50,8 @@ const VendorApprovalCard = ({ vendor, onApprove }) => {
                 </Box>
 
                 <SimpleGrid columns={2} spacing={2} pt={2}>
-                    <Button size="sm" onClick={() => viewImage(`/${vendor.passport_photo_url}`)} isDisabled={!vendor.passport_photo_url}>View Photo</Button>
-                    <Button size="sm" onClick={() => viewImage(`/${vendor.payment_screenshot_url}`)} isDisabled={!vendor.payment_screenshot_url}>View Payment SS</Button>
+                    <Button size="sm" onClick={() => viewImage(`${url}/${vendor.passport_photo_url}`)} isDisabled={!vendor.passport_photo_url}>View Photo</Button>
+                    <Button size="sm" onClick={() => viewImage(`${url}/${vendor.payment_screenshot_url}`)} isDisabled={!vendor.payment_screenshot_url}>View Payment SS</Button>
                 </SimpleGrid>
                 <Button colorScheme="teal" onClick={() => onApprove(vendor.id)}>Approve Vendor</Button>
             </VStack>
@@ -72,7 +72,7 @@ const VendorApprovalCard = ({ vendor, onApprove }) => {
     );
 };
 
-const ManageApprovalsPage = () => {
+const ManageApprovalsPage = ({ url }) => {
     const mainBg = useColorModeValue('#F9FAFB', 'gray.800');
     const textColor = useColorModeValue('gray.800', 'white');
     const secondaryTextColor = useColorModeValue('gray.500', 'gray.400');
@@ -84,7 +84,7 @@ const ManageApprovalsPage = () => {
     const fetchPendingVendors = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('/api/admin/pending-vendors', {
+            const response = await fetch(`${url}/api/admin/pending-vendors`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!response.ok) throw new Error('Failed to fetch data.');
@@ -104,7 +104,7 @@ const ManageApprovalsPage = () => {
 
     const handleApprove = async (vendorId) => {
         try {
-            const response = await fetch(`/api/admin/approve-vendor/${vendorId}`, {
+            const response = await fetch(`${url}/api/admin/approve-vendor/${vendorId}`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -128,7 +128,7 @@ const ManageApprovalsPage = () => {
                 ) : vendors.length > 0 ? (
                     <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
                         {vendors.map(vendor => (
-                            <VendorApprovalCard key={vendor.id} vendor={vendor} onApprove={handleApprove} />
+                            <VendorApprovalCard key={vendor.id} vendor={vendor} onApprove={handleApprove} url={url} />
                         ))}
                     </SimpleGrid>
                 ) : (

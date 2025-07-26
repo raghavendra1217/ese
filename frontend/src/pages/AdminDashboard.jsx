@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 // UPDATED: Import useLocation for better route matching in the NavBar
 import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -14,6 +14,7 @@ import { BsPersonCheckFill, BsCart3, BsCheckCircle, BsPrinter } from 'react-icon
 import { useAuth } from '../AppContext';
 
 // --- Reusable Components ---
+
 
 const SidebarIcon = ({ icon, label, to = "#", active = false }) => (
     <Tooltip label={label} placement="right" hasArrow>
@@ -56,7 +57,7 @@ const StatCard = ({ icon, label, value, iconBgColor = 'blue.500' }) => {
 
 // --- Interactive Cards ---
 
-const UploadResumeCard = ({ count, onUploadSuccess }) => {
+const UploadResumeCard = ({ count, onUploadSuccess, url }) => {
     const { token } = useAuth();
     const cardBg = useColorModeValue('white', 'gray.700');
     const valueColor = useColorModeValue('gray.900', 'white');
@@ -71,7 +72,7 @@ const UploadResumeCard = ({ count, onUploadSuccess }) => {
         const formData = new FormData();
         for (let i = 0; i < files.length; i++) { formData.append('resumes', files[i]); }
         try {
-            const response = await fetch('/api/resumes/upload', {
+            const response = await fetch(`${url}/api/resumes/upload`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
                 body: formData
@@ -136,31 +137,35 @@ const TradeApprovalStatCard = ({ value }) => {
 
 
 // --- Main Dashboard Component Wrapper ---
-const AdminDashboard = () => (
+const AdminDashboard = ({ url }) => (
     <Flex minH="100vh" bg={useColorModeValue('gray.50', 'gray.900')}>
         <NavBar />
-        <DashboardContent />
+        <DashboardContent url={url} />
     </Flex>
 );
 
 // --- Dashboard Content Area ---
-const DashboardContent = () => {
+const DashboardContent = ({ url }) => {
     const { token } = useAuth();
     // UPDATED: Added pendingTradeApprovals to the initial state
-    const [stats, setStats] = useState({
-        uploadedResume: 0, 
-        pendingForApproval: 0, 
-        pendingVendorApprovals: 0,
-        pendingTradeApprovals: 0, // <-- New state
-        availableProducts: 0,
-        // Other dummy stats for layout purposes
-        availableVacancies: 10, membersInLive: 8, verifiedResumes: 769, 
-        employeesOnHold: 8, receivedBill: '384.5', pendingBill: 0,
-        purchasedProducts: 22, purchasedValue: 1245, 
-        pendingPayOuts: 576, totalPayouts: 4578.58,
+    const [stats, setStats] = useState(() => {
+        // Try to load from localStorage first
+        const cached = localStorage.getItem('adminDashboardStats');
+        return cached ? JSON.parse(cached) : {
+            uploadedResume: 0,
+            pendingForApproval: 0,
+            pendingVendorApprovals: 0,
+            pendingTradeApprovals: 0, // <-- New state
+            availableProducts: 0,
+            // Other dummy stats for layout purposes
+            availableVacancies: 10, membersInLive: 8, verifiedResumes: 769, 
+            employeesOnHold: 8, receivedBill: '384.5', pendingBill: 0,
+            purchasedProducts: 22, purchasedValue: 1245, 
+            pendingPayOuts: 576, totalPayouts: 4578.58,
+        };
     });
 
-        const fetchAllStats = async () => {
+        const fetchAllStats = useCallback(async () => {
         if (!token) return;
 
         try {
@@ -168,15 +173,15 @@ const DashboardContent = () => {
 
             // Fetch from all three endpoints concurrently for better performance
             const [resumeResponse, adminResponse, productResponse] = await Promise.all([
-                fetch('/api/resumes/stats/dashboard', { headers }),
-                fetch('/api/admin/stats/dashboard', { headers }),
-                fetch('/api/products/stats/dashboard', { headers })
+                fetch(`${url}/api/resumes/stats/dashboard`, { headers }),
+                fetch(`${url}/api/admin/stats/dashboard`, { headers }),
+                fetch(`${url}/api/products/stats/dashboard`, { headers })
             ]);
 
             // Check if all API calls were successful
             if (!resumeResponse.ok || !adminResponse.ok || !productResponse.ok) {
                 // You can add more specific error handling here if needed
-                throw new Error('Failed to fetch all dashboard data.');
+                throw new Error('Failed to fetch one or more dashboard stats.');
             }
 
             const resumeStats = await resumeResponse.json();
@@ -185,17 +190,18 @@ const DashboardContent = () => {
 
             // Merge all results into the state. The new `pendingTradeApprovals` key
             // from the backend API will be automatically included.
-            setStats(prevStats => ({
-                ...prevStats,
+            const newStats = {
                 ...resumeStats,
                 ...adminStats,
                 ...productStats,
-            }));
+            };
+            setStats(newStats);
+            localStorage.setItem('adminDashboardStats', JSON.stringify(newStats));
         } catch (error) { 
             console.error("Failed to fetch dashboard stats:", error);
             // Optionally, you could show a toast message to the user on failure
         }
-    };
+    }, [url, token]);
     
     useEffect(() => {
         // Fetch stats when the component mounts or the auth token changes
@@ -203,7 +209,7 @@ const DashboardContent = () => {
             fetchAllStats();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [token]);
+    }, [token, fetchAllStats]);
 
     const mainBg = useColorModeValue('#F9FAFB', 'gray.800');
     const cardBg = useColorModeValue('white', 'gray.700');
@@ -242,7 +248,7 @@ const DashboardContent = () => {
                 <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={6}>
                     <StatCard label="Available Vacancies" value={stats.availableVacancies} icon={<FaUsers size={24} />} iconBgColor="blue.500" />
                     <ApprovalStatCard value={stats.pendingVendorApprovals} />
-                    <UploadResumeCard count={stats.uploadedResume} onUploadSuccess={fetchAllStats} />
+                    <UploadResumeCard count={stats.uploadedResume} onUploadSuccess={fetchAllStats} url={url} />
                     <StatCard label="Pending Resumes" value={stats.pendingForApproval} icon={<BsCheckCircle size={24} />} iconBgColor="purple.500" />
                     <StatCard label="Verified Resumes" value={stats.verifiedResumes} icon={<FaUsers size={24} />} iconBgColor="blue.500" />
                     <StatCard label="Employees on Hold" value={stats.employeesOnHold} icon={<BsPersonCheckFill size={24} />} iconBgColor="sky.500" />

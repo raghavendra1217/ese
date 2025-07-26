@@ -102,7 +102,7 @@ const ProductModal = ({ isOpen, onClose, onSave, product, isEditing }) => {
 };
 
 
-const ManageProductsPage = () => {
+const ManageProductsPage = ({ url }) => {
     const { token } = useAuth();
     const toast = useToast();
     const [products, setProducts] = useState([]);
@@ -117,7 +117,7 @@ const ManageProductsPage = () => {
         if (!token) return;
         setIsLoading(true);
         try {
-            const response = await fetch('/api/products', { headers: { 'Authorization': `Bearer ${token}` } });
+            const response = await fetch(`${url}/api/products`, { headers: { 'Authorization': `Bearer ${token}` } });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Failed to fetch products');
             setProducts(data);
@@ -126,7 +126,7 @@ const ManageProductsPage = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [token, toast]);
+    }, [token, toast, url]);
 
     useEffect(() => {
         fetchProducts();
@@ -143,7 +143,7 @@ const ManageProductsPage = () => {
             available_stock: formData.available_stock === '' || formData.available_stock === null ? null : Number(formData.available_stock),
         };
 
-        const url = isEditing ? `/api/products/${currentProduct.product_id}` : '/api/products';
+        const apiUrl = isEditing ? `${url}/api/products/${currentProduct.product_id}` : `${url}/api/products`;
         const method = isEditing ? 'PUT' : 'POST';
         let body;
         let headers = { 'Authorization': `Bearer ${token}` };
@@ -167,7 +167,7 @@ const ManageProductsPage = () => {
                 }
             }
 
-            const response = await fetch(url, { method, headers, body });
+            const response = await fetch(apiUrl, { method, headers, body });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Failed to save product');
             toast({ title: `Product ${isEditing ? 'updated' : 'added'}`, status: 'success', isClosable: true });
@@ -200,7 +200,7 @@ const ManageProductsPage = () => {
 
     const handleDelete = async () => {
         try {
-            const response = await fetch(`/api/products/${deleteAlert.productId}`, {
+            const response = await fetch(`${url}/api/products/${deleteAlert.productId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -231,7 +231,7 @@ const ManageProductsPage = () => {
                         <Tbody>
                             {products.map(p => (
                                 <Tr key={p.product_id}>
-                                    <Td><Image src={`${process.env.REACT_APP_API_BASE_URL}${p.product_image_url}`} boxSize="50px" objectFit="cover" fallbackSrc="https://via.placehold" /></Td>
+                                    <Td><Image src={`${url}${p.product_image_url}`} boxSize="50px" objectFit="cover" fallbackSrc="https://via.placehold" /></Td>
                                     <Td>{p.product_id}</Td>
                                     <Td>{p.paper_type}</Td>
                                     <Td>{p.gsm}</Td>

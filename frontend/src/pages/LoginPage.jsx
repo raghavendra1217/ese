@@ -19,10 +19,12 @@ import {
 } from '@chakra-ui/react';
 import { useAuth } from '../AppContext';
 
-const LoginPage = () => {
+const LoginPage = ({ url }) => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
+
+  
 
   const [step, setStep] = useState('email');
   const [isLoading, setIsLoading] = useState(false);
@@ -69,7 +71,7 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/check-email', {
+      const response = await fetch(`${url}/api/auth/check-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -110,7 +112,7 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${url}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -156,7 +158,7 @@ const LoginPage = () => {
     setError('');
     
     try {
-        const response = await fetch('/api/auth/set-password', {
+        const response = await fetch(`${url}/api/auth/set-password`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),

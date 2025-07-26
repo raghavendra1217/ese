@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 
 // --- Modal Component for the entire Purchase Flow ---
 // This modal now handles both steps: quantity selection and payment proof.
-const PurchaseModal = ({ isOpen, onClose, product, onSuccess }) => {
+const PurchaseModal = ({ isOpen, onClose, product, onSuccess, url }) => {
     const { token } = useAuth();
     const toast = useToast();
 
@@ -39,7 +39,7 @@ const PurchaseModal = ({ isOpen, onClose, product, onSuccess }) => {
     const handleInitiatePayment = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('/api/trade/initiate', {
+            const response = await fetch(`${url}/api/trading/initiate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({
@@ -75,7 +75,7 @@ const PurchaseModal = ({ isOpen, onClose, product, onSuccess }) => {
         formData.append('paymentScreenshot', paymentScreenshot);
 
         try {
-            const response = await fetch('/api/trade/submit-proof', {
+            const response = await fetch(`${url}/api/trading/submit-proof`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` },
                 body: formData,
@@ -163,9 +163,9 @@ const PurchaseModal = ({ isOpen, onClose, product, onSuccess }) => {
 
 
 // --- Product Card Component (No changes) ---
-const ProductCard = ({ product, onBuyClick }) => (
+const ProductCard = ({ product, onBuyClick, url }) => (
     <Box borderWidth="1px" borderRadius="lg" overflow="hidden" bg="gray.700">
-        <Image src={`http://localhost:5000${product.product_image_url}`} alt={product.paper_type} h="200px" w="full" objectFit="cover" fallbackSrc='https://via.placeholder.com/300' />
+        <Image src={`${url}${product.product_image_url}`} alt={product.paper_type} h="200px" w="full" objectFit="cover" fallbackSrc='https://via.placeholder.com/300' />
         <Box p={6}>
             <Heading size="md">{product.paper_type}</Heading>
             <Text mt={2}>Size: {product.size} | GSM: {product.gsm}</Text>
@@ -178,7 +178,7 @@ const ProductCard = ({ product, onBuyClick }) => (
 
 // --- Main Page Component ---
 // This is now much simpler. It just displays products and opens the modal.
-const ProductTradingPage = () => {
+const ProductTradingPage = ({ url }) => {
     const { token } = useAuth();
     const [products, setProducts] = useState([]);
     const [selectedProduct, setSelectedProduct] = useState(null);
@@ -190,7 +190,7 @@ const ProductTradingPage = () => {
         setLoading(true);
         if (!token) { setError("You must be logged in."); setLoading(false); return; }
         try {
-            const response = await fetch('/api/products/available', { headers: { 'Authorization': `Bearer ${token}` } });
+            const response = await fetch(`${url}/api/products/available`, { headers: { 'Authorization': `Bearer ${token}` } });
             if (!response.ok) throw new Error('Failed to fetch products.');
             const data = await response.json();
             setProducts(data);
@@ -213,7 +213,7 @@ const ProductTradingPage = () => {
         <Container maxW="container.xl" py={10}>
             <Heading mb={6}>Available Products for Trading</Heading>
             <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={8}>
-                {products.map(product => ( <ProductCard key={product.product_id} product={product} onBuyClick={handleBuyClick} /> ))}
+                {products.map(product => ( <ProductCard key={product.product_id} product={product} onBuyClick={handleBuyClick} url={url} /> ))}
             </SimpleGrid>
 
             {/* The modal is now self-contained */}
@@ -223,6 +223,7 @@ const ProductTradingPage = () => {
                     onClose={onClose}
                     product={selectedProduct}
                     onSuccess={fetchProducts} // Pass the fetch function so the modal can refresh the list
+                    url={url}
                 />
             )}
         </Container>

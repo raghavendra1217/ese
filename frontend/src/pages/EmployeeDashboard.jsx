@@ -12,7 +12,7 @@ const EmployeeSidebarIcon = ({ icon, label, to="#", active=false }) => ( <Toolti
 const EmployeeNavBar = () => { const { logout } = useAuth(); const location = window.location; return ( <VStack as="nav" h="100vh" w="80px" position="fixed" left={0} top={0} bg="gray.900" boxShadow="md" spacing={2} py={6} zIndex={10}> <EmployeeSidebarIcon icon={<GoHome size={22} />} label="Dashboard" to="/dashboard" active={location.pathname === '/dashboard'} /> <EmployeeSidebarIcon icon={<FaFolder size={20} />} label="My Tasks" to="#" /> <Spacer /> <EmployeeSidebarIcon icon={<FaCog size={20} />} label="My Profile" to="#" /> <Tooltip label="Logout" placement="right" hasArrow> <IconButton aria-label="Logout" icon={<FaPowerOff />} onClick={logout} variant="ghost" colorScheme="red" w="full" /> </Tooltip> </VStack> ); };
 
 // Main Component
-const EmployeeDashboard = () => {
+const EmployeeDashboard = ({ url }) => {
     const { user } = useAuth();
     const mainBg = useColorModeValue('#F9FAFB', 'gray.800');
     const textColor = useColorModeValue('gray.800', 'white');

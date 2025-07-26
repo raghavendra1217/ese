@@ -29,9 +29,9 @@ const uploadResumes = multer({
 
 // --- Routes ---
 // Resume uploading should be restricted to admins
-router.post('/upload', resumeController.handleBulkUpload);
+router.post('/upload', protect, authorize('admin'), uploadResumes.array('resumes', 10), resumeController.handleBulkUpload);
 
 // Resume stats should also be restricted to admins
-router.get('/stats/dashboard', resumeController.getDashboardStats);
+router.get('/stats/dashboard', protect, authorize('admin'), resumeController.getDashboardStats);
 
 module.exports = router;

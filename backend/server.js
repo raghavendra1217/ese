@@ -27,10 +27,23 @@ const app = express();
 
 
 
-// 1. CORS Configuration
+const allowedOrigins = [
+  // 'http://localhost:3000', // for local development
+  'https://esepapertrading.vercel.app'// replace with your real Vercel URL
+];
+
 app.use(cors({
-  origin: 'http://localhost:3000'
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true // optional, use if you're sending cookies or auth headers
 }));
+
 
 // 2. Request Logger
 // --- NEW: Use morgan for logging. 'dev' is a predefined format that's great for development.

@@ -8,11 +8,11 @@ import {
 import { useAuth } from '../AppContext';
 
 // A dedicated component to display a single purchase record cleanly.
-const PurchaseCard = ({ purchase }) => (
+const PurchaseCard = ({ purchase, url }) => (
     <Box borderWidth="1px" borderRadius="lg" overflow="hidden" bg="gray.700" p={4}>
         <Flex direction={{ base: 'column', md: 'row' }} align="center" gap={4}>
             <Image
-                src={`http://localhost:5000${purchase.product_image_url}`}
+                src={`${url}${purchase.product_image_url}`}
                 alt={purchase.paper_type}
                 boxSize="100px"
                 objectFit="cover"
@@ -58,7 +58,7 @@ const PurchaseCard = ({ purchase }) => (
 );
 
 // The main page component that fetches and displays the history.
-const PurchaseHistoryPage = () => {
+const PurchaseHistoryPage = ({ url }) => {
     const { token } = useAuth();
     const [purchases, setPurchases] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -72,7 +72,7 @@ const PurchaseHistoryPage = () => {
                 return;
             }
             try {
-                const response = await fetch('/api/trading/history', {
+                const response = await fetch(`${url}/api/trading/history`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (!response.ok) {
@@ -106,7 +106,7 @@ const PurchaseHistoryPage = () => {
             ) : (
                 <VStack spacing={6} align="stretch">
                     {purchases.map(purchase => (
-                        <PurchaseCard key={purchase.trade_id} purchase={purchase} />
+                        <PurchaseCard key={purchase.trade_id} purchase={purchase} url={url} />
                     ))}
                 </VStack>
             )}
