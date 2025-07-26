@@ -199,8 +199,8 @@ const RegistrationPage = ({ url }) => {
               
               <Divider my={4} />
 
-              <FormControl>
-                <FormLabel htmlFor="passportPhoto">Passport-size Photo (Optional)</FormLabel>
+              <FormControl isRequired>
+                <FormLabel htmlFor="passportPhoto">Passport-size Photo</FormLabel>
                 <Input ref={fileInputRef} id="passportPhoto" type="file" p={1.5} onChange={(e) => setPassportPhoto(e.target.files[0])} accept="image/png, image/jpeg, application/pdf"/>
                 <FormHelperText>Accepted formats: PNG, JPG, PDF.</FormHelperText>
               </FormControl>
