@@ -22,7 +22,7 @@ import BuyProduct from './pages/vendor/BuyProduct';
 import ManageTradingApprovalsPage from './pages/admin/ManageTradingApprovalsPage';
 import PurchaseHistoryPage from './pages/vendor/PurchaseHistoryPage';
 import ProductTradingPage from './pages/vendor/ProductTradingPage';
-// import Wallet from './pages/WalletPage';
+import WalletPage from './pages/WalletPage';
 
 const url = "";
 
@@ -52,7 +52,7 @@ function App() {
               {/* Vendor Routes */}
               <Route path="/vendor/dashboard" element={<VendorDashboard url={url} />} />
               <Route path="/vendor/products" element={<BuyProduct url={url} />} />
-              {/* <Route path="/vendor/wallet" element={<WalletPage />} /> */}
+              <Route path="/vendor/wallet" element={<WalletPage />} />
 
               {/* Employee Routes */}
               <Route path="/employee/dashboard" element={<EmployeeDashboard url={url} />} />

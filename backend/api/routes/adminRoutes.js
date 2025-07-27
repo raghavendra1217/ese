@@ -16,6 +16,8 @@ router.put('/approve-vendor/:vendorId', protect, authorize('admin'), adminContro
 router.get('/stats/dashboard', protect, authorize('admin'), adminController.getAdminDashboardStats);
 
 
+router.delete('/reject-vendor/:vendorId', protect,authorize('admin') , adminController.rejectVendor);
+
 
 // =======================================================
 // --- TRADING APPROVAL ROUTES (NEW) ---
@@ -26,7 +28,10 @@ router.get('/stats/dashboard', protect, authorize('admin'), adminController.getA
 router.get('/pending-trades', protect, authorize('admin'), adminController.getPendingTrades);
 
 // This route handles the action of approving a specific trade.
-router.put('/approve-trade/:tradeId', protect, authorize('admin'), adminController.approveTrade);
+// router.put('/approve-trade/:tradeId', protect, authorize('admin'), adminController.approveTrade);
+
+// New route for approving/rejecting trades
+router.post('/trades/review', protect ,authorize('admin'), adminController.reviewTrade);
 
 
 module.exports = router;

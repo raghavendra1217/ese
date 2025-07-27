@@ -19,8 +19,9 @@ const productImageStorage = multer.diskStorage({
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
+    const files = fs.readdirSync('public/products').filter(f => f.startsWith('P_'));
+    const nextNum = files.length === 0 ? 1 : Math.max(...files.map(f => parseInt(f.split('_')[1])) || [0]) + 1;
+    cb(null, `P_${String(nextNum).padStart(3, '0')}${path.extname(file.originalname)}`);
   },
 });
 const uploadProductImage = multer({ storage: productImageStorage });

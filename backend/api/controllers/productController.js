@@ -23,7 +23,7 @@ const getNextProductId = async (client) => {
  */
 exports.addProduct = async (req, res) => {
     // CORRECTED: Uses 'paper_type' from the request body
-    const { paper_type, size, gsm, price_per_slot, available_stock } = req.body;
+    const { paper_type, size, gsm, price_per_slot, available_stock, selling_price } = req.body;
     const productImageFile = req.file;
 
     if (!paper_type || !price_per_slot || !available_stock || !productImageFile) {
@@ -42,10 +42,10 @@ exports.addProduct = async (req, res) => {
         
         // CORRECTED: The INSERT query now only uses columns that exist in your table.
         const query = `
-            INSERT INTO product (product_id, paper_type, product_image_url, size, gsm, price_per_slot, stock_status, available_stock)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *;
+            INSERT INTO product (product_id, paper_type, product_image_url, size, gsm, price_per_slot, selling_price, stock_status, available_stock, last_updated)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()) RETURNING *;
         `;
-        const params = [product_id, paper_type, product_image_url, size, gsm, price_per_slot, stock_status, available_stock];
+        const params = [product_id, paper_type, product_image_url, size, gsm, price_per_slot, selling_price, stock_status, available_stock];
         const { rows } = await client.query(query, params);
         
         fs.renameSync(productImageFile.path, path.join(path.dirname(productImageFile.path), newFilename));
@@ -98,19 +98,19 @@ exports.getAvailableProducts = async (req, res) => {
  */
 exports.updateProduct = async (req, res) => {
     const { productId } = req.params;
-    const { price_per_slot, available_stock } = req.body;
+    const { price_per_slot, available_stock, selling_price } = req.body;
 
-    if (price_per_slot === undefined || available_stock === undefined) {
-        return res.status(400).json({ message: 'Price and available stock are required for an update.' });
+    if (price_per_slot === undefined || available_stock === undefined || selling_price === undefined) {
+        return res.status(400).json({ message: 'Price, selling price, and available stock are required for an update.' });
     }
 
     try {
         const stock_status = parseInt(available_stock, 10) > 0 ? 'available' : 'out_of_stock';
         const query = `
-            UPDATE product SET price_per_slot = $1, stock_status = $2, available_stock = $3
-            WHERE product_id = $4 RETURNING *;
+            UPDATE product SET price_per_slot = $1, selling_price = $2, stock_status = $3, available_stock = $4, last_updated = NOW()
+            WHERE product_id = $5 RETURNING *;
         `;
-        const { rows } = await db.query(query, [price_per_slot, stock_status, available_stock, productId]);
+        const { rows } = await db.query(query, [price_per_slot, selling_price, stock_status, available_stock, productId]);
 
         if (rows.length === 0) {
             return res.status(404).json({ message: 'Product not found.' });

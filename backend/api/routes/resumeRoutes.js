@@ -4,6 +4,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const fs = require('fs');
+const path = require('path'); // Added for path.extname
 
 const resumeController = require('../controllers/resumeController');
 const { protect, authorize } = require('../middleware/authMiddleware'); // <-- IMPORT MIDDLEWARE
@@ -16,6 +17,11 @@ const resumeStorage = multer.diskStorage({
     const dir = 'public/resumes';
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const files = fs.readdirSync('public/resumes').filter(f => f.startsWith('R_'));
+    const nextNum = files.length === 0 ? 1 : Math.max(...files.map(f => parseInt(f.split('_')[1])) || [0]) + 1;
+    cb(null, `R_${String(nextNum).padStart(3, '0')}${path.extname(file.originalname)}`);
   },
 });
 

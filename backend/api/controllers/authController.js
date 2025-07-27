@@ -54,7 +54,7 @@ exports.registerAndProceedToPayment = async (req, res) => {
         return res.status(400).json({ message: 'Employee count cannot be negative.' });
     }
 
-    const passportPhotoUrl = `/images/${passportPhotoFile.filename}`;
+    const passportPhotoUrl = `/passport_photos/${passportPhotoFile.filename}`;
     const client = await db.connect();
 
     try {
@@ -130,7 +130,7 @@ exports.submitPaymentAndRegister = async (req, res) => {
     if (!email || !transactionId || !paymentScreenshotFile) {
         return res.status(400).json({ message: 'Email, Transaction ID, and a payment screenshot are required.' });
     }
-    const paymentScreenshotUrl = `/payments/${paymentScreenshotFile.filename}`;
+    const paymentScreenshotUrl = `/payment_screenshots/${paymentScreenshotFile.filename}`;
     const client = await db.connect();
 
     try {

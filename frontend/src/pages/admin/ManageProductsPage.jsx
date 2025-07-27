@@ -15,6 +15,7 @@ const ProductModal = ({ isOpen, onClose, onSave, product, isEditing }) => {
         size: '',
         gsm: '',
         price_per_slot: '',
+        selling_price: '',
         stock_status: 'available',
         available_stock: ''
     };
@@ -79,6 +80,12 @@ const ProductModal = ({ isOpen, onClose, onSave, product, isEditing }) => {
                             <NumberInputField name="price_per_slot" />
                         </NumberInput>
                     </FormControl>
+                    <FormControl mt={4} isRequired>
+                        <FormLabel>Selling Price</FormLabel>
+                        <NumberInput value={formData.selling_price || ''} onChange={(value) => handleNumberChange(value, 'selling_price')} min={0} precision={2} step={0.01}>
+                            <NumberInputField name="selling_price" />
+                        </NumberInput>
+                    </FormControl>
                     <FormControl mt={4} isRequired><FormLabel>Stock Status</FormLabel>
                         <Select name="stock_status" value={formData.stock_status || 'available'} onChange={handleChange}>
                             <option value="available">Available</option>
@@ -140,6 +147,7 @@ const ManageProductsPage = ({ url }) => {
             // If the value is an empty string, send null. Otherwise, convert to a number.
             gsm: formData.gsm === '' || formData.gsm === null ? null : Number(formData.gsm),
             price_per_slot: formData.price_per_slot === '' || formData.price_per_slot === null ? null : Number(formData.price_per_slot),
+            selling_price: formData.selling_price === '' || formData.selling_price === null ? null : Number(formData.selling_price),
             available_stock: formData.available_stock === '' || formData.available_stock === null ? null : Number(formData.available_stock),
         };
 
@@ -227,7 +235,20 @@ const ManageProductsPage = ({ url }) => {
             ) : (
                 <Box overflowX="auto">
                     <Table variant="simple">
-                        <Thead><Tr><Th>Image</Th><Th>ID</Th><Th>Paper Type</Th><Th>GSM</Th><Th>Price/Slot</Th><Th>Stock</Th><Th>Status</Th><Th>Actions</Th></Tr></Thead>
+                        <Thead>
+                            <Tr>
+                                <Th>Image</Th>
+                                <Th>ID</Th>
+                                <Th>Paper Type</Th>
+                                <Th>GSM</Th>
+                                <Th>Price/Slot</Th>
+                                <Th>Selling Price</Th>
+                                <Th>Stock</Th>
+                                <Th>Status</Th>
+                                <Th>Last Updated</Th>
+                                <Th>Actions</Th>
+                            </Tr>
+                        </Thead>
                         <Tbody>
                             {products.map(p => (
                                 <Tr key={p.product_id}>
@@ -236,8 +257,10 @@ const ManageProductsPage = ({ url }) => {
                                     <Td>{p.paper_type}</Td>
                                     <Td>{p.gsm}</Td>
                                     <Td>₹{p.price_per_slot}</Td>
+                                    <Td>₹{p.selling_price ? parseFloat(p.selling_price).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : 'N/A'}</Td>
                                     <Td>{p.available_stock}</Td>
                                     <Td><Tag colorScheme={p.stock_status === 'available' ? 'green' : p.stock_status === 'low' ? 'orange' : 'red'}>{p.stock_status}</Tag></Td>
+                                    <Td>{p.last_updated ? new Date(p.last_updated).toLocaleString() : 'N/A'}</Td>
                                     <Td>
                                         <IconButton icon={<EditIcon />} aria-label="Edit" mr={2} onClick={() => openEditModal(p)} />
                                         <IconButton icon={<DeleteIcon />} aria-label="Delete" colorScheme="red" onClick={() => openDeleteAlert(p.product_id)} />

@@ -13,12 +13,20 @@ const adminRoutes = require('./api/routes/adminRoutes');
 const vendorRoutes = require('./api/routes/vendorRoutes');
 const productRoutes = require('./api/routes/productRoutes');
 const tradingRoutes = require('./api/routes/tradingRoutes');
+const walletRoutes = require('./api/routes/walletRoutes');
 
 const PORT = process.env.PORT || 5000;
 const app = express();
 
 // --- CORS Setup ---
-const allowedOrigins = ['http://localhost:3000', 'https://esepapertrading.vercel.app','http://localhost:5000','http://localhost:10000','https://esepapertrading.onrender.com'];
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5000',
+  'http://localhost:10000',
+  'https://0c724ae45fb2.ngrok-free.app',
+  'https://esepapertrading.vercel.app',
+  'https://esepapertrading.onrender.com',
+];
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -28,7 +36,7 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: false
+  credentials: true
 }));
 
 // --- Middleware ---
@@ -50,16 +58,25 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/vendor', vendorRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/trading', tradingRoutes);
+app.use('/api/wallet', walletRoutes);
 
-// --- Serve Uploaded Images ---
+// --- Serve Uploaded Product Images ---
 app.use('/products', express.static(path.join(__dirname, 'public/products')));
-app.use('/admin', express.static(path.join(__dirname, '..', 'frontend', 'build')));
-app.use('/vendor', express.static(path.join(__dirname, '..', 'frontend', 'build')));
+app.use('/passport_photos', express.static(path.join(__dirname, 'public/passport_photos')));
+app.use('/payment_screenshots', express.static(path.join(__dirname, 'public/payment_screenshots')));
+app.use('/trade_proofs', express.static(path.join(__dirname, 'public/trade_proofs')));
+
+app.use('/static-assets', express.static(path.join(__dirname, '..', 'frontend', 'public')));
+
 // --- Serve React Frontend Build ---
 const buildPath = path.join(__dirname, '..', 'frontend', 'build');
 app.use(express.static(buildPath));
 
-// --- Fallback to index.html for React Router ---
+// --- Serve Admin and Vendor Routes ---
+app.use('/admin', express.static(buildPath));
+app.use('/vendor', express.static(buildPath));
+
+// --- Fallback to index.html for React Router (SPA Handling) ---
 app.get('*', (req, res) => {
   res.sendFile(path.join(buildPath, 'index.html'));
 });

@@ -1,77 +1,96 @@
 const db = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 
-/**
- * Initiates a trade by creating a pending record.
- * This function is now wrapped in a transaction and uses row-level locking
- * to prevent race conditions when checking for available stock.
- */
-const initiateTrade = async (req, res) => {
-    const vendorId = req.user.user_id;
-    const { productId, no_of_stock_bought } = req.body;
 
-    if (!productId || !no_of_stock_bought || parseInt(no_of_stock_bought, 10) <= 0) {
-        return res.status(400).json({ message: 'Product ID and a valid quantity are required.' });
+const createUpiTrade = async (req, res) => {
+    const vendorId = req.user.user_id;
+    const { productId, no_of_stock_bought, transactionId } = req.body;
+    const paymentScreenshotFile = req.file;
+
+    if (!productId || !no_of_stock_bought || !transactionId || !paymentScreenshotFile) {
+        return res.status(400).json({ message: 'All fields, including a payment screenshot, are required.' });
     }
 
     const quantity = parseInt(no_of_stock_bought, 10);
+    const paymentScreenshotUrl = `/trade_proofs/${paymentScreenshotFile.filename}`;
     const client = await db.connect();
 
     try {
         await client.query('BEGIN');
 
-        // Select the product and lock the row for update.
-        // The 'FOR UPDATE' clause prevents other transactions from modifying this row
-        // until the current transaction is committed or rolled back. This solves the race condition.
-        const productRes = await client.query(
-            'SELECT price_per_slot, available_stock FROM product WHERE product_id = $1 FOR UPDATE',
-            [productId]
-        );
-
-        if (productRes.rows.length === 0) {
-            // This rollback is for safety, though no changes were made yet.
-            await client.query('ROLLBACK');
-            return res.status(404).json({ message: 'Product not found.' });
-        }
-
+        const productRes = await client.query('SELECT price_per_slot, available_stock FROM product WHERE product_id = $1', [productId]);
+        if (productRes.rows.length === 0) throw new Error('Product not found.');
         const product = productRes.rows[0];
-        if (product.available_stock < quantity) {
-            await client.query('ROLLBACK');
-            return res.status(400).json({ message: 'Not enough stock available to complete this purchase.' });
-        }
+        if (product.available_stock < quantity) throw new Error('Not enough stock available to complete this purchase.');
 
         const totalAmount = parseFloat(product.price_per_slot) * quantity;
         const tradeId = uuidv4();
         const tradeDate = new Date();
 
-        const newTradeQuery = `
-            INSERT INTO trading (trade_id, vendor_id, product_id, no_of_stock_bought, price_per_slot, total_amount_paid, is_approved, date)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            RETURNING trade_id, total_amount_paid`;
+        await client.query(
+            `INSERT INTO trading (trade_id, vendor_id, product_id, no_of_stock_bought, price_per_slot, total_amount_paid, is_approved, date, transaction_id, payment_url)
+             VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9)`,
+            [tradeId, vendorId, productId, quantity, product.price_per_slot, totalAmount, tradeDate, transactionId, paymentScreenshotUrl]
+        );
         
-        const queryParams = [tradeId, vendorId, productId, quantity, product.price_per_slot, totalAmount, false, tradeDate];
-        const newTrade = await client.query(newTradeQuery, queryParams);
-
         await client.query('COMMIT');
-
-        res.status(201).json({
-            message: 'Transaction initiated. Please complete payment and submit proof.',
-            tradeDetails: newTrade.rows[0],
-        });
+        res.status(201).json({ message: 'Payment proof submitted successfully. Your purchase is pending approval.' });
 
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('❌ FATAL ERROR in initiateTrade:', error);
-        res.status(500).json({ message: 'Server error during transaction initiation. Please try again.' });
+        console.error('❌ Error creating UPI trade:', error);
+        res.status(500).json({ message: error.message || 'Server error while creating the trade.' });
     } finally {
         client.release();
     }
 };
 
-/**
- * Submits payment proof for a previously initiated trade.
- * This is now wrapped in a transaction to prevent conflicts.
- */
+const executeWalletTrade = async (req, res) => {
+    const vendorId = req.user.user_id;
+    const { productId, no_of_stock_bought } = req.body;
+    if (!productId || !no_of_stock_bought) {
+        return res.status(400).json({ message: 'Product ID and quantity are required.' });
+    }
+    const quantity = parseInt(no_of_stock_bought, 10);
+    const client = await db.connect();
+    
+    try {
+        await client.query('BEGIN');
+        
+        const productRes = await client.query('SELECT price_per_slot, available_stock FROM product WHERE product_id = $1 FOR UPDATE', [productId]);
+        if (productRes.rows.length === 0) throw new Error('Product not found.');
+        const product = productRes.rows[0];
+        if (product.available_stock < quantity) throw new Error('Not enough stock available.');
+
+        const totalAmount = parseFloat(product.price_per_slot) * quantity;
+        
+        const walletRes = await client.query('SELECT digital_money FROM wallet WHERE id = $1', [vendorId]);
+        if (walletRes.rows.length === 0 || parseFloat(walletRes.rows[0].digital_money) < totalAmount) {
+            throw new Error('Insufficient funds in your digital wallet.');
+        }
+
+        await client.query('UPDATE wallet SET digital_money = digital_money - $1 WHERE id = $2', [totalAmount, vendorId]);
+        await client.query('UPDATE product SET available_stock = available_stock - $1 WHERE product_id = $2', [quantity, productId]);
+        
+        const tradeId = uuidv4();
+        await client.query(
+            `INSERT INTO trading (trade_id, vendor_id, product_id, no_of_stock_bought, price_per_slot, total_amount_paid, is_approved, date)
+             VALUES ($1, $2, $3, $4, $5, $6, 'approved', $7)`,
+            [tradeId, vendorId, productId, quantity, product.price_per_slot, totalAmount, new Date()]
+        );
+
+        await client.query('COMMIT');
+        res.status(200).json({ message: 'Purchase successful using your digital wallet!' });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('❌ Error executing wallet trade:', error);
+        res.status(500).json({ message: error.message || 'Server error during wallet purchase.' });
+    } finally {
+        client.release();
+    }
+};
+
 const submitProof = async (req, res) => {
     const { tradeId, transactionId } = req.body;
     const paymentScreenshotFile = req.file;
@@ -80,7 +99,7 @@ const submitProof = async (req, res) => {
         return res.status(400).json({ message: 'Trade ID, Transaction ID, and a screenshot are required.' });
     }
     
-    const paymentScreenshotUrl = `/proof/${paymentScreenshotFile.filename}`;
+    const paymentScreenshotUrl = `/trade_proofs/${paymentScreenshotFile.filename}`;
     const client = await db.connect();
 
     try {
@@ -125,18 +144,183 @@ const submitProof = async (req, res) => {
     }
 };
 
-// --- NEW FUNCTION TO GET PURCHASE HISTORY ---
-/**
- * Fetches the trade history for the currently logged-in vendor.
- * Joins with the product table to get user-friendly product details.
- */
-const getPurchaseHistory = async (req, res) => {
-    // Get the vendor ID from the token after they have been authenticated by the 'protect' middleware
-    const vendorId = req.user.user_id;
 
+const sellProduct = async (req, res) => {
+    const vendorId = req.user.user_id;
+    // We will sell based on the specific trade_id, not the product_id
+    const { trade_id } = req.body; 
+
+    if (!trade_id) {
+        return res.status(400).json({ message: 'Trade ID is required to sell.' });
+    }
+
+    const client = await db.connect();
     try {
-        // SQL query to get all trading records for this vendor.
-        // We use a LEFT JOIN to include product details like name and image.
+        await client.query('BEGIN');
+
+        // Find the specific trade to sell, lock the row, and ensure it belongs to the user and is not already sold.
+        const tradeRes = await client.query(
+            `SELECT t.*, p.selling_price 
+             FROM trading t
+             JOIN product p ON t.product_id = p.product_id
+             WHERE t.trade_id = $1 AND t.vendor_id = $2 FOR UPDATE`,
+            [trade_id, vendorId]
+        );
+
+        if (tradeRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Trade not found or you do not have permission to sell it.' });
+        }
+
+        const trade = tradeRes.rows[0];
+
+        if (trade.is_sold) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: 'This item has already been sold.' });
+        }
+        
+        if (!trade.is_approved) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: 'This item is not yet approved for sale.' });
+        }
+
+        const currentSellingPrice = parseFloat(trade.selling_price);
+        const now = new Date();
+        const boughtDate = new Date(trade.date);
+
+        // This is your business logic for sell price
+        const daysSinceBought = (now - boughtDate) / (1000 * 60 * 60 * 24);
+        const sellPrice = daysSinceBought < 8 ? parseFloat(trade.price_per_slot) : currentSellingPrice;
+        
+        const totalMoneyFromSale = trade.no_of_stock_bought * sellPrice;
+
+        // Mark this specific trade as sold
+        await client.query(
+            `UPDATE trading SET is_sold = TRUE, sold_at = $1 WHERE trade_id = $2`,
+            [sellPrice, trade.trade_id]
+        );
+
+        // --- Wallet Update Logic (same as before, but cleaner) ---
+        let walletRes = await client.query('SELECT wallet_id FROM wallet WHERE id = $1 AND role = $2', [vendorId, 'vendor']);
+        let walletId;
+        
+        if (walletRes.rows.length === 0) {
+             // Create wallet if it doesn't exist
+            const idRes = await client.query(`SELECT wallet_id FROM wallet ORDER BY wallet_id DESC LIMIT 1`);
+            let nextNum = 1;
+            if (idRes.rows.length > 0) {
+                const lastIdNum = parseInt(idRes.rows[0].wallet_id.split('_')[1], 10);
+                if (!isNaN(lastIdNum)) nextNum = lastIdNum + 1;
+            }
+            walletId = `w_${String(nextNum).padStart(3, '0')}`;
+            await client.query(
+                'INSERT INTO wallet (wallet_id, id, role, digital_money) VALUES ($1, $2, $3, $4)', 
+                [walletId, vendorId, 'vendor', totalMoneyFromSale]
+            );
+        } else {
+            // Add money to existing wallet
+            walletId = walletRes.rows[0].wallet_id;
+            await client.query(
+                'UPDATE wallet SET digital_money = digital_money + $1 WHERE wallet_id = $2', 
+                [totalMoneyFromSale, walletId]
+            );
+        }
+
+        // Get the final updated balance to return to the frontend
+        const updatedWallet = await client.query('SELECT digital_money FROM wallet WHERE wallet_id = $1', [walletId]);
+
+        await client.query('COMMIT');
+        
+        res.status(200).json({
+            message: 'Item sold successfully!',
+            digital_money: updatedWallet.rows[0].digital_money,
+            sold_trade_id: trade_id // Send back the ID of what was sold
+        });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('❌ Error selling product:', error);
+        res.status(500).json({ message: 'Server error while trying to sell the item.' });
+    } finally {
+        client.release();
+    }
+};
+
+
+
+const getActiveTrades = async (req, res) => {
+    const vendorId = req.user.user_id;
+    try {
+        const query = `
+            SELECT
+                t.trade_id,
+                t.product_id,
+                t.no_of_stock_bought,
+                t.price_per_slot AS purchase_price, -- Price from the trade record
+                t.is_approved,
+                t.is_sold,
+                t.date AS purchase_date,
+                p.paper_type,
+                p.product_image_url,
+                p.selling_price AS current_selling_price -- Current market price
+            FROM
+                trading AS t
+            LEFT JOIN
+                product AS p ON t.product_id = p.product_id
+            WHERE
+                t.vendor_id = $1
+                AND t.is_approved = 'approved'
+                AND (t.is_sold IS NULL OR t.is_sold = FALSE)
+            ORDER BY
+                t.date DESC;
+        `;
+        const result = await db.query(query, [vendorId]);
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.error('❌ Error fetching active trades:', error);
+        res.status(500).json({ message: 'Server error while fetching active trades.' });
+    }
+};
+
+/**
+ * Fetches SOLD trades for the logged-in vendor.
+ */
+const getSoldTrades = async (req, res) => {
+    const vendorId = req.user.user_id;
+    try {
+        const query = `
+            SELECT
+                t.trade_id,
+                t.product_id,
+                t.no_of_stock_bought,
+                t.price_per_slot AS purchase_price, -- Original purchase price
+                t.sold_at AS sale_price, -- The price it was sold for
+                t.date AS purchase_date,
+                p.paper_type,
+                p.product_image_url
+            FROM
+                trading AS t
+            LEFT JOIN
+                product AS p ON t.product_id = p.product_id
+            WHERE
+                t.vendor_id = $1
+                AND t.is_sold = TRUE
+            ORDER BY
+                t.date DESC;
+        `;
+        const result = await db.query(query, [vendorId]);
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.error('❌ Error fetching sold trades:', error);
+        res.status(500).json({ message: 'Server error while fetching trade history.' });
+    }
+};
+
+
+
+const getPurchaseHistory = async (req, res) => {
+    const vendorId = req.user.user_id;
+    try {
         const query = `
             SELECT
                 t.trade_id,
@@ -146,6 +330,7 @@ const getPurchaseHistory = async (req, res) => {
                 t.is_approved,
                 t.date,
                 t.transaction_id,
+                t.comment, -- <<< ADD THIS LINE
                 p.paper_type,
                 p.product_image_url
             FROM
@@ -157,11 +342,8 @@ const getPurchaseHistory = async (req, res) => {
             ORDER BY
                 t.date DESC;
         `;
-        
         const historyResult = await db.query(query, [vendorId]);
-
         res.status(200).json(historyResult.rows);
-
     } catch (error) {
         console.error('❌ Error fetching purchase history:', error);
         res.status(500).json({ message: 'Server error while fetching your purchase history.' });
@@ -169,9 +351,44 @@ const getPurchaseHistory = async (req, res) => {
 };
 
 
+// Add this new function to the file
+const getRejectedTrades = async (req, res) => {
+    const vendorId = req.user.user_id;
+    try {
+        const query = `
+            SELECT
+                t.trade_id,
+                t.product_id,
+                t.date AS purchase_date,
+                t.comment, -- Select the new comment column
+                p.paper_type,
+                p.product_image_url
+            FROM
+                trading AS t
+            LEFT JOIN
+                product AS p ON t.product_id = p.product_id
+            WHERE
+                t.vendor_id = $1
+                AND t.is_approved = 'rejected' -- Filter for rejected trades
+            ORDER BY
+                t.date DESC;
+        `;
+        const result = await db.query(query, [vendorId]);
+        res.status(200).json(result.rows);
+    } catch (error) {
+        console.error('❌ Error fetching rejected trades:', error);
+        res.status(500).json({ message: 'Server error while fetching rejected trades.' });
+    }
+};
+
 // --- UPDATED EXPORTS ---
 module.exports = {
-    initiateTrade,
+    createUpiTrade,
+    executeWalletTrade,
     submitProof,
-    getPurchaseHistory, // <-- New function is now exported
+    sellProduct, // Your existing sell function is fine
+    getActiveTrades, // New function
+    getSoldTrades,
+    getRejectedTrades, // Export the new function
+    getPurchaseHistory,   // New function
 };
