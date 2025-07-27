@@ -5,13 +5,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const morgan = require('morgan'); // --- NEW: Import the morgan logger ---
-const { exec } = require('child_process');
+const morgan = require('morgan');
 
-
-
-
-// --- Import Database and Routers ---
 const db = require('./api/config/database');
 const authRoutes = require('./api/routes/authRoutes');
 const resumeRoutes = require('./api/routes/resumeRoutes');
@@ -22,9 +17,6 @@ const tradingRoutes = require('./api/routes/tradingRoutes');
 
 const PORT = process.env.PORT || 5000;
 const app = express();
-
-// --- Middleware Setup ---
-
 
 const allowedOrigins = ['http://localhost:3000', 'https://esepapertrading.vercel.app'];
 
@@ -39,25 +31,18 @@ app.use(cors({
   credentials: false
 }));
 
-
-// 2. Request Logger
-// --- NEW: Use morgan for logging. 'dev' is a predefined format that's great for development.
-// This should be one of the first middleware to run.
-app.use(morgan('dev')); 
-
-app.use(express.static('public')); 
-// 3. Body Parser
+app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 
-const logRequestBody = (req, res, next) => {
-  console.log('--- Body of Incoming Request ---');
+// Optional: Log request body for debugging
+app.use((req, res, next) => {
+  console.log('--- Request Body ---');
   console.log(req.body);
-  console.log('--- End of Body ---');
-  next(); // Don't forget to call next() to pass the request along!
-};
-app.use(logRequestBody);
+  console.log('---------------------');
+  next();
+});
 
-// 4. API Routes
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/resumes', resumeRoutes);
 app.use('/api/admin', adminRoutes);
@@ -65,31 +50,41 @@ app.use('/api/vendor', vendorRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/trading', tradingRoutes);
 
-// 5. Static Folder for Uploads
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/images/products',express.static(path.join(__dirname, 'public/images/products')));
+// Static Uploads
+app.use('/images/products', express.static(path.join(__dirname, 'public/images/products')));
 
+// --- Serve Frontend (React) ---
+const buildPath = path.join(__dirname, '..', 'frontend', 'build');
+app.use(express.static(buildPath));
 
-// --- Server Start-up Logic ---
+// Serve manifest.json explicitly
+app.get('/manifest.json', (req, res) => {
+  res.sendFile(path.join(buildPath, 'manifest.json'));
+});
+
+// Catch-all for React routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(buildPath, 'index.html'));
+});
+
+// --- Start Server ---
 const startServer = async () => {
   try {
-    console.log('🟡 Attempting to connect to the database...');
+    console.log('🟡 Connecting to database...');
     const result = await db.query('SELECT NOW()');
-    console.log(`✅ Database connection successful. DB time: ${result.rows[0].now}`);
+    console.log(`✅ Connected to DB. Time: ${result.rows[0].now}`);
 
-    app.listen(PORT,'0.0.0.0', () => {
-      console.log('----------------------------------------------------');
-      console.log(`🚀 API Server is live at: http://localhost:${PORT}`);
-      console.log('🗒️  Request logging is enabled.');
-      console.log('➡️  To view your app, open your frontend dev server.');
-      console.log('----------------------------------------------------');
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log('----------------------------------------');
+      console.log(`🚀 Server running at http://localhost:${PORT}`);
+      console.log('🌐 Ready to serve frontend and API');
+      console.log('----------------------------------------');
     });
   } catch (error) {
-    console.error('❌ FATAL: Failed to connect to the database. Server is shutting down.');
+    console.error('❌ DB connection failed. Exiting.');
     console.error(error.message);
     process.exit(1);
   }
 };
 
-// --- Run the Server ---
 startServer();

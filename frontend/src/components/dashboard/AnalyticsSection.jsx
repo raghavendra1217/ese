@@ -29,7 +29,8 @@ const AnalyticsSection = ({ stats }) => {
                     <Button size="sm" colorScheme="blue" variant="solid" bg="blue.500" _hover={{ bg: 'blue.400' }} rightIcon={<FaAngleDown />}>Export</Button>
                 </Flex>
                 <Spacer />
-                <Heading size="2xl">{stats.totalPayouts.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</Heading>
+               <Heading size="2xl">{stats.totalPayouts}</Heading>
+
             </Flex>
         </Grid>
     );
