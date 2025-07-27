@@ -52,7 +52,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/trading', tradingRoutes);
 
 // --- Serve Uploaded Images ---
-app.use('/images/products', express.static(path.join(__dirname, 'public/products')));
+app.use('/products', express.static(path.join(__dirname, 'public/products')));
 app.use('/admin', express.static(path.join(__dirname, '..', 'frontend', 'build')));
 app.use('/vendor', express.static(path.join(__dirname, '..', 'frontend', 'build')));
 // --- Serve React Frontend Build ---
