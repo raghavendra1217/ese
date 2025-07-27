@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 5000;
 const app = express();
 
 // --- CORS Setup ---
-const allowedOrigins = ['http://localhost:3000', 'https://esepapertrading.vercel.app','http://localhost:5000','http://localhost:10000'];
+const allowedOrigins = ['http://localhost:3000', 'https://esepapertrading.vercel.app','http://localhost:5000','http://localhost:10000','https://esepapertrading.onrender.com'];
 
 app.use(cors({
   origin: function (origin, callback) {
