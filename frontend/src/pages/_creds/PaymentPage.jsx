@@ -147,7 +147,7 @@ const PaymentPage = ({ url }) => {
                         type="file" 
                         p={1.5} 
                         onChange={(e) => setPaymentScreenshot(e.target.files[0])} 
-                        accept="image/png, image/jpeg"
+                        accept="image/*"
                     />
                 </FormControl>
                 <Button type="submit" colorScheme="teal" w="full" size="lg" isLoading={isLoading} disabled={!transactionId || !paymentScreenshot}>

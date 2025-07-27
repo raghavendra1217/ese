@@ -58,7 +58,7 @@ const PaymentModal = ({ isOpen, onClose, tradeDetails, onPaymentSubmit, isLoadin
                         </FormControl>
                         <FormControl isRequired>
                             <FormLabel>Upload Payment Screenshot</FormLabel>
-                            <Input type="file" p={1.5} onChange={(e) => setPaymentScreenshot(e.target.files[0])} accept="image/png, image/jpeg" />
+                            <Input type="file" p={1.5} onChange={(e) => setPaymentScreenshot(e.target.files[0])} accept="image/*" />
                         </FormControl>
                     </VStack>
                 </ModalBody>
