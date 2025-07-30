@@ -5,6 +5,10 @@ const { v4: uuidv4 } = require('uuid');
 
 // --- RESOLVED: Kept your existing function ---
 // This preserves the feature of saving the uploaded file to the local disk.
+// In your tradingController.js
+
+// In your tradingController.js
+
 const createUpiTrade = async (req, res) => {
     const vendorId = req.user.user_id;
     const { productId, no_of_stock_bought, transactionId } = req.body;
@@ -15,7 +19,6 @@ const createUpiTrade = async (req, res) => {
     }
 
     const quantity = parseInt(no_of_stock_bought, 10);
-    // Your existing feature for creating a local URL path
     const paymentScreenshotUrl = `/trade_proofs/${paymentScreenshotFile.filename}`;
     const client = await db.connect();
 
@@ -28,12 +31,14 @@ const createUpiTrade = async (req, res) => {
         
         const totalAmount = parseFloat(product.price_per_slot) * quantity;
         const tradeId = uuidv4();
-        const tradeDate = new Date();
 
+        // --- THE FIX IS HERE ---
+        // The 'date' column has been completely removed from the INSERT statement.
+        // The database will now use the default NOW() value automatically.
         await client.query(
-            `INSERT INTO trading (trade_id, vendor_id, product_id, no_of_stock_bought, price_per_slot, total_amount_paid, is_approved, date, transaction_id, payment_url)
-             VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9)`,
-            [tradeId, vendorId, productId, quantity, product.price_per_slot, totalAmount, tradeDate, transactionId, paymentScreenshotUrl]
+            `INSERT INTO trading (trade_id, vendor_id, product_id, no_of_stock_bought, price_per_slot, total_amount_paid, is_approved, transaction_id, payment_url)
+             VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8)`,
+            [tradeId, vendorId, productId, quantity, product.price_per_slot, totalAmount, transactionId, paymentScreenshotUrl]
         );
         
         await client.query('COMMIT');
@@ -48,7 +53,8 @@ const createUpiTrade = async (req, res) => {
     }
 };
 
-// This existing function is unchanged
+// In your tradingController.js
+
 const executeWalletTrade = async (req, res) => {
     const vendorId = req.user.user_id;
     const { productId, no_of_stock_bought } = req.body;
@@ -76,10 +82,14 @@ const executeWalletTrade = async (req, res) => {
         await client.query('UPDATE product SET available_stock = available_stock - $1 WHERE product_id = $2', [quantity, productId]);
         
         const tradeId = uuidv4();
+
+        // --- THE FIX IS HERE ---
+        // The 'date' column has been completely removed from the INSERT statement.
+        // The database will now use the default NOW() value automatically.
         await client.query(
-            `INSERT INTO trading (trade_id, vendor_id, product_id, no_of_stock_bought, price_per_slot, total_amount_paid, is_approved, date)
-             VALUES ($1, $2, $3, $4, $5, $6, 'approved', $7)`,
-            [tradeId, vendorId, productId, quantity, product.price_per_slot, totalAmount, new Date()]
+            `INSERT INTO trading (trade_id, vendor_id, product_id, no_of_stock_bought, price_per_slot, total_amount_paid, is_approved)
+             VALUES ($1, $2, $3, $4, $5, $6, 'approved')`,
+            [tradeId, vendorId, productId, quantity, product.price_per_slot, totalAmount]
         );
 
         await client.query('COMMIT');
