@@ -51,11 +51,16 @@ const getNextFileSequence = async (client, column, table, prefix) => {
  * --- UPDATED ---
  * Step 1 of Registration: Saves/Updates vendor details (without employeeCount).
  */
+
+/**
+ * --- UPDATED ---
+ * Step 1 of Registration: Saves/Updates vendor details and handles referral logic.
+ */
 exports.registerAndProceedToPayment = async (req, res) => {
-    // --- CHANGE: 'employeeCount' is removed from destructuring ---
+    // 1. Destructure the new 'referralId' field from the request body
     const {
         email, vendorName, phoneNumber, aadharNumber, panCardNumber,
-        bankName, accountNumber, ifscCode, address
+        bankName, accountNumber, ifscCode, address, referralId
     } = req.body;
     const passportPhotoFile = req.file;
 
@@ -66,6 +71,14 @@ exports.registerAndProceedToPayment = async (req, res) => {
     const client = await db.connect();
     try {
         await client.query('BEGIN');
+
+        // 2. Validate the referral ID if it was provided
+        if (referralId && referralId.trim() !== '') {
+            const referrerResult = await client.query('SELECT 1 FROM vendors WHERE id = $1', [referralId.trim()]);
+            if (referrerResult.rows.length === 0) {
+                throw new Error('The provided Referral ID is not valid.');
+            }
+        }
 
         const existingLogin = await client.query('SELECT 1 FROM login WHERE email = $1', [email]);
         if (existingLogin.rows.length > 0) {
@@ -78,10 +91,11 @@ exports.registerAndProceedToPayment = async (req, res) => {
         const passportPhotoUrl = await uploadFileToR2(passportPhotoFile, 'passport_photos', passportPhotoFilename);
 
         const existingVendorRes = await client.query('SELECT id FROM vendors WHERE email = $1 FOR UPDATE', [email]);
-        const existingVendor = existingVendorRes.rows[0];
+        let vendorId; // Variable to hold the new or existing vendor's ID
 
-        if (existingVendor) {
-            // --- CHANGE: 'employee_count' removed from UPDATE query ---
+        if (existingVendorRes.rows.length > 0) {
+            // UPDATE existing pre-registered vendor
+            vendorId = existingVendorRes.rows[0].id;
             const updateQuery = `
                 UPDATE vendors SET 
                     vendor_name = $1, phone_number = $2, aadhar_number = $3, pan_card_number = $4, 
@@ -91,21 +105,31 @@ exports.registerAndProceedToPayment = async (req, res) => {
             `;
             await client.query(updateQuery, [
                 vendorName, phoneNumber, aadharNumber, panCardNumber,
-                bankName, accountNumber, ifscCode, address, passportPhotoUrl, existingVendor.id
+                bankName, accountNumber, ifscCode, address, passportPhotoUrl, vendorId
             ]);
         } else {
-            // --- CHANGE: 'employee_count' removed from INSERT query ---
+            // INSERT a new vendor
             await client.query('LOCK TABLE vendors IN EXCLUSIVE MODE');
-            const newVendorId = await getNextVendorId(client);
+            vendorId = await getNextVendorId(client); // Get the new vendor's ID
             const insertQuery = `
                 INSERT INTO vendors (id, email, vendor_name, phone_number, aadhar_number, pan_card_number, bank_name, account_number, ifsc_code, address, passport_photo_url)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
             `;
             await client.query(insertQuery, [
-                newVendorId, email, vendorName, phoneNumber, aadharNumber, panCardNumber,
+                vendorId, email, vendorName, phoneNumber, aadharNumber, panCardNumber,
                 bankName, accountNumber, ifscCode, address, passportPhotoUrl
             ]);
         }
+
+        // 3. If a valid referralId was provided, append the new vendor's ID to the referrer's list
+        if (referralId && referralId.trim() !== '') {
+            await client.query(
+                // COALESCE handles the case where the list is initially NULL
+                'UPDATE vendors SET referral_id_list = array_append(COALESCE(referral_id_list, ARRAY[]::TEXT[]), $1) WHERE id = $2',
+                [vendorId, referralId.trim()]
+            );
+        }
+
         await client.query('COMMIT');
         res.status(200).json({ message: 'Details saved successfully. Please proceed to payment.' });
     } catch (error) {
@@ -118,7 +142,8 @@ exports.registerAndProceedToPayment = async (req, res) => {
             return res.status(409).json({ message: userMessage });
         }
         console.error('❌ Error in registerAndProceedToPayment:', error);
-        res.status(500).json({ message: 'An unexpected server error occurred.' });
+        // Pass the specific error message (like "Invalid Referral ID") to the frontend
+        res.status(500).json({ message: error.message || 'An unexpected server error occurred.' });
     } finally {
         client.release();
     }

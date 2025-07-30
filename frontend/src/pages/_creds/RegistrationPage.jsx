@@ -6,18 +6,17 @@ import {
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 
-// --- Validation Helper Functions ---
+// --- Validation Helper Functions (Unchanged) ---
 const validatePhoneNumber = (phone) => /^\d{10}$/.test(phone);
 const validateAadharNumber = (aadhar) => /^\d{12}$/.test(aadhar);
 const validatePanCardNumber = (pan) => /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan);
-// ---
 
 const RegistrationPage = ({ url }) => {
   const toast = useToast();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
-  // --- UPDATED: 'employeeCount' is removed from the initial state ---
+  // --- UPDATED: 'referralId' added to the initial state ---
   const initialFormData = {
     email: '',
     vendorName: '',
@@ -28,6 +27,7 @@ const RegistrationPage = ({ url }) => {
     accountNumber: '',
     ifscCode: '',
     address: '',
+    referralId: '', // <-- New optional field
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -43,6 +43,7 @@ const RegistrationPage = ({ url }) => {
   }, []);
 
   const handleInputChange = (e) => {
+    // This function handles the new field automatically
     const { id, value } = e.target;
     const finalValue = id === 'panCardNumber' ? value.toUpperCase() : value;
     setFormData({ ...formData, [id]: finalValue });
@@ -81,6 +82,7 @@ const RegistrationPage = ({ url }) => {
     setIsLoading(true);
 
     const uploadData = new FormData();
+    // This loop correctly includes the new 'referralId' field if it has a value
     for (const key in formData) {
       uploadData.append(key, formData[key]);
     }
@@ -107,7 +109,6 @@ const RegistrationPage = ({ url }) => {
         isClosable: true,
       });
 
-      // --- UPDATED: 'employeeCount' is removed from data passed to sessionStorage ---
       const registrationData = {
         email: formData.email,
         vendorName: formData.vendorName,
@@ -123,7 +124,12 @@ const RegistrationPage = ({ url }) => {
     }
   };
 
-  const isFormValid = !Object.values(formData).some(val => val === '') && !Object.values(formErrors).some(err => err !== '');
+  // --- UPDATED: Exclude optional 'referralId' from form validity check ---
+  const requiredFields = { ...formData };
+  delete requiredFields.referralId; // Remove optional field before checking
+  const isFormValid = !Object.values(requiredFields).some(val => val === '') && 
+                      passportPhoto !== null && // Also ensure a photo is selected
+                      !Object.values(formErrors).some(err => err !== '');
 
   return (
     <Center minH="100vh" py={10} px={4}>
@@ -167,8 +173,12 @@ const RegistrationPage = ({ url }) => {
                 {formErrors.panCardNumber ? ( <FormHelperText color="red.500">{formErrors.panCardNumber}</FormHelperText> ) : ( <FormHelperText>Format: ABCDE1234F</FormHelperText> )}
               </FormControl>
 
-              {/* --- FIELD REMOVED --- */}
-              {/* The "No. of Employees" FormControl block was here and has been deleted. */}
+              {/* --- NEW FIELD: Referral ID (Optional) --- */}
+              <FormControl>
+                <FormLabel htmlFor="referralId">Referral ID (Optional)</FormLabel>
+                <Input id="referralId" value={formData.referralId} onChange={handleInputChange} placeholder="e.g., v_001"/>
+                <FormHelperText>If another vendor referred you, enter their ID here.</FormHelperText>
+              </FormControl>
 
               <Divider my={4} />
               <Heading size="sm" color="gray.600" alignSelf="flex-start">Bank Account Details</Heading>
@@ -191,7 +201,7 @@ const RegistrationPage = ({ url }) => {
               <FormControl isRequired>
                 <FormLabel htmlFor="passportPhoto">Passport-size Photo</FormLabel>
                 <Input ref={fileInputRef} id="passportPhoto" type="file" p={1.5} onChange={(e) => setPassportPhoto(e.target.files[0])} accept="image/*"/>
-                <FormHelperText>Accepted formats: PNG, JPG ,JPEG </FormHelperText>
+                <FormHelperText>Accepted formats: PNG, JPG, JPEG</FormHelperText>
               </FormControl>
 
               <FormControl isRequired>
