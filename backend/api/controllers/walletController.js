@@ -5,55 +5,117 @@ const path = require('path');
 const { uploadFileToR2 } = require('../utils/cloudflareR2'); // Keep for new functions
 
 // --- RESOLVED: Combined your getWallet with the new pending check ---
+// exports.getWallet = async (req, res) => {
+//     const userId = req.user.user_id;
+//     const role = req.user.role;
+
+//     if (!userId) {
+//         return res.status(401).json({ message: 'Not authorized' });
+//     }
+
+//     try {
+//         let walletRes = await db.query('SELECT * FROM wallet WHERE id = $1 AND role = $2', [userId, role]);
+//         let walletId;
+
+//         // Check for pending withdrawals (new feature from incoming change)
+//         const pendingResult = await db.query(
+//             `SELECT 1 FROM transaction WHERE user_id = $1 AND transaction_type = 'withdrawal' AND status = 'pending' LIMIT 1;`,
+//             [userId]
+//         );
+//         const hasPendingWithdrawal = pendingResult.rows.length > 0;
+
+//         if (walletRes.rows.length === 0) {
+//             // Your existing feature for creating a new wallet is preserved
+//             const idRes = await db.query(`SELECT wallet_id FROM wallet ORDER BY wallet_id DESC LIMIT 1`);
+//             let nextNum = 1;
+//             if (idRes.rows.length > 0) {
+//                 nextNum = parseInt(idRes.rows[0].wallet_id.split('_')[1], 10) + 1;
+//             }
+//             walletId = `w_${String(nextNum).padStart(3, '0')}`;
+//             await db.query('INSERT INTO wallet (wallet_id, id, role, digital_money) VALUES ($1, $2, $3, $4)', [walletId, userId, role, 0]);
+            
+//             res.json({
+//                 wallet_id: walletId,
+//                 id: userId,
+//                 role,
+//                 digital_money: 0,
+//                 hasPendingWithdrawal: false // New wallets can't have pending withdrawals
+//             });
+//         } else {
+//             const wallet = walletRes.rows[0];
+//             res.json({
+//                 wallet_id: wallet.wallet_id,
+//                 id: wallet.id,
+//                 role: wallet.role,
+//                 digital_money: wallet.digital_money,
+//                 hasPendingWithdrawal: hasPendingWithdrawal // Add the new status to the response
+//             });
+//         }
+//     } catch (error) {
+//         console.error('❌ Error fetching/creating wallet:', error);
+//         res.status(500).json({ message: 'Failed to fetch or create wallet.' });
+//     }
+// };
+
+// In backend/api/controllers/walletController.js
+
 exports.getWallet = async (req, res) => {
     const userId = req.user.user_id;
-    const role = req.user.role;
+    // --- UPDATED: 'role' is now determined dynamically, not from the DB ---
+    const role = userId.startsWith('v_') ? 'vendor' : 'admin'; // Or another default
 
     if (!userId) {
         return res.status(401).json({ message: 'Not authorized' });
     }
 
+    const client = await db.connect(); // Use a client for potential transactions
     try {
-        let walletRes = await db.query('SELECT * FROM wallet WHERE id = $1 AND role = $2', [userId, role]);
+        // The query no longer checks for 'role'
+        let walletRes = await client.query('SELECT * FROM wallet WHERE id = $1', [userId]);
         let walletId;
 
-        // Check for pending withdrawals (new feature from incoming change)
-        const pendingResult = await db.query(
+        // Check for pending withdrawals (this logic is unchanged)
+        const pendingResult = await client.query(
             `SELECT 1 FROM transaction WHERE user_id = $1 AND transaction_type = 'withdrawal' AND status = 'pending' LIMIT 1;`,
             [userId]
         );
         const hasPendingWithdrawal = pendingResult.rows.length > 0;
 
         if (walletRes.rows.length === 0) {
-            // Your existing feature for creating a new wallet is preserved
-            const idRes = await db.query(`SELECT wallet_id FROM wallet ORDER BY wallet_id DESC LIMIT 1`);
+            // Logic for creating a new wallet
+            const idRes = await client.query(`SELECT wallet_id FROM wallet ORDER BY CAST(SUBSTRING(wallet_id FROM 3) AS INTEGER) DESC LIMIT 1`);
             let nextNum = 1;
-            if (idRes.rows.length > 0) {
-                nextNum = parseInt(idRes.rows[0].wallet_id.split('_')[1], 10) + 1;
+            if (idRes.rows.length > 0 && idRes.rows[0].wallet_id) {
+                const lastIdNum = parseInt(idRes.rows[0].wallet_id.split('_')[1], 10);
+                if (!isNaN(lastIdNum)) nextNum = lastIdNum + 1;
             }
             walletId = `w_${String(nextNum).padStart(3, '0')}`;
-            await db.query('INSERT INTO wallet (wallet_id, id, role, digital_money) VALUES ($1, $2, $3, $4)', [walletId, userId, role, 0]);
+            
+            // --- UPDATED: 'role' column is removed from the INSERT statement ---
+            await client.query('INSERT INTO wallet (wallet_id, id, digital_money) VALUES ($1, $2, $3)', [walletId, userId, 0]);
             
             res.json({
                 wallet_id: walletId,
                 id: userId,
-                role,
+                role, // Send the dynamically determined role
                 digital_money: 0,
-                hasPendingWithdrawal: false // New wallets can't have pending withdrawals
+                hasPendingWithdrawal: false
             });
         } else {
             const wallet = walletRes.rows[0];
             res.json({
                 wallet_id: wallet.wallet_id,
                 id: wallet.id,
-                role: wallet.role,
-                digital_money: wallet.digital_money,
-                hasPendingWithdrawal: hasPendingWithdrawal // Add the new status to the response
+                role, // Send the dynamically determined role
+                digital_money: parseFloat(wallet.digital_money), // Ensure it's a number
+                hasPendingWithdrawal: hasPendingWithdrawal
             });
         }
     } catch (error) {
         console.error('❌ Error fetching/creating wallet:', error);
         res.status(500).json({ message: 'Failed to fetch or create wallet.' });
+    } finally {
+        if (client) client.release(); // Ensure client is released
     }
 };
 
