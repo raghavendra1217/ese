@@ -1,5 +1,3 @@
-// src/components/RegistrationPage.jsx
-
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Box, Button, FormControl, FormLabel, Input, VStack, Heading,
@@ -19,13 +17,13 @@ const RegistrationPage = ({ url }) => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
+  // --- UPDATED: 'employeeCount' is removed from the initial state ---
   const initialFormData = {
     email: '',
     vendorName: '',
     phoneNumber: '',
     aadharNumber: '',
     panCardNumber: '',
-    employeeCount: '',
     bankName: '',
     accountNumber: '',
     ifscCode: '',
@@ -90,23 +88,17 @@ const RegistrationPage = ({ url }) => {
       uploadData.append('passportPhoto', passportPhoto);
     }
 
-    // --- CORRECTED: Replaced the nested and mocked try...catch with a single, real one. ---
     try {
-      // This is now a REAL API call to your backend.
-      // The URL '/api/auth/register' matches your authRoutes.js file.
       const response = await fetch(`${url}/api/auth/register`, {
         method: 'POST',
-        body: uploadData, // FormData with all the details and the photo
+        body: uploadData,
       });
 
       const data = await response.json();
-
-      // If the server responds with an error, throw an error to stop the process.
       if (!response.ok) {
         throw new Error(data.message || 'Registration failed. Please try again.');
       }
 
-      // This part only runs if the backend successfully saved the data.
       toast({
         title: 'Details Saved!',
         description: 'Your information has been saved. Redirecting to payment...',
@@ -115,14 +107,13 @@ const RegistrationPage = ({ url }) => {
         isClosable: true,
       });
 
+      // --- UPDATED: 'employeeCount' is removed from data passed to sessionStorage ---
       const registrationData = {
         email: formData.email,
         vendorName: formData.vendorName,
-        employeeCount: formData.employeeCount,
       };
       sessionStorage.setItem('registrationData', JSON.stringify(registrationData));
 
-      // Redirect to the payment page
       navigate('/payment');
 
     } catch (err) {
@@ -176,10 +167,8 @@ const RegistrationPage = ({ url }) => {
                 {formErrors.panCardNumber ? ( <FormHelperText color="red.500">{formErrors.panCardNumber}</FormHelperText> ) : ( <FormHelperText>Format: ABCDE1234F</FormHelperText> )}
               </FormControl>
 
-              <FormControl isRequired>
-                <FormLabel htmlFor="employeeCount">No. of Employees</FormLabel>
-                <Input id="employeeCount" type="number" value={formData.employeeCount} onChange={handleInputChange} min="0" />
-              </FormControl>
+              {/* --- FIELD REMOVED --- */}
+              {/* The "No. of Employees" FormControl block was here and has been deleted. */}
 
               <Divider my={4} />
               <Heading size="sm" color="gray.600" alignSelf="flex-start">Bank Account Details</Heading>

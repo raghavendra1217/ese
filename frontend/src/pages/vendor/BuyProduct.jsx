@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
+
 import {
     Box, Flex, VStack, SimpleGrid, Heading, Text, Button, Image, useToast, Spinner, Center,
     useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, ModalCloseButton,
     NumberInput, NumberInputField, NumberInputStepper, NumberIncrementStepper, NumberDecrementStepper, Divider,
-    FormControl, FormLabel, Input
+    FormControl, FormLabel, Input,
+    HStack, useClipboard, useColorModeValue // <-- ADD THIS LINE
 } from '@chakra-ui/react';
+
+
 import { useAuth } from '../../AppContext';
 
 // --- MODAL 2: FOR PAYMENT (UPDATED) ---
@@ -12,6 +16,12 @@ import { useAuth } from '../../AppContext';
 const PaymentModal = ({ isOpen, onClose, productInfo, onPaymentSubmit, isLoading }) => {
     const [transactionId, setTransactionId] = useState('');
     const [paymentScreenshot, setPaymentScreenshot] = useState(null);
+
+       // --- ADD THIS LOGIC ---
+    const upiId = 'akhileshraviteja5-2@okhdfcbank';
+    const { onCopy, hasCopied } = useClipboard(upiId);
+    const upiIdBg = useColorModeValue('gray.100', 'gray.700');
+    // --- END OF ADDED LOGIC ---
 
     useEffect(() => {
         // Reset form when the modal opens
@@ -39,6 +49,16 @@ const PaymentModal = ({ isOpen, onClose, productInfo, onPaymentSubmit, isLoading
                     <VStack spacing={4}>
                         <Text>You are buying <strong>{productInfo.quantity}</strong> stocks.</Text>
                         <Image w="220px" h="220px" src="/images/payment-qr-code.png" alt="Payment QR Code" border="2px solid" borderColor="gray.300" p={1} />
+                        <Box p={3} bg={upiIdBg} borderRadius="md" w="full" maxW="350px">
+                            <HStack justify="space-between" align="center">
+                                <Text fontFamily="monospace" fontSize="md">
+                                    {upiId}
+                                </Text>
+                                <Button onClick={onCopy} size="sm" colorScheme={hasCopied ? "green" : "blue"}>
+                                    {hasCopied ? "Copied!" : "Copy"}
+                                </Button>
+                            </HStack>
+                        </Box>
                         <Heading size="md" color="teal.500">Total Amount: ₹{productInfo.totalCost.toFixed(2)}</Heading>
                         <FormControl isRequired>
                             <FormLabel>Transaction ID</FormLabel>

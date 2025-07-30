@@ -69,11 +69,13 @@ const reviewWalletTransaction = async (req, res) => {
     }
 };
 
+// backend/api/controllers/adminController.js
+
 const getAllVendors = async (req, res) => {
     try {
         const query = `
             SELECT v.id AS vendor_id, v.vendor_name, v.email, v.phone_number,
-                   l.status, v.employee_count
+                   l.status, v.employee_count, l.role -- <--- THIS IS THE FIX
             FROM vendors v
             JOIN login l ON v.id = l.user_id
             WHERE l.role = 'vendor' AND l.is_approved = TRUE

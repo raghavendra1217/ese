@@ -2,13 +2,18 @@ import React, { useState } from 'react';
 import {
     Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton,
     Button, FormControl, FormLabel, Input, useToast, VStack, Text,
-    NumberInput, NumberInputField, Alert, AlertIcon, Image
+    NumberInput, NumberInputField, Alert, AlertIcon, Image,
+    HStack, useClipboard, useColorModeValue, Box // <-- THE FIX IS HERE: 'Box' has been added
 } from '@chakra-ui/react';
 import { useAuth } from '../../AppContext';
 
 const AddMoneyModal = ({ isOpen, onClose, url, onTransactionComplete }) => {
     const { token } = useAuth();
     const toast = useToast();
+
+    const upiId = 'akhileshraviteja5-2@okhdfcbank';
+    const { onCopy, hasCopied } = useClipboard(upiId);
+    const upiIdBg = useColorModeValue('gray.100', 'gray.700');
 
     // State for the modal
     const [amount, setAmount] = useState('');
@@ -26,7 +31,6 @@ const AddMoneyModal = ({ isOpen, onClose, url, onTransactionComplete }) => {
         onClose();
     };
 
-    // --- NEW SUBMIT HANDLER to match backend ---
     const handleDepositSubmit = async (e) => {
         e.preventDefault();
         if (!amount || !transactionId || !paymentScreenshot) {
@@ -35,27 +39,18 @@ const AddMoneyModal = ({ isOpen, onClose, url, onTransactionComplete }) => {
         }
         setIsLoading(true);
         setError('');
-
-        // Use FormData for multipart/form-data requests (i.e., with file uploads)
         const formData = new FormData();
         formData.append('amount', amount);
         formData.append('transactionId', transactionId);
         formData.append('paymentScreenshot', paymentScreenshot);
-
         try {
-            // Point to the new '/api/wallet/deposit' endpoint
             const response = await fetch(`${url}/api/wallet/deposit`, {
                 method: 'POST',
-                headers: {
-                    // 'Content-Type' is set automatically by the browser with FormData
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Authorization': `Bearer ${token}` },
                 body: formData,
             });
-
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Failed to submit deposit request.');
-
             toast({
                 title: 'Request Submitted',
                 description: data.message,
@@ -63,12 +58,8 @@ const AddMoneyModal = ({ isOpen, onClose, url, onTransactionComplete }) => {
                 duration: 5000,
                 isClosable: true,
             });
-            
-            // onTransactionComplete might be used to refetch pending transactions later,
-            // but for now, it just signals success.
             onTransactionComplete();
             resetAndClose();
-
         } catch (err) {
             setError(err.message);
             toast({ title: 'Submission Error', description: err.message, status: 'error', duration: 4000 });
@@ -95,8 +86,8 @@ const AddMoneyModal = ({ isOpen, onClose, url, onTransactionComplete }) => {
                 <ModalCloseButton />
                 <ModalBody>
                     <VStack spacing={4}>
-                         <Text textAlign="center" fontSize="sm">
-                            Please pay using the QR code, then fill out this form to request the deposit. Your balance will be updated upon approval.
+                        <Text textAlign="center" fontSize="sm">
+                            Please pay using the QR code or UPI ID, then fill out this form to request the deposit.
                         </Text>
                         <Image
                             w="200px"
@@ -104,6 +95,19 @@ const AddMoneyModal = ({ isOpen, onClose, url, onTransactionComplete }) => {
                             src="/images/payment-qr-code.png" // Your static QR code
                             alt="Payment QR Code"
                         />
+
+                        {/* This Box component will now be correctly recognized */}
+                        <Box p={3} bg={upiIdBg} borderRadius="md" w="full" maxW="300px">
+                            <HStack justify="space-between" align="center">
+                                <Text fontFamily="monospace" fontSize="sm">
+                                    {upiId}
+                                </Text>
+                                <Button onClick={onCopy} size="sm" colorScheme={hasCopied ? "green" : "blue"}>
+                                    {hasCopied ? "Copied!" : "Copy"}
+                                </Button>
+                            </HStack>
+                        </Box>
+                        
                         <FormControl isRequired>
                             <FormLabel>Amount Deposited</FormLabel>
                             <NumberInput min={1} value={amount} onChange={(val) => setAmount(val)} precision={2}>

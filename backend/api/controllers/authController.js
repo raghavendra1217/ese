@@ -2,16 +2,11 @@ const db = require('../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-const { uploadFileToR2 } = require('../utils/cloudflareR2'); // Import R2 utility
+const { uploadFileToR2 } = require('../utils/cloudflareR2');
 
 // =================================================================
-// --- HELPER FUNCTIONS ---
+// --- HELPER FUNCTIONS (Unchanged) ---
 // =================================================================
-
-/**
- * Generates the next sequential vendor ID (e.g., v_001, v_002).
- * MUST be called within a transaction that has locked the 'vendors' table.
- */
 const getNextVendorId = async (client) => {
     const query = "SELECT id FROM vendors WHERE id LIKE 'v_%' ORDER BY CAST(SUBSTRING(id FROM 3) AS INTEGER) DESC LIMIT 1";
     const { rows } = await client.query(query);
@@ -20,30 +15,12 @@ const getNextVendorId = async (client) => {
     return `v_${String(lastNumber + 1).padStart(3, '0')}`;
 };
 
-/**
- * Creates a JWT for a given user.
- */
 const generateToken = (user) => {
-    const payload = {
-        userId: user.user_id,
-        email: user.email,
-        role: user.role
-    };
+    const payload = { userId: user.user_id, email: user.email, role: user.role };
     return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '8h' });
 };
 
-
-/**
- * Queries the database to find the last sequence number for a file to ensure unique names.
- * Example: Finds the number in 'PP_005.jpg' to return 6 for the next file.
- * @param {object} client - The active database client.
- * @param {string} column - The URL column to search (e.g., 'passport_photo_url').
- * @param {string} table - The table to search (e.g., 'vendors').
- * @param {string} prefix - The file prefix to look for (e.g., 'PP_').
- * @returns {Promise<number>} The next integer in the sequence.
- */
 const getNextFileSequence = async (client, column, table, prefix) => {
-    // This regex extracts the numeric part of the filename from the full URL.
     const query = `
         SELECT ${column} FROM ${table}
         WHERE ${column} LIKE '%/${prefix}%'
@@ -53,17 +30,14 @@ const getNextFileSequence = async (client, column, table, prefix) => {
     try {
         const { rows } = await client.query(query);
         if (rows.length === 0) return 1;
-
         const lastUrl = rows[0][column];
         const match = lastUrl.match(new RegExp(`${prefix}(\\d+)`));
         if (match && match[1]) {
             const lastNumber = parseInt(match[1], 10);
             return lastNumber + 1;
         }
-        return 1; // Fallback if parsing fails
+        return 1;
     } catch {
-        // This might happen if the substring function fails on a malformed URL.
-        // In this case, we'll start from 1, which is a safe default.
         return 1;
     }
 };
@@ -74,66 +48,62 @@ const getNextFileSequence = async (client, column, table, prefix) => {
 // =================================================================
 
 /**
- * Step 1 of Registration: Saves/Updates vendor details and uploads passport photo to R2.
+ * --- UPDATED ---
+ * Step 1 of Registration: Saves/Updates vendor details (without employeeCount).
  */
 exports.registerAndProceedToPayment = async (req, res) => {
+    // --- CHANGE: 'employeeCount' is removed from destructuring ---
     const {
         email, vendorName, phoneNumber, aadharNumber, panCardNumber,
-        employeeCount, bankName, accountNumber, ifscCode, address
+        bankName, accountNumber, ifscCode, address
     } = req.body;
     const passportPhotoFile = req.file;
 
     if (!email || !vendorName || !passportPhotoFile) {
         return res.status(400).json({ message: 'Email, Vendor Name, and Passport Photo are required.' });
     }
-    if (employeeCount && parseInt(employeeCount, 10) < 0) {
-        return res.status(400).json({ message: 'Employee count cannot be negative.' });
-    }
 
     const client = await db.connect();
     try {
         await client.query('BEGIN');
 
-        // Block changes if a finalized account already exists.
         const existingLogin = await client.query('SELECT 1 FROM login WHERE email = $1', [email]);
         if (existingLogin.rows.length > 0) {
             await client.query('ROLLBACK');
             return res.status(409).json({ message: 'An active account with this email already exists and cannot be modified.' });
         }
 
-        // Generate a unique filename and upload the passport photo to Cloudflare R2.
         const nextPPNum = await getNextFileSequence(client, 'passport_photo_url', 'vendors', 'PP_');
         const passportPhotoFilename = `PP_${String(nextPPNum).padStart(3, '0')}${path.extname(passportPhotoFile.originalname)}`;
         const passportPhotoUrl = await uploadFileToR2(passportPhotoFile, 'passport_photos', passportPhotoFilename);
-
 
         const existingVendorRes = await client.query('SELECT id FROM vendors WHERE email = $1 FOR UPDATE', [email]);
         const existingVendor = existingVendorRes.rows[0];
 
         if (existingVendor) {
-            // UPDATE existing pre-registered vendor
+            // --- CHANGE: 'employee_count' removed from UPDATE query ---
             const updateQuery = `
                 UPDATE vendors SET 
                     vendor_name = $1, phone_number = $2, aadhar_number = $3, pan_card_number = $4, 
-                    employee_count = $5, bank_name = $6, account_number = $7, ifsc_code = $8, 
-                    address = $9, passport_photo_url = $10, updated_at = NOW()
-                WHERE id = $11;
+                    bank_name = $5, account_number = $6, ifsc_code = $7, 
+                    address = $8, passport_photo_url = $9, updated_at = NOW()
+                WHERE id = $10;
             `;
             await client.query(updateQuery, [
-                vendorName, phoneNumber, aadharNumber, panCardNumber, employeeCount,
+                vendorName, phoneNumber, aadharNumber, panCardNumber,
                 bankName, accountNumber, ifscCode, address, passportPhotoUrl, existingVendor.id
             ]);
         } else {
-            // INSERT a new vendor
+            // --- CHANGE: 'employee_count' removed from INSERT query ---
             await client.query('LOCK TABLE vendors IN EXCLUSIVE MODE');
             const newVendorId = await getNextVendorId(client);
             const insertQuery = `
-                INSERT INTO vendors (id, email, vendor_name, phone_number, aadhar_number, pan_card_number, employee_count, bank_name, account_number, ifsc_code, address, passport_photo_url)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
+                INSERT INTO vendors (id, email, vendor_name, phone_number, aadhar_number, pan_card_number, bank_name, account_number, ifsc_code, address, passport_photo_url)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
             `;
             await client.query(insertQuery, [
                 newVendorId, email, vendorName, phoneNumber, aadharNumber, panCardNumber,
-                employeeCount, bankName, accountNumber, ifscCode, address, passportPhotoUrl
+                bankName, accountNumber, ifscCode, address, passportPhotoUrl
             ]);
         }
         await client.query('COMMIT');
@@ -155,9 +125,10 @@ exports.registerAndProceedToPayment = async (req, res) => {
 };
 
 /**
- * Step 2 of Registration: Submits payment proof to R2 and creates a pending 'login' entry.
+ * Step 2 of Registration: Submits payment proof. (No changes needed here)
  */
 exports.submitPaymentAndRegister = async (req, res) => {
+    // This function is already correct and does not handle employeeCount, so no changes are needed.
     const { email, transactionId } = req.body;
     const paymentScreenshotFile = req.file;
 
@@ -168,32 +139,24 @@ exports.submitPaymentAndRegister = async (req, res) => {
     const client = await db.connect();
     try {
         await client.query('BEGIN');
-
         const vendorResult = await client.query('SELECT id FROM vendors WHERE email = $1', [email]);
         if (vendorResult.rows.length === 0) {
             throw new Error('Registration data not found. Please complete the first step of the form.');
         }
         const vendorId = vendorResult.rows[0].id;
-
-        // Generate a unique filename and upload the payment screenshot to Cloudflare R2.
         const nextPSNum = await getNextFileSequence(client, 'payment_screenshot_url', 'vendors', 'PS_');
         const screenshotFilename = `PS_${String(nextPSNum).padStart(3, '0')}${path.extname(paymentScreenshotFile.originalname)}`;
         const paymentScreenshotUrl = await uploadFileToR2(paymentScreenshotFile, 'payment_screenshots', screenshotFilename);
-
-        // Update vendor record with payment proof URL from R2
         await client.query(
             'UPDATE vendors SET transaction_id = $1, payment_screenshot_url = $2 WHERE id = $3',
             [transactionId, paymentScreenshotUrl, vendorId]
         );
-
-        // Create the pending login entry
         const loginQuery = `
             INSERT INTO login (user_id, email, password, role, is_approved, status) 
             VALUES ($1, $2, NULL, 'vendor', FALSE, 'pending_approval') 
             ON CONFLICT (user_id) DO NOTHING;
         `;
         await client.query(loginQuery, [vendorId, email]);
-
         await client.query('COMMIT');
         res.status(201).json({ message: 'Registration complete! Your account is now pending administrator approval.' });
     } catch (error) {
