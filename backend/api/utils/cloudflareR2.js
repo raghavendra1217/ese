@@ -14,6 +14,8 @@ const s3Client = new S3Client({
     },
 });
 
+// eafhuxjkcjchanges
+
 const BUCKET_NAME = process.env.R2_BUCKET_NAME;
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL; // <-- Uses the new variable from .env
 
