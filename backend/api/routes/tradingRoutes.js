@@ -1,10 +1,14 @@
+<<<<<<< HEAD
 // In backend/api/routes/tradingRoutes.js
 
+=======
+>>>>>>> d39126c (wallet update)
 const express = require('express');
 const router = express.Router();
 const tradingController = require('../controllers/tradingController');
 const { protect } = require('../middleware/authMiddleware');
 const multer = require('multer');
+<<<<<<< HEAD
 const path = require('path');
 const fs = require('fs');
 
@@ -37,10 +41,25 @@ router.post('/execute-wallet', protect, tradingController.executeWalletTrade);
 router.post('/sell', protect, tradingController.sellProduct);
 
 // --- Routes for Vendor Portfolio/History ---
+=======
+
+// Use memoryStorage for R2 upload.
+const uploadProof = multer({ storage: multer.memoryStorage() });
+
+// --- Trading Routes ---
+router.post('/create-upi', protect, uploadProof.single('paymentScreenshot'), tradingController.createUpiTrade);
+router.post('/execute-wallet', protect, tradingController.executeWalletTrade);
+router.post('/sell', protect, tradingController.sellProduct);
+
+// --- History/Portfolio Routes ---
+>>>>>>> d39126c (wallet update)
 router.get('/active', protect, tradingController.getActiveTrades);
 router.get('/sold', protect, tradingController.getSoldTrades);
 router.get('/rejected', protect, tradingController.getRejectedTrades);
 router.get('/history', protect, tradingController.getPurchaseHistory);
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> d39126c (wallet update)
 module.exports = router;

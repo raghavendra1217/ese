@@ -23,8 +23,15 @@ import ManageTradingApprovalsPage from './pages/admin/ManageTradingApprovalsPage
 import PurchaseHistoryPage from './pages/vendor/PurchaseHistoryPage';
 import ProductTradingPage from './pages/vendor/ProductTradingPage';
 import WalletPage from './pages/WalletPage';
+<<<<<<< HEAD
 
 const url = "";
+=======
+import AllVendorsPage from './pages/vendor/AllVendorsPage';
+import ManageWalletApprovalsPage from './pages/admin/ManageWalletApprovalsPage';
+
+const url = "http://localhost:5000";
+>>>>>>> d39126c (wallet update)
 
 function App() {
   return (
@@ -48,6 +55,7 @@ function App() {
               <Route path="/admin/manage-approvals" element={<ManageApprovalsPage url={url} />} />
               <Route path="/admin/manage-products" element={<ManageProductsPage url={url} />} />
               <Route path="/admin/manage-trading-approvals" element={<ManageTradingApprovalsPage url={url} />} />
+<<<<<<< HEAD
 
               {/* Vendor Routes */}
               <Route path="/vendor/dashboard" element={<VendorDashboard url={url} />} />
@@ -55,6 +63,17 @@ function App() {
               <Route path="/vendor/wallet" element={<WalletPage />} />
 
               {/* Employee Routes */}
+=======
+              
+              {/* Vendor Routes */}
+              <Route path="/vendor/dashboard" element={<VendorDashboard url={url} />} />
+              <Route path="/vendor/products" element={<BuyProduct url={url} />} />
+              <Route path="/vendor/wallet" element={<WalletPage url={url} />} />
+
+              {/* Employee Routes */}
+              // In App.js
+<Route path="/admin/wallet-approvals" element={<ManageWalletApprovalsPage url={url} />} />
+>>>>>>> d39126c (wallet update)
               <Route path="/employee/dashboard" element={<EmployeeDashboard url={url} />} />
               <Route path="/vendor/purchase-history" element={<PurchaseHistoryPage url={url} />} />
               <Route path="/product-trading" element={<ProductTradingPage url={url} />} />

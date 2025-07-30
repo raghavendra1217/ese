@@ -11,6 +11,11 @@ import AnalyticsSection from '../../components/dashboard/AnalyticsSection'; // A
 
 const AdminDashboard = ({ url }) => {
     const { token } = useAuth();
+<<<<<<< HEAD
+=======
+    
+    // Updated initial state to include the wallet approvals stat
+>>>>>>> d39126c (wallet update)
     const [stats, setStats] = useState(() => {
         const cached = localStorage.getItem('adminDashboardStats');
         return cached ? JSON.parse(cached) : {
@@ -19,6 +24,10 @@ const AdminDashboard = ({ url }) => {
             membersInLive: 0, verifiedResumes: 0, employeesOnHold: 0, receivedBill: '0',
             pendingBill: 0, purchasedProducts: 0, purchasedValue: 0,
             pendingPayOuts: 0, totalPayouts: 0,
+<<<<<<< HEAD
+=======
+            pendingWalletApprovals: 0, // <-- Important: Ensures no error on first render
+>>>>>>> d39126c (wallet update)
         };
     });
 
@@ -40,12 +49,27 @@ const AdminDashboard = ({ url }) => {
             const adminStats = await adminResponse.json();
             const productStats = await productResponse.json();
             
+<<<<<<< HEAD
             const newStats = { ...stats, ...resumeStats, ...adminStats, ...productStats };
             setStats(newStats);
             localStorage.setItem('adminDashboardStats', JSON.stringify(newStats));
         } catch (error) {
             console.error("Failed to fetch dashboard stats:", error);
         }
+=======
+            // Use the functional update form of useState to avoid dependency on 'stats'
+            const mergedStats = { ...resumeStats, ...adminStats, ...productStats };
+            setStats(prevStats => ({...prevStats, ...mergedStats}));
+            
+            // Update local storage with the fully merged data
+            localStorage.setItem('adminDashboardStats', JSON.stringify(mergedStats));
+
+        } catch (error) {
+            console.error("Failed to fetch dashboard stats:", error);
+        }
+    // --- THE FIX IS HERE ---
+    // 'stats' has been removed from the dependency array to prevent the infinite loop.
+>>>>>>> d39126c (wallet update)
     }, [url, token]);
 
     useEffect(() => {
@@ -60,7 +84,12 @@ const AdminDashboard = ({ url }) => {
         <Flex minH="100vh" bg={useColorModeValue('gray.50', 'gray.900')}>
             <AdminNavBar />
             <Box flex="1" ml="80px" p={{ base: 4, md: 8 }} bg={mainBg}>
+<<<<<<< HEAD
                 <DashboardHeader />
+=======
+                {/* Pass stats to the header for the notification badge */}
+                <DashboardHeader stats={stats} />
+>>>>>>> d39126c (wallet update)
                 <ResumeStatsSection stats={stats} onUploadSuccess={fetchAllStats} url={url} />
                 <TradingStatsSection stats={stats} />
                 <AnalyticsSection stats={stats} />

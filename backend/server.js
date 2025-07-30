@@ -23,7 +23,11 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5000',
   'http://localhost:10000',
+<<<<<<< HEAD
   'https://0c724ae45fb2.ngrok-free.app',
+=======
+  'https://94df78abe279.ngrok-free.app',
+>>>>>>> d39126c (wallet update)
   'https://esepapertrading.vercel.app',
   'https://esepapertrading.onrender.com',
 ];
@@ -60,6 +64,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/trading', tradingRoutes);
 app.use('/api/wallet', walletRoutes);
 
+<<<<<<< HEAD
 // --- Serve Uploaded Product Images ---
 app.use('/products', express.static(path.join(__dirname, 'public/products')));
 app.use('/passport_photos', express.static(path.join(__dirname, 'public/passport_photos')));
@@ -68,10 +73,26 @@ app.use('/trade_proofs', express.static(path.join(__dirname, 'public/trade_proof
 
 app.use('/static-assets', express.static(path.join(__dirname, '..', 'frontend', 'public')));
 
+=======
+// // --- Serve Uploaded Product Images ---
+// app.use('/products', express.static(path.join(__dirname, 'public/products')));
+// app.use('/passport_photos', express.static(path.join(__dirname, 'public/passport_photos')));
+// app.use('/payment_screenshots', express.static(path.join(__dirname, 'public/payment_screenshots')));
+// app.use('/trade_proofs', express.static(path.join(__dirname, 'public/trade_proofs')));
+
+app.use('/static-assets', express.static(path.join(__dirname, '..', 'frontend', 'public')));
+
+
+
+>>>>>>> d39126c (wallet update)
 // --- Serve React Frontend Build ---
 const buildPath = path.join(__dirname, '..', 'frontend', 'build');
 app.use(express.static(buildPath));
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> d39126c (wallet update)
 // --- Serve Admin and Vendor Routes ---
 app.use('/admin', express.static(buildPath));
 app.use('/vendor', express.static(buildPath));

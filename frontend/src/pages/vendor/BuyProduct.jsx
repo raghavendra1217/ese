@@ -65,9 +65,17 @@ const PaymentModal = ({ isOpen, onClose, productInfo, onPaymentSubmit, isLoading
 // --- MODAL 1: FOR SELECTING QUANTITY (UPDATED) ---
 // This modal is now simpler and just triggers the next step.
 const PurchaseModal = ({ isOpen, onClose, product, onProceed, walletBalance }) => {
+<<<<<<< HEAD
     const [quantity, setQuantity] = useState(1);
     
     useEffect(() => { if (isOpen) setQuantity(1); }, [isOpen]);
+=======
+    // CHANGE 1: Initialize quantity state to 0 instead of 1.
+    const [quantity, setQuantity] = useState(0); 
+    
+    // CHANGE 2: Reset quantity to 0 when the modal opens.
+    useEffect(() => { if (isOpen) setQuantity(0); }, [isOpen]);
+>>>>>>> d39126c (wallet update)
 
     if (!product) return null;
 
@@ -85,8 +93,20 @@ const PurchaseModal = ({ isOpen, onClose, product, onProceed, walletBalance }) =
                         <Text>Price per Slot: <strong>₹{product.price_per_slot}</strong></Text>
                         <FormControl>
                             <FormLabel>Quantity to Buy:</FormLabel>
+<<<<<<< HEAD
                             <NumberInput defaultValue={1} min={1} max={product.available_stock || 1} onChange={(val) => setQuantity(parseInt(val, 10) || 1)} value={quantity}>
                                 <NumberInputField />
+=======
+                            {/* CHANGE 3: Update NumberInput props for correct behavior */}
+                            <NumberInput
+                                min={0} // Allow 0 as the minimum value
+                                max={product.available_stock || 1}
+                                // Handle onChange to allow free typing, falling back to 0 if empty/invalid
+                                onChange={(valueAsString, valueAsNumber) => setQuantity(isNaN(valueAsNumber) ? 0 : valueAsNumber)}
+                                value={quantity} // Value is controlled by the state
+                            >
+                                <NumberInputField placeholder="Enter quantity" />
+>>>>>>> d39126c (wallet update)
                                 <NumberInputStepper><NumberIncrementStepper /><NumberDecrementStepper /></NumberInputStepper>
                             </NumberInput>
                         </FormControl>
@@ -96,17 +116,29 @@ const PurchaseModal = ({ isOpen, onClose, product, onProceed, walletBalance }) =
                     </VStack>
                 </ModalBody>
                 <ModalFooter>
+<<<<<<< HEAD
+=======
+                    {/* CHANGE 4 (Recommended): Disable buttons if quantity is zero */}
+>>>>>>> d39126c (wallet update)
                     <Button
                         colorScheme="purple"
                         mr={3}
                         onClick={() => onProceed(quantity, 'wallet')}
+<<<<<<< HEAD
                         isDisabled={!hasEnoughFunds}
+=======
+                        isDisabled={!hasEnoughFunds || quantity <= 0}
+>>>>>>> d39126c (wallet update)
                     >
                         Pay with Wallet
                     </Button>
                     <Button
                         colorScheme="teal"
                         onClick={() => onProceed(quantity, 'upi')}
+<<<<<<< HEAD
+=======
+                        isDisabled={quantity <= 0}
+>>>>>>> d39126c (wallet update)
                     >
                         Pay with UPI/QR
                     </Button>

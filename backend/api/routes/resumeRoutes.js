@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // backend/api/routes/resumeRoutes.js
 
 const express = require('express');
@@ -41,3 +42,21 @@ router.post('/upload', protect, authorize('admin'), uploadResumes.array('resumes
 router.get('/stats/dashboard', protect, authorize('admin'), resumeController.getDashboardStats);
 
 module.exports = router;
+=======
+const express = require('express');
+const router = express.Router();
+const multer = require('multer');
+const resumeController = require('../controllers/resumeController');
+const { protect, authorize } = require('../middleware/authMiddleware');
+
+// Use memoryStorage for R2 upload.
+const uploadResumes = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
+
+router.post('/upload', protect, authorize('admin'), uploadResumes.array('resumes', 10), resumeController.handleBulkUpload);
+router.get('/stats/dashboard', protect, authorize('admin'), resumeController.getDashboardStats);
+
+module.exports = router;
+>>>>>>> d39126c (wallet update)

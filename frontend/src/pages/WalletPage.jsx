@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useEffect, useState } from 'react';
 import { Box, Heading, Text, Flex, Image, Button, useColorModeValue, Spinner, Container, Alert, AlertIcon, useToast, Stat, StatNumber, StatHelpText, StatArrow } from '@chakra-ui/react';
 import VendorNavBar from '../components/layout/VendorNavBar';
@@ -58,6 +59,96 @@ const WalletPage = ({ url = '' }) => {
 
     // --- Sell Handler (No changes needed) ---
     const handleSell = async (tradeToSell) => {
+=======
+import React, { useEffect, useState, useCallback } from 'react';
+import { Box, Heading, Text, Flex, useColorModeValue, Spinner, Container, Alert, AlertIcon, useToast, Center } from '@chakra-ui/react';
+import VendorNavBar from '../components/layout/VendorNavBar';
+import { useAuth } from '../AppContext'; // Using the path you confirmed is correct
+
+// Import components
+import WalletHeader from '../components/wallet/WalletHeader';
+import ActiveTradeItem from '../components/wallet/ActiveTradeItem';
+import SoldTradeItem from '../components/wallet/SoldTradeItem';
+import AddMoneyModal from '../components/wallet/AddMoneyModal';
+import WithdrawModal from '../components/wallet/WithdrawModal';
+
+const WalletPage = ({ url }) => {
+    const bg = useColorModeValue('gray.50', 'gray.900');
+    const cardBg = useColorModeValue('white', 'gray.700');
+    const { token } = useAuth();
+    const toast = useToast();
+
+    // States for data from API
+    const [activeTrades, setActiveTrades] = useState(null);
+    const [soldTrades, setSoldTrades] = useState(null);
+    const [digitalMoney, setDigitalMoney] = useState(null);
+    const [error, setError] = useState('');
+
+    // --- NEW STATE: To track if a withdrawal is pending ---
+    const [hasPendingWithdrawal, setHasPendingWithdrawal] = useState(false);
+    
+    // States for UI interaction
+    const [isSelling, setIsSelling] = useState(null);
+    const [isAddMoneyOpen, setAddMoneyOpen] = useState(false);
+    const [isWithdrawModalOpen, setWithdrawModalOpen] = useState(false);
+
+    // --- DATA FETCHING ---
+    useEffect(() => {
+        const fetchAllData = () => {
+            if (!token) {
+                setError('Not authenticated.');
+                return;
+            }
+            // Fetch all data points when component loads
+            fetchActiveTrades();
+            fetchSoldTrades();
+            fetchWalletBalance();
+        };
+        fetchAllData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [token]);
+
+    // --- MODIFIED: This function now also fetches the pending status ---
+    const fetchWalletBalance = useCallback(async () => {
+        try {
+            const res = await fetch(`${url}/api/wallet`, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (!res.ok) throw new Error('Could not load wallet data');
+            const data = await res.json();
+            
+            // Set both pieces of state from the single API call
+            setDigitalMoney(data.digital_money || 0);
+            setHasPendingWithdrawal(data.hasPendingWithdrawal || false);
+
+        } catch (err) {
+            setError('Could not fetch wallet balance.');
+            toast({ title: 'Error', description: err.message, status: 'error', duration: 3000 });
+        }
+    }, [token, url, toast]);
+
+    const fetchActiveTrades = useCallback(async () => {
+        try {
+            const res = await fetch(`${url}/api/trading/active`, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (!res.ok) throw new Error('Could not load active trades');
+            setActiveTrades(await res.json());
+        } catch (err) {
+            setError('Could not fetch active trades.');
+        }
+    }, [token, url]);
+
+    const fetchSoldTrades = useCallback(async () => {
+        try {
+            const res = await fetch(`${url}/api/trading/sold`, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (!res.ok) throw new Error('Could not load trade history');
+            setSoldTrades(await res.json());
+        } catch (err) {
+            setError('Could not fetch trade history.');
+        }
+    }, [token, url]);
+
+
+    // --- SELL HANDLER (Unchanged) ---
+    const handleSell = useCallback(async (tradeToSell) => {
+>>>>>>> d39126c (wallet update)
         setIsSelling(tradeToSell.trade_id);
         try {
             const response = await fetch(`${url}/api/trading/sell`, {
@@ -67,16 +158,27 @@ const WalletPage = ({ url = '' }) => {
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Failed to sell item.');
+<<<<<<< HEAD
             toast({ title: 'Success!', description: data.message, status: 'success', duration: 3000 });
             setDigitalMoney(data.digital_money);
             const soldItem = { ...tradeToSell, sale_price: data.sold_at };
             setSoldTrades(prevSold => [soldItem, ...prevSold]);
             setActiveTrades(prevActive => prevActive.filter(item => item.trade_id !== tradeToSell.trade_id));
+=======
+            
+            const soldItem = data.sold_trade;
+            setDigitalMoney(prevMoney => prevMoney + soldItem.sell_price);
+            setActiveTrades(prev => prev.filter(t => t.trade_id !== soldItem.trade_id));
+            setSoldTrades(prev => [soldItem, ...prev]);
+
+            toast({ title: 'Success!', description: `Sold ${soldItem.item_name}.`, status: 'success', duration: 3000 });
+>>>>>>> d39126c (wallet update)
         } catch (err) {
             toast({ title: 'Sell Error', description: err.message, status: 'error', duration: 4000 });
         } finally {
             setIsSelling(null);
         }
+<<<<<<< HEAD
     };
     
     // --- Render Logic ---
@@ -149,6 +251,80 @@ const WalletPage = ({ url = '' }) => {
                 {/* The Rejected Trades section has been correctly removed from this page. */}
             </Box>
         </Flex>
+=======
+    }, [token, url, toast]);
+
+
+    if (!token) return <Container centerContent py={20}><Alert status="warning"><AlertIcon />Please log in to view your wallet.</Alert></Container>;
+
+    return (
+        <>
+            <Flex minH="100vh" bg={bg}>
+                <VendorNavBar />
+                <Box flex="1" ml={{ base: '0', md: '80px' }} p={8}>
+                    {error && <Alert status="error" mb={4}><AlertIcon />{error}</Alert>}
+
+                    {/* --- MODIFIED: Pass the new flag to the header component --- */}
+                    <WalletHeader 
+                        digitalMoney={digitalMoney}
+                        onAddMoneyClick={() => setAddMoneyOpen(true)}
+                        onWithdrawClick={() => setWithdrawModalOpen(true)}
+                        hasPendingWithdrawal={hasPendingWithdrawal}
+                    />
+                    
+                    {/* Active Investments Section (Unchanged) */}
+                    <Box bg={cardBg} p={6} borderRadius="lg" shadow="md" mb={8}>
+                        <Heading size="lg" mb={4} color="blue.400">Active Investments</Heading>
+                        {activeTrades === null ? (
+                            <Center p={5}><Spinner /></Center>
+                        ) : activeTrades.length === 0 ? (
+                            <Text>You have no active investments.</Text>
+                        ) : (
+                            activeTrades.map((item) => (
+                                <ActiveTradeItem 
+                                    key={item.trade_id} 
+                                    item={item}
+                                    onSell={handleSell}
+                                    isSelling={isSelling === item.trade_id}
+                                />
+                            ))
+                        )}
+                    </Box>
+
+                    {/* Trade History Section (Unchanged) */}
+                    <Box bg={cardBg} p={6} borderRadius="lg" shadow="md">
+                        <Heading size="lg" mb={4} color="green.400">Trade History (Sold)</Heading>
+                        {soldTrades === null ? (
+                            <Center p={5}><Spinner /></Center>
+                        ) : soldTrades.length === 0 ? (
+                            <Text>You have not sold any items yet.</Text>
+                        ) : (
+                            soldTrades.map((item) => (
+                                <SoldTradeItem key={item.trade_id} item={item} />
+                            ))
+                        )}
+                    </Box>
+                </Box>
+            </Flex>
+
+            {/* Add Money Modal (Unchanged) */}
+            <AddMoneyModal 
+                isOpen={isAddMoneyOpen}
+                onClose={() => setAddMoneyOpen(false)}
+                url={url}
+                onTransactionComplete={fetchWalletBalance}
+            />
+
+            {/* --- MODIFIED: Pass the success callback to the withdraw modal --- */}
+            <WithdrawModal
+                isOpen={isWithdrawModalOpen}
+                onClose={() => setWithdrawModalOpen(false)}
+                url={url}
+                currentBalance={digitalMoney || 0}
+                onWithdrawalSuccess={() => setHasPendingWithdrawal(true)}
+            />
+        </>
+>>>>>>> d39126c (wallet update)
     );
 };
 

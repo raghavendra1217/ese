@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // backend/api/routes/productRoutes.js
 
 const express = require('express');
@@ -99,4 +100,26 @@ router.get(
 router.get('/stats/available-count', protect, productController.getAvailableProductCount);
 
 
+=======
+const express = require('express');
+const router = express.Router();
+const multer = require('multer');
+const productController = require('../controllers/productController');
+const { protect, authorize } = require('../middleware/authMiddleware');
+
+// Use memoryStorage for R2 upload.
+const upload = multer({ storage: multer.memoryStorage() });
+
+// --- Admin Routes ---
+router.get('/stats/dashboard', protect, authorize('admin'), productController.getProductStats);
+router.post('/', protect, authorize('admin'), upload.single('productImage'), productController.addProduct);
+router.get('/', protect, authorize('admin'), productController.getAllProducts);
+router.put('/:productId', protect, authorize('admin'), productController.updateProduct);
+router.delete('/:productId', protect, authorize('admin'), productController.deleteProduct);
+
+// --- Vendor-Facing Routes ---
+router.get('/available', protect, productController.getAvailableProducts);
+router.get('/stats/available-count', protect, productController.getAvailableProductCount);
+
+>>>>>>> d39126c (wallet update)
 module.exports = router;

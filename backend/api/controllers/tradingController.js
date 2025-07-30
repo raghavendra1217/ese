@@ -1,7 +1,45 @@
 const db = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
+<<<<<<< HEAD
 
 
+=======
+const path = require('path');
+const { uploadFileToR2 } = require('../utils/cloudflareR2'); // Import R2 utility
+
+/**
+ * Queries the database to find the last sequence number for a trade proof to ensure unique names.
+ * @param {object} client - The active database client.
+ * @returns {Promise<number>} The next integer in the sequence.
+ */
+const getNextTradeProofSequence = async (client) => {
+    // This regex extracts the numeric part of the filename from the full R2 URL.
+    const query = `
+        SELECT payment_url FROM trading
+        WHERE payment_url LIKE '%/TP_%'
+        ORDER BY CAST(substring(payment_url from '/TP_(\\d+)') AS INTEGER) DESC
+        LIMIT 1;
+    `;
+    try {
+        const { rows } = await client.query(query);
+        if (rows.length === 0) return 1;
+
+        const lastUrl = rows[0].payment_url;
+        const match = lastUrl.match(/TP_(\d+)/);
+        if (match && match[1]) {
+            const lastNumber = parseInt(match[1], 10);
+            return lastNumber + 1;
+        }
+        return 1;
+    } catch {
+        return 1; // Fallback on error
+    }
+};
+
+/**
+ * Creates a trade record after UPI payment and uploads the proof to Cloudflare R2.
+ */
+>>>>>>> d39126c (wallet update)
 const createUpiTrade = async (req, res) => {
     const vendorId = req.user.user_id;
     const { productId, no_of_stock_bought, transactionId } = req.body;
@@ -12,7 +50,10 @@ const createUpiTrade = async (req, res) => {
     }
 
     const quantity = parseInt(no_of_stock_bought, 10);
+<<<<<<< HEAD
     const paymentScreenshotUrl = `/trade_proofs/${paymentScreenshotFile.filename}`;
+=======
+>>>>>>> d39126c (wallet update)
     const client = await db.connect();
 
     try {
@@ -23,6 +64,14 @@ const createUpiTrade = async (req, res) => {
         const product = productRes.rows[0];
         if (product.available_stock < quantity) throw new Error('Not enough stock available to complete this purchase.');
 
+<<<<<<< HEAD
+=======
+        // Generate a unique filename and upload the screenshot to R2.
+        const nextTPNum = await getNextTradeProofSequence(client);
+        const screenshotFilename = `TP_${String(nextTPNum).padStart(3, '0')}${path.extname(paymentScreenshotFile.originalname)}`;
+        const paymentScreenshotUrl = await uploadFileToR2(paymentScreenshotFile, 'trade_proofs', screenshotFilename);
+
+>>>>>>> d39126c (wallet update)
         const totalAmount = parseFloat(product.price_per_slot) * quantity;
         const tradeId = uuidv4();
         const tradeDate = new Date();
@@ -45,6 +94,10 @@ const createUpiTrade = async (req, res) => {
     }
 };
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> d39126c (wallet update)
 const executeWalletTrade = async (req, res) => {
     const vendorId = req.user.user_id;
     const { productId, no_of_stock_bought } = req.body;
@@ -91,6 +144,7 @@ const executeWalletTrade = async (req, res) => {
     }
 };
 
+<<<<<<< HEAD
 const submitProof = async (req, res) => {
     const { tradeId, transactionId } = req.body;
     const paymentScreenshotFile = req.file;
@@ -148,6 +202,10 @@ const submitProof = async (req, res) => {
 const sellProduct = async (req, res) => {
     const vendorId = req.user.user_id;
     // We will sell based on the specific trade_id, not the product_id
+=======
+const sellProduct = async (req, res) => {
+    const vendorId = req.user.user_id;
+>>>>>>> d39126c (wallet update)
     const { trade_id } = req.body; 
 
     if (!trade_id) {
@@ -158,7 +216,10 @@ const sellProduct = async (req, res) => {
     try {
         await client.query('BEGIN');
 
+<<<<<<< HEAD
         // Find the specific trade to sell, lock the row, and ensure it belongs to the user and is not already sold.
+=======
+>>>>>>> d39126c (wallet update)
         const tradeRes = await client.query(
             `SELECT t.*, p.selling_price 
              FROM trading t
@@ -179,7 +240,11 @@ const sellProduct = async (req, res) => {
             return res.status(400).json({ message: 'This item has already been sold.' });
         }
         
+<<<<<<< HEAD
         if (!trade.is_approved) {
+=======
+        if (trade.is_approved !== 'approved') {
+>>>>>>> d39126c (wallet update)
             await client.query('ROLLBACK');
             return res.status(400).json({ message: 'This item is not yet approved for sale.' });
         }
@@ -187,26 +252,40 @@ const sellProduct = async (req, res) => {
         const currentSellingPrice = parseFloat(trade.selling_price);
         const now = new Date();
         const boughtDate = new Date(trade.date);
+<<<<<<< HEAD
 
         // This is your business logic for sell price
+=======
+        
+>>>>>>> d39126c (wallet update)
         const daysSinceBought = (now - boughtDate) / (1000 * 60 * 60 * 24);
         const sellPrice = daysSinceBought < 8 ? parseFloat(trade.price_per_slot) : currentSellingPrice;
         
         const totalMoneyFromSale = trade.no_of_stock_bought * sellPrice;
 
+<<<<<<< HEAD
         // Mark this specific trade as sold
+=======
+>>>>>>> d39126c (wallet update)
         await client.query(
             `UPDATE trading SET is_sold = TRUE, sold_at = $1 WHERE trade_id = $2`,
             [sellPrice, trade.trade_id]
         );
 
+<<<<<<< HEAD
         // --- Wallet Update Logic (same as before, but cleaner) ---
+=======
+>>>>>>> d39126c (wallet update)
         let walletRes = await client.query('SELECT wallet_id FROM wallet WHERE id = $1 AND role = $2', [vendorId, 'vendor']);
         let walletId;
         
         if (walletRes.rows.length === 0) {
+<<<<<<< HEAD
              // Create wallet if it doesn't exist
             const idRes = await client.query(`SELECT wallet_id FROM wallet ORDER BY wallet_id DESC LIMIT 1`);
+=======
+            const idRes = await client.query(`SELECT wallet_id FROM wallet ORDER BY CAST(SUBSTRING(wallet_id FROM 3) AS INTEGER) DESC LIMIT 1`);
+>>>>>>> d39126c (wallet update)
             let nextNum = 1;
             if (idRes.rows.length > 0) {
                 const lastIdNum = parseInt(idRes.rows[0].wallet_id.split('_')[1], 10);
@@ -218,7 +297,10 @@ const sellProduct = async (req, res) => {
                 [walletId, vendorId, 'vendor', totalMoneyFromSale]
             );
         } else {
+<<<<<<< HEAD
             // Add money to existing wallet
+=======
+>>>>>>> d39126c (wallet update)
             walletId = walletRes.rows[0].wallet_id;
             await client.query(
                 'UPDATE wallet SET digital_money = digital_money + $1 WHERE wallet_id = $2', 
@@ -226,7 +308,10 @@ const sellProduct = async (req, res) => {
             );
         }
 
+<<<<<<< HEAD
         // Get the final updated balance to return to the frontend
+=======
+>>>>>>> d39126c (wallet update)
         const updatedWallet = await client.query('SELECT digital_money FROM wallet WHERE wallet_id = $1', [walletId]);
 
         await client.query('COMMIT');
@@ -234,7 +319,11 @@ const sellProduct = async (req, res) => {
         res.status(200).json({
             message: 'Item sold successfully!',
             digital_money: updatedWallet.rows[0].digital_money,
+<<<<<<< HEAD
             sold_trade_id: trade_id // Send back the ID of what was sold
+=======
+            sold_trade_id: trade_id
+>>>>>>> d39126c (wallet update)
         });
 
     } catch (error) {
@@ -246,13 +335,17 @@ const sellProduct = async (req, res) => {
     }
 };
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> d39126c (wallet update)
 const getActiveTrades = async (req, res) => {
     const vendorId = req.user.user_id;
     try {
         const query = `
             SELECT
+<<<<<<< HEAD
                 t.trade_id,
                 t.product_id,
                 t.no_of_stock_bought,
@@ -273,6 +366,15 @@ const getActiveTrades = async (req, res) => {
                 AND (t.is_sold IS NULL OR t.is_sold = FALSE)
             ORDER BY
                 t.date DESC;
+=======
+                t.trade_id, t.product_id, t.no_of_stock_bought,
+                t.price_per_slot AS purchase_price, t.is_approved, t.is_sold, t.date AS purchase_date,
+                p.paper_type, p.product_image_url, p.selling_price AS current_selling_price
+            FROM trading AS t
+            LEFT JOIN product AS p ON t.product_id = p.product_id
+            WHERE t.vendor_id = $1 AND t.is_approved = 'approved' AND (t.is_sold IS NULL OR t.is_sold = FALSE)
+            ORDER BY t.date DESC;
+>>>>>>> d39126c (wallet update)
         `;
         const result = await db.query(query, [vendorId]);
         res.status(200).json(result.rows);
@@ -282,14 +384,18 @@ const getActiveTrades = async (req, res) => {
     }
 };
 
+<<<<<<< HEAD
 /**
  * Fetches SOLD trades for the logged-in vendor.
  */
+=======
+>>>>>>> d39126c (wallet update)
 const getSoldTrades = async (req, res) => {
     const vendorId = req.user.user_id;
     try {
         const query = `
             SELECT
+<<<<<<< HEAD
                 t.trade_id,
                 t.product_id,
                 t.no_of_stock_bought,
@@ -307,6 +413,15 @@ const getSoldTrades = async (req, res) => {
                 AND t.is_sold = TRUE
             ORDER BY
                 t.date DESC;
+=======
+                t.trade_id, t.product_id, t.no_of_stock_bought,
+                t.price_per_slot AS purchase_price, t.sold_at AS sale_price, t.date AS purchase_date,
+                p.paper_type, p.product_image_url
+            FROM trading AS t
+            LEFT JOIN product AS p ON t.product_id = p.product_id
+            WHERE t.vendor_id = $1 AND t.is_sold = TRUE
+            ORDER BY t.date DESC;
+>>>>>>> d39126c (wallet update)
         `;
         const result = await db.query(query, [vendorId]);
         res.status(200).json(result.rows);
@@ -316,13 +431,17 @@ const getSoldTrades = async (req, res) => {
     }
 };
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> d39126c (wallet update)
 const getPurchaseHistory = async (req, res) => {
     const vendorId = req.user.user_id;
     try {
         const query = `
             SELECT
+<<<<<<< HEAD
                 t.trade_id,
                 t.product_id,
                 t.no_of_stock_bought,
@@ -341,6 +460,15 @@ const getPurchaseHistory = async (req, res) => {
                 t.vendor_id = $1
             ORDER BY
                 t.date DESC;
+=======
+                t.trade_id, t.product_id, t.no_of_stock_bought, t.total_amount_paid, t.is_approved,
+                t.date, t.transaction_id, t.comment,
+                p.paper_type, p.product_image_url
+            FROM trading AS t
+            LEFT JOIN product AS p ON t.product_id = p.product_id
+            WHERE t.vendor_id = $1
+            ORDER BY t.date DESC;
+>>>>>>> d39126c (wallet update)
         `;
         const historyResult = await db.query(query, [vendorId]);
         res.status(200).json(historyResult.rows);
@@ -350,13 +478,17 @@ const getPurchaseHistory = async (req, res) => {
     }
 };
 
+<<<<<<< HEAD
 
 // Add this new function to the file
+=======
+>>>>>>> d39126c (wallet update)
 const getRejectedTrades = async (req, res) => {
     const vendorId = req.user.user_id;
     try {
         const query = `
             SELECT
+<<<<<<< HEAD
                 t.trade_id,
                 t.product_id,
                 t.date AS purchase_date,
@@ -372,6 +504,14 @@ const getRejectedTrades = async (req, res) => {
                 AND t.is_approved = 'rejected' -- Filter for rejected trades
             ORDER BY
                 t.date DESC;
+=======
+                t.trade_id, t.product_id, t.date AS purchase_date, t.comment,
+                p.paper_type, p.product_image_url
+            FROM trading AS t
+            LEFT JOIN product AS p ON t.product_id = p.product_id
+            WHERE t.vendor_id = $1 AND t.is_approved = 'rejected'
+            ORDER BY t.date DESC;
+>>>>>>> d39126c (wallet update)
         `;
         const result = await db.query(query, [vendorId]);
         res.status(200).json(result.rows);
@@ -382,6 +522,7 @@ const getRejectedTrades = async (req, res) => {
 };
 
 // --- UPDATED EXPORTS ---
+<<<<<<< HEAD
 module.exports = {
     createUpiTrade,
     executeWalletTrade,
@@ -391,4 +532,15 @@ module.exports = {
     getSoldTrades,
     getRejectedTrades, // Export the new function
     getPurchaseHistory,   // New function
+=======
+// The `submitProof` function has been removed.
+module.exports = {
+    createUpiTrade,
+    executeWalletTrade,
+    sellProduct,
+    getActiveTrades,
+    getSoldTrades,
+    getRejectedTrades,
+    getPurchaseHistory,
+>>>>>>> d39126c (wallet update)
 };
