@@ -26,6 +26,7 @@ import WalletPage from './pages/WalletPage';
 import AllVendorsPage from './pages/vendor/AllVendorsPage';
 import ManageWalletApprovalsPage from './pages/admin/ManageWalletApprovalsPage';
 
+
 const url = "";
 
 function App() {
@@ -50,6 +51,7 @@ function App() {
               <Route path="/admin/manage-approvals" element={<ManageApprovalsPage url={url} />} />
               <Route path="/admin/manage-products" element={<ManageProductsPage url={url} />} />
               <Route path="/admin/manage-trading-approvals" element={<ManageTradingApprovalsPage url={url} />} />
+              <Route path="/admin/all-vendors" element={<AllVendorsPage url={url} />} />
               
               {/* Vendor Routes */}
               <Route path="/vendor/dashboard" element={<VendorDashboard url={url} />} />

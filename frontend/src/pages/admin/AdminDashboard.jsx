@@ -8,6 +8,7 @@ import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ResumeStatsSection from '../../components/dashboard/ResumeStatsSection';
 import TradingStatsSection from '../../components/dashboard/TradingStatsSection';
 import AnalyticsSection from '../../components/dashboard/AnalyticsSection';
+import AllVendorsPage from '../vendor/AllVendorsPage';
 
 const AdminDashboard = ({ url }) => {
     const { token } = useAuth();
@@ -73,6 +74,7 @@ const AdminDashboard = ({ url }) => {
                 <ResumeStatsSection stats={stats} onUploadSuccess={fetchAllStats} url={url} />
                 <TradingStatsSection stats={stats} />
                 <AnalyticsSection stats={stats} />
+                <AllVendorsPage url={url} mode="dashboard" />
             </Box>
         </Flex>
     );
