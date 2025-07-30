@@ -1,16 +1,17 @@
-<<<<<<< HEAD
 // backend/api/routes/authRoutes.js
 
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 
 const authController = require('../controllers/authController');
 
-// --- Define upload directories ---
+// --- RESOLVED: Kept your existing Multer feature for registration uploads ---
+// This preserves the logic of creating directories and generating sequential filenames
+// for both passport photos (PP_001) and payment screenshots (PS_001).
+
 const PASSPORT_PHOTO_DIR = 'public/passport_photos';
 const PAYMENT_SCREENSHOT_DIR = 'public/payment_screenshots';
 if (!fs.existsSync(PASSPORT_PHOTO_DIR)) fs.mkdirSync(PASSPORT_PHOTO_DIR, { recursive: true });
@@ -46,50 +47,17 @@ const uploadPassportPhoto = multer({ storage: passportPhotoStorage, limits: { fi
 const uploadPaymentScreenshot = multer({ storage: paymentScreenshotStorage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 // =======================================================================
-// --- CONSOLIDATED AND CORRECTED ROUTES ---
+// --- API Routes (Unchanged) ---
 // =======================================================================
 
 // --- Registration & Payment Flow ---
-// Step 1: Submit the main registration form
-// POST /api/auth/register
 router.post('/register', uploadPassportPhoto.single('passportPhoto'), authController.registerAndProceedToPayment);
-
-// Step 2: Submit payment details
-// POST /api/auth/submit-payment
 router.post('/submit-payment', uploadPaymentScreenshot.single('paymentScreenshot'), authController.submitPaymentAndRegister);
 
-
 // --- Login Flow ---
-// POST /api/auth/check-email
-router.post('/check-email', authController.checkUserStatus);
-
-// POST /api/auth/set-password
-router.post('/set-password', authController.setPasswordAndLogin);
-
-// POST /api/auth/login
-router.post('/login', authController.loginUser);
-
-
-=======
-const express = require('express');
-const router = express.Router();
-const multer = require('multer');
-const authController = require('../controllers/authController');
-
-// Use memoryStorage to process files as buffers, not save them to disk.
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }
-});
-
-// The controller will now handle file naming and uploading to R2.
-router.post('/register', upload.single('passportPhoto'), authController.registerAndProceedToPayment);
-router.post('/submit-payment', upload.single('paymentScreenshot'), authController.submitPaymentAndRegister);
-
-// --- Login Flow (No Changes) ---
 router.post('/check-email', authController.checkUserStatus);
 router.post('/set-password', authController.setPasswordAndLogin);
 router.post('/login', authController.loginUser);
 
->>>>>>> d39126c (wallet update)
+
 module.exports = router;

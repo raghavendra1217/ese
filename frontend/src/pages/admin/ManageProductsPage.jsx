@@ -8,10 +8,7 @@ import {
 import { EditIcon, DeleteIcon, AddIcon } from '@chakra-ui/icons';
 import { useAuth } from '../../AppContext';
 
-<<<<<<< HEAD
-=======
 // The ProductModal component is correct and requires no changes.
->>>>>>> d39126c (wallet update)
 const ProductModal = ({ isOpen, onClose, onSave, product, isEditing }) => {
     // Defines the starting values for a NEW product.
     const initialFormState = {
@@ -144,17 +141,9 @@ const ManageProductsPage = ({ url }) => {
     }, [fetchProducts]);
 
     const handleSave = async (formData, imageFile) => {
-<<<<<<< HEAD
-        // --- THIS IS THE FINAL FIX ---
-        // Prepare the data to match what the database expects (numbers or null, not empty strings)
-        const preparedData = {
-            ...formData,
-            // If the value is an empty string, send null. Otherwise, convert to a number.
-=======
         // This function's logic is correct and handles data preparation well.
         const preparedData = {
             ...formData,
->>>>>>> d39126c (wallet update)
             gsm: formData.gsm === '' || formData.gsm === null ? null : Number(formData.gsm),
             price_per_slot: formData.price_per_slot === '' || formData.price_per_slot === null ? null : Number(formData.price_per_slot),
             selling_price: formData.selling_price === '' || formData.selling_price === null ? null : Number(formData.selling_price),
@@ -172,11 +161,7 @@ const ManageProductsPage = ({ url }) => {
                 body = JSON.stringify(preparedData);
                 headers['Content-Type'] = 'application/json';
             } else {
-<<<<<<< HEAD
-                // For creating, send as FormData
-=======
                 // For creating, send as FormData because it includes a file
->>>>>>> d39126c (wallet update)
                 body = new FormData();
                 for (const key in preparedData) {
                     // Important: Don't append null values to FormData
@@ -192,10 +177,6 @@ const ManageProductsPage = ({ url }) => {
             const response = await fetch(apiUrl, { method, headers, body });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Failed to save product');
-<<<<<<< HEAD
-=======
-
->>>>>>> d39126c (wallet update)
             toast({ title: `Product ${isEditing ? 'updated' : 'added'}`, status: 'success', isClosable: true });
             onClose();
             fetchProducts();
@@ -268,25 +249,6 @@ const ManageProductsPage = ({ url }) => {
                             </Tr>
                         </Thead>
                         <Tbody>
-<<<<<<< HEAD
-                            {products.map(p => (
-                                <Tr key={p.product_id}>
-                                    <Td><Image src={`${url}${p.product_image_url}`} boxSize="50px" objectFit="cover" fallbackSrc="https://via.placehold" /></Td>
-                                    <Td>{p.product_id}</Td>
-                                    <Td>{p.paper_type}</Td>
-                                    <Td>{p.gsm}</Td>
-                                    <Td>₹{p.price_per_slot}</Td>
-                                    <Td>₹{p.selling_price ? parseFloat(p.selling_price).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : 'N/A'}</Td>
-                                    <Td>{p.available_stock}</Td>
-                                    <Td><Tag colorScheme={p.stock_status === 'available' ? 'green' : p.stock_status === 'low' ? 'orange' : 'red'}>{p.stock_status}</Tag></Td>
-                                    <Td>{p.last_updated ? new Date(p.last_updated).toLocaleString() : 'N/A'}</Td>
-                                    <Td>
-                                        <IconButton icon={<EditIcon />} aria-label="Edit" mr={2} onClick={() => openEditModal(p)} />
-                                        <IconButton icon={<DeleteIcon />} aria-label="Delete" colorScheme="red" onClick={() => openDeleteAlert(p.product_id)} />
-                                    </Td>
-                                </Tr>
-                            ))}
-=======
                             {products.map(p => {
                                 // --- ROBUST DATA VALIDATION FOR EACH ROW ---
                                 // Validate Price Per Slot
@@ -332,15 +294,11 @@ const ManageProductsPage = ({ url }) => {
                                     </Tr>
                                 );
                             })}
->>>>>>> d39126c (wallet update)
                         </Tbody>
                     </Table>
                 </Box>
             )}
-<<<<<<< HEAD
-=======
             
->>>>>>> d39126c (wallet update)
             <ProductModal isOpen={isOpen} onClose={onClose} onSave={handleSave} product={currentProduct} isEditing={isEditing} />
             <AlertDialog isOpen={deleteAlert.isOpen} leastDestructiveRef={cancelRef} onClose={closeDeleteAlert}>
                 <AlertDialogOverlay><AlertDialogContent><AlertDialogHeader>Delete Product</AlertDialogHeader><AlertDialogBody>Are you sure you want to delete this product? This action cannot be undone.</AlertDialogBody><AlertDialogFooter><Button ref={cancelRef} onClick={closeDeleteAlert}>Cancel</Button><Button colorScheme="red" onClick={handleDelete} ml={3}>Delete</Button></AlertDialogFooter></AlertDialogContent></AlertDialogOverlay>

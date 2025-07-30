@@ -1,0 +1,2 @@
+# Enforce LF (UNIX-style line endings) across all OS
+* text=auto eol=lf

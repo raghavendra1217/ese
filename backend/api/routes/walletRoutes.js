@@ -1,31 +1,23 @@
-<<<<<<< HEAD
-=======
 // backend/api/routes/walletRoutes.js
->>>>>>> d39126c (wallet update)
+
 const express = require('express');
 const router = express.Router();
 const walletController = require('../controllers/walletController');
 const { protect } = require('../middleware/authMiddleware');
-<<<<<<< HEAD
+const multer = require('multer'); // Keep this import for file uploads
 
-// GET /api/wallet - fetch or create wallet for current user
-router.get('/', protect, walletController.getWallet);
-
-module.exports = router; 
-=======
-const multer = require('multer');
-
+// Configure multer to handle file uploads in memory
 const upload = multer({ storage: multer.memoryStorage() });
 
-// GET /api/wallet - Fetch user wallet
+// --- All Routes Merged ---
+
+// GET /api/wallet - Fetch user wallet (present in both versions)
 router.get('/', protect, walletController.getWallet);
 
-// POST /api/wallet/deposit - User submits a deposit request
+// POST /api/wallet/deposit - User submits a deposit request (from incoming change)
 router.post('/deposit', protect, upload.single('paymentScreenshot'), walletController.requestDeposit);
 
-// --- NEW ROUTE ---
-// POST /api/wallet/withdraw - User requests a withdrawal
+// POST /api/wallet/withdraw - User requests a withdrawal (from incoming change)
 router.post('/withdraw', protect, walletController.requestWithdrawal);
 
 module.exports = router;
->>>>>>> d39126c (wallet update)

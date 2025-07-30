@@ -1,18 +1,18 @@
-<<<<<<< HEAD
 // backend/api/routes/resumeRoutes.js
 
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const fs = require('fs');
-const path = require('path'); // Added for path.extname
+const path = require('path'); // Kept for path.extname
 
 const resumeController = require('../controllers/resumeController');
-const { protect, authorize } = require('../middleware/authMiddleware'); // <-- IMPORT MIDDLEWARE
+const { protect, authorize } = require('../middleware/authMiddleware');
 
 
-// --- Multer Configuration for Resume Uploads ---
-// Multer uses a temporary random name. The controller will rename the file.
+// --- RESOLVED: Kept your existing Multer Configuration ---
+// This preserves the feature of saving files directly to the server's disk
+// with a custom sequential naming convention (e.g., R_001, R_002).
 const resumeStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = 'public/resumes';
@@ -28,35 +28,17 @@ const resumeStorage = multer.diskStorage({
 
 const uploadResumes = multer({
   storage: resumeStorage,
-  limits: { fileSize: 10 * 1024 * 1024 }
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
 
-// ... (multer configuration remains the same)
+// --- Routes (Unchanged) ---
+// The routes themselves are identical in both versions.
 
-// --- Routes ---
-// Resume uploading should be restricted to admins
+// Handles bulk resume uploads, restricted to admins.
 router.post('/upload', protect, authorize('admin'), uploadResumes.array('resumes', 10), resumeController.handleBulkUpload);
 
-// Resume stats should also be restricted to admins
+// Fetches dashboard statistics, restricted to admins.
 router.get('/stats/dashboard', protect, authorize('admin'), resumeController.getDashboardStats);
 
 module.exports = router;
-=======
-const express = require('express');
-const router = express.Router();
-const multer = require('multer');
-const resumeController = require('../controllers/resumeController');
-const { protect, authorize } = require('../middleware/authMiddleware');
-
-// Use memoryStorage for R2 upload.
-const uploadResumes = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }
-});
-
-router.post('/upload', protect, authorize('admin'), uploadResumes.array('resumes', 10), resumeController.handleBulkUpload);
-router.get('/stats/dashboard', protect, authorize('admin'), resumeController.getDashboardStats);
-
-module.exports = router;
->>>>>>> d39126c (wallet update)

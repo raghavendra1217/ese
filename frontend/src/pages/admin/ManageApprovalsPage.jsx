@@ -7,16 +7,10 @@ import {
 import { useAuth } from '../../AppContext';
 
 // =================================================================
-<<<<<<< HEAD
-// --- Vendor Approval Card (with added Reject button) ---
-// =================================================================
-const VendorApprovalCard = ({ vendor, onApprove, onReject, url }) => {
-=======
 // --- Vendor Approval Card (Corrected) ---
 // =================================================================
 const VendorApprovalCard = ({ vendor, onApprove, onReject }) => {
     // The `url` prop is no longer needed or passed to this component.
->>>>>>> d39126c (wallet update)
     const cardBg = useColorModeValue('white', 'gray.700');
     const { isOpen, onOpen, onClose } = useDisclosure();
     const [currentImage, setCurrentImage] = useState('');
@@ -45,28 +39,18 @@ const VendorApprovalCard = ({ vendor, onApprove, onReject }) => {
                     <Text pl={4}><strong>Transaction ID:</strong> {vendor.transaction_id}</Text>
                 </Box>
                 <SimpleGrid columns={2} spacing={2} pt={2}>
-<<<<<<< HEAD
-                    <Button size="sm" onClick={() => viewImage(`${url}/${vendor.passport_photo_url}`)} isDisabled={!vendor.passport_photo_url}>View Photo</Button>
-                    <Button size="sm" onClick={() => viewImage(`${url}/${vendor.payment_screenshot_url}`)} isDisabled={!vendor.payment_screenshot_url}>View Payment SS</Button>
-                </SimpleGrid>
-                {/* --- UPDATED: Button group for Approve/Reject --- */}
-=======
                     {/* --- THE FIX IS HERE --- */}
                     {/* The `url` prefix is removed. We use the full URL from the vendor object directly. */}
                     <Button size="sm" onClick={() => viewImage(vendor.passport_photo_url)} isDisabled={!vendor.passport_photo_url}>View Photo</Button>
                     <Button size="sm" onClick={() => viewImage(vendor.payment_screenshot_url)} isDisabled={!vendor.payment_screenshot_url}>View Payment SS</Button>
                 </SimpleGrid>
->>>>>>> d39126c (wallet update)
                 <SimpleGrid columns={2} spacing={2} pt={2}>
                     <Button colorScheme="red" onClick={() => onReject(vendor.id)}>Reject</Button>
                     <Button colorScheme="teal" onClick={() => onApprove(vendor.id)}>Approve</Button>
                 </SimpleGrid>
             </VStack>
 
-<<<<<<< HEAD
-=======
             {/* The Modal component remains unchanged and will work correctly with the full URL */}
->>>>>>> d39126c (wallet update)
             <Modal isOpen={isOpen} onClose={onClose} size="xl">
                 <ModalOverlay />
                 <ModalContent>
@@ -82,11 +66,7 @@ const VendorApprovalCard = ({ vendor, onApprove, onReject }) => {
 };
 
 // =================================================================
-<<<<<<< HEAD
-// --- MAIN PAGE: Manage Vendor Approvals (SIMPLIFIED) ---
-=======
 // --- Main Page Component ---
->>>>>>> d39126c (wallet update)
 // =================================================================
 const ManageVendorApprovalsPage = ({ url }) => {
     const mainBg = useColorModeValue('#F9FAFB', 'gray.800');
@@ -96,11 +76,7 @@ const ManageVendorApprovalsPage = ({ url }) => {
     const [vendors, setVendors] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
-<<<<<<< HEAD
-    // Fetch ONLY pending vendors
-=======
     // Fetch pending vendors (This part is correct and needs no changes)
->>>>>>> d39126c (wallet update)
     useEffect(() => {
         const fetchPendingVendors = async () => {
             if (!token) return;
@@ -121,11 +97,7 @@ const ManageVendorApprovalsPage = ({ url }) => {
         fetchPendingVendors();
     }, [toast, token, url]);
 
-<<<<<<< HEAD
-    // Handler for Approving
-=======
     // Handler for Approving (This part is correct and needs no changes)
->>>>>>> d39126c (wallet update)
     const handleApproveVendor = async (vendorId) => {
         try {
             const response = await fetch(`${url}/api/admin/approve-vendor/${vendorId}`, {
@@ -142,14 +114,8 @@ const ManageVendorApprovalsPage = ({ url }) => {
         }
     };
 
-<<<<<<< HEAD
-    // --- NEW: Handler for Rejecting ---
-    const handleRejectVendor = async (vendorId) => {
-        // Optional: Add a confirmation dialog before this destructive action
-=======
     // Handler for Rejecting (This part is correct and needs no changes)
     const handleRejectVendor = async (vendorId) => {
->>>>>>> d39126c (wallet update)
         if (!window.confirm('Are you sure you want to permanently reject and delete this vendor? This action cannot be undone.')) {
             return;
         }
@@ -186,13 +152,8 @@ const ManageVendorApprovalsPage = ({ url }) => {
                                 key={vendor.id} 
                                 vendor={vendor} 
                                 onApprove={handleApproveVendor}
-<<<<<<< HEAD
-                                onReject={handleRejectVendor} // Pass the reject handler
-                                url={url}
-=======
                                 onReject={handleRejectVendor}
                                 // The `url` prop is no longer passed to the card component
->>>>>>> d39126c (wallet update)
                             />
                         ))}
                     </SimpleGrid>

@@ -26,7 +26,7 @@ import WalletPage from './pages/WalletPage';
 import AllVendorsPage from './pages/vendor/AllVendorsPage';
 import ManageWalletApprovalsPage from './pages/admin/ManageWalletApprovalsPage';
 
-const url = "http://localhost:5000";
+const url = "";
 
 function App() {
   return (
@@ -56,8 +56,7 @@ function App() {
               <Route path="/vendor/products" element={<BuyProduct url={url} />} />
               <Route path="/vendor/wallet" element={<WalletPage url={url} />} />
 
-              {/* Employee Routes */}
-              // In App.js
+
 <Route path="/admin/wallet-approvals" element={<ManageWalletApprovalsPage url={url} />} />
               <Route path="/employee/dashboard" element={<EmployeeDashboard url={url} />} />
               <Route path="/vendor/purchase-history" element={<PurchaseHistoryPage url={url} />} />

@@ -1,21 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Flex, useColorModeValue } from '@chakra-ui/react';
-import { useAuth } from '../../AppContext'; // Adjust path as needed
+import { useAuth } from '../../AppContext';
 
 // Import Layout & Sectional Components
-import AdminNavBar from '../../components/layout/AdminNavBar'; // Adjust path
-import DashboardHeader from '../../components/dashboard/DashboardHeader'; // Adjust path
-import ResumeStatsSection from '../../components/dashboard/ResumeStatsSection'; // Adjust path
-import TradingStatsSection from '../../components/dashboard/TradingStatsSection'; // Adjust path
-import AnalyticsSection from '../../components/dashboard/AnalyticsSection'; // Adjust path
+import AdminNavBar from '../../components/layout/AdminNavBar';
+import DashboardHeader from '../../components/dashboard/DashboardHeader';
+import ResumeStatsSection from '../../components/dashboard/ResumeStatsSection';
+import TradingStatsSection from '../../components/dashboard/TradingStatsSection';
+import AnalyticsSection from '../../components/dashboard/AnalyticsSection';
 
 const AdminDashboard = ({ url }) => {
     const { token } = useAuth();
-<<<<<<< HEAD
-=======
     
-    // Updated initial state to include the wallet approvals stat
->>>>>>> d39126c (wallet update)
+    // --- RESOLVED: Merged initial state from both versions ---
     const [stats, setStats] = useState(() => {
         const cached = localStorage.getItem('adminDashboardStats');
         return cached ? JSON.parse(cached) : {
@@ -24,13 +21,11 @@ const AdminDashboard = ({ url }) => {
             membersInLive: 0, verifiedResumes: 0, employeesOnHold: 0, receivedBill: '0',
             pendingBill: 0, purchasedProducts: 0, purchasedValue: 0,
             pendingPayOuts: 0, totalPayouts: 0,
-<<<<<<< HEAD
-=======
-            pendingWalletApprovals: 0, // <-- Important: Ensures no error on first render
->>>>>>> d39126c (wallet update)
+            pendingWalletApprovals: 0, // Kept the incoming change for the new feature
         };
     });
 
+    // --- RESOLVED: Kept the incoming change which fixes an infinite loop ---
     const fetchAllStats = useCallback(async () => {
         if (!token) return;
         try {
@@ -49,27 +44,16 @@ const AdminDashboard = ({ url }) => {
             const adminStats = await adminResponse.json();
             const productStats = await productResponse.json();
             
-<<<<<<< HEAD
-            const newStats = { ...stats, ...resumeStats, ...adminStats, ...productStats };
-            setStats(newStats);
-            localStorage.setItem('adminDashboardStats', JSON.stringify(newStats));
-        } catch (error) {
-            console.error("Failed to fetch dashboard stats:", error);
-        }
-=======
-            // Use the functional update form of useState to avoid dependency on 'stats'
             const mergedStats = { ...resumeStats, ...adminStats, ...productStats };
+            // Using functional update to avoid dependency on 'stats' in useCallback
             setStats(prevStats => ({...prevStats, ...mergedStats}));
             
-            // Update local storage with the fully merged data
             localStorage.setItem('adminDashboardStats', JSON.stringify(mergedStats));
 
         } catch (error) {
             console.error("Failed to fetch dashboard stats:", error);
         }
-    // --- THE FIX IS HERE ---
-    // 'stats' has been removed from the dependency array to prevent the infinite loop.
->>>>>>> d39126c (wallet update)
+    // 'stats' is correctly removed from the dependency array to prevent re-fetching
     }, [url, token]);
 
     useEffect(() => {
@@ -84,12 +68,8 @@ const AdminDashboard = ({ url }) => {
         <Flex minH="100vh" bg={useColorModeValue('gray.50', 'gray.900')}>
             <AdminNavBar />
             <Box flex="1" ml="80px" p={{ base: 4, md: 8 }} bg={mainBg}>
-<<<<<<< HEAD
-                <DashboardHeader />
-=======
-                {/* Pass stats to the header for the notification badge */}
+                {/* --- RESOLVED: Kept the incoming change to pass stats for the notification badge --- */}
                 <DashboardHeader stats={stats} />
->>>>>>> d39126c (wallet update)
                 <ResumeStatsSection stats={stats} onUploadSuccess={fetchAllStats} url={url} />
                 <TradingStatsSection stats={stats} />
                 <AnalyticsSection stats={stats} />

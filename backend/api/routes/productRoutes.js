@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 // backend/api/routes/productRoutes.js
 
 const express = require('express');
@@ -6,13 +5,13 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
 
 const productController = require('../controllers/productController');
-// Assuming authorize takes a role, e.g., authorize('admin')
 const { protect, authorize } = require('../middleware/authMiddleware');
 
-// Your Multer config is excellent, no changes needed here.
+// --- RESOLVED: Kept your existing Multer configuration ---
+// This preserves the feature of saving product images directly to the server's disk
+// with a custom sequential naming scheme (e.g., P_001, P_002).
 const productImageStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const dir = 'public/products';
@@ -28,98 +27,31 @@ const productImageStorage = multer.diskStorage({
 const uploadProductImage = multer({ storage: productImageStorage });
 
 
-// --- PRODUCT CRUD & STATS ROUTES ---
-
-// All admin routes are protected and require the 'admin' role.
-// The order of middleware is important:
-// 1. protect (checks for a valid JWT token)
-// 2. authorize (checks if the user has the 'admin' role)
-// 3. multer (if needed, to parse form-data and files)
-// 4. controller (runs last with req.body and req.file populated)
-
+// --- PRODUCT CRUD & STATS ROUTES (Unchanged) ---
 
 // GET Dashboard Stats [Admin Only]
-// GET /api/products/stats/dashboard
-router.get(
-    '/stats/dashboard',
-    protect,
-    authorize('admin'),
-    productController.getProductStats
-);
+router.get('/stats/dashboard', protect, authorize('admin'), productController.getProductStats);
 
 // POST a new product with an image [Admin Only]
-// POST /api/products/
-router.post(
-    '/',
-    protect,
-    authorize('admin'),
-    uploadProductImage.single('productImage'), // <--- THE FIX IS HERE
-    productController.addProduct
-);
+router.post('/', protect, authorize('admin'), uploadProductImage.single('productImage'), productController.addProduct);
 
 // GET all products for management [Admin Only]
-// GET /api/products/
-router.get(
-    '/',
-    protect,
-    authorize('admin'),
-    productController.getAllProducts
-);
+router.get('/', protect, authorize('admin'), productController.getAllProducts);
 
 // PUT (update) a product [Admin Only]
-// PUT /api/products/:productId
-router.put(
-    '/:productId',
-    protect,
-    authorize('admin'),
-    // Note: If you want to allow image updates, you'd add multer here too.
-    // For now, it assumes updates are JSON-only.
-    productController.updateProduct
-);
+router.put('/:productId', protect, authorize('admin'), productController.updateProduct);
 
 // DELETE a product [Admin Only]
-// DELETE /api/products/:productId
-router.delete(
-    '/:productId',
-    protect,
-    authorize('admin'),
-    productController.deleteProduct
-);
-
-
-// --- VENDOR-FACING ROUTE ---
-
-// GET available products [Any Authenticated User, e.g., Vendor]
-// GET /api/products/available
-router.get(
-    '/available',
-    protect, // Only requires a user to be logged in
-    productController.getAvailableProducts
-);
-
-router.get('/stats/available-count', protect, productController.getAvailableProductCount);
-
-
-=======
-const express = require('express');
-const router = express.Router();
-const multer = require('multer');
-const productController = require('../controllers/productController');
-const { protect, authorize } = require('../middleware/authMiddleware');
-
-// Use memoryStorage for R2 upload.
-const upload = multer({ storage: multer.memoryStorage() });
-
-// --- Admin Routes ---
-router.get('/stats/dashboard', protect, authorize('admin'), productController.getProductStats);
-router.post('/', protect, authorize('admin'), upload.single('productImage'), productController.addProduct);
-router.get('/', protect, authorize('admin'), productController.getAllProducts);
-router.put('/:productId', protect, authorize('admin'), productController.updateProduct);
 router.delete('/:productId', protect, authorize('admin'), productController.deleteProduct);
 
-// --- Vendor-Facing Routes ---
+
+// --- VENDOR-FACING ROUTES (Unchanged) ---
+
+// GET available products for any authenticated user
 router.get('/available', protect, productController.getAvailableProducts);
+
+// GET count of available products
 router.get('/stats/available-count', protect, productController.getAvailableProductCount);
 
->>>>>>> d39126c (wallet update)
+
 module.exports = router;
