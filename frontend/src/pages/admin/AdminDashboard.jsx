@@ -9,6 +9,7 @@ import ResumeStatsSection from '../../components/dashboard/ResumeStatsSection';
 import TradingStatsSection from '../../components/dashboard/TradingStatsSection';
 import AnalyticsSection from '../../components/dashboard/AnalyticsSection';
 import AllVendorsPage from '../vendor/AllVendorsPage';
+import ThemeToggle from '../../components/ThemeToggle';
 
 const AdminDashboard = ({ url }) => {
     const { token } = useAuth();

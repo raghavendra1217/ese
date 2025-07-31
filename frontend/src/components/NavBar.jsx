@@ -3,6 +3,8 @@ import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import { VStack, Button, IconButton, Spacer, Tooltip, Box, Divider } from '@chakra-ui/react';
 import { SunIcon, MoonIcon } from '@chakra-ui/icons';
 import { useAuth } from '../AppContext';
+import ThemeToggle from './ThemeToggle';
+
 import {
     FaUserShield, FaCheckDouble, FaBoxOpen, FaStore, FaUserTie,
     FaSignInAlt, FaUserPlus, FaPowerOff
@@ -64,6 +66,7 @@ const NavBar = () => {
 
 
   return (
+    
     <VStack
       as="nav"
       h="100vh"
@@ -118,17 +121,11 @@ const NavBar = () => {
 
       {/* Color Mode Toggle - Kept for utility */}
       <Tooltip label="Toggle Theme" placement="right" hasArrow>
-          <IconButton
-            aria-label="Toggle color mode"
-            icon={location.pathname.startsWith('/admin') ? <SunIcon /> : <MoonIcon />}
-            onClick={() => {}} // Placeholder: You might want to connect this to a global state
-            variant="ghost"
-            color="gray.400"
-            w="full"
-            py={6}
-            _hover={{ bg: 'gray.700', color: 'white' }}
-          />
-      </Tooltip>
+       <Box w="full">
+     <ThemeToggle />
+  </Box>
+</Tooltip>
+
     </VStack>
   );
 };

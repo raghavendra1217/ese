@@ -1,5 +1,7 @@
+// src/App.jsx
+
 import React from 'react';
-import { ChakraProvider } from '@chakra-ui/react';
+import { ChakraProvider, ColorModeScript } from '@chakra-ui/react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import { AppProvider } from './AppContext';
@@ -26,12 +28,14 @@ import WalletPage from './pages/WalletPage';
 import AllVendorsPage from './pages/vendor/AllVendorsPage';
 import ManageWalletApprovalsPage from './pages/admin/ManageWalletApprovalsPage';
 
-
 const url = "";
 
 function App() {
   return (
     <ChakraProvider theme={theme}>
+      {/* 🌙 Ensure color mode is respected and persisted */}
+      <ColorModeScript initialColorMode={theme.config.initialColorMode} />
+      
       <AppProvider>
         <BrowserRouter>
           <Routes>
@@ -52,17 +56,17 @@ function App() {
               <Route path="/admin/manage-products" element={<ManageProductsPage url={url} />} />
               <Route path="/admin/manage-trading-approvals" element={<ManageTradingApprovalsPage url={url} />} />
               <Route path="/admin/all-vendors" element={<AllVendorsPage url={url} />} />
-              
+              <Route path="/admin/wallet-approvals" element={<ManageWalletApprovalsPage url={url} />} />
+
               {/* Vendor Routes */}
               <Route path="/vendor/dashboard" element={<VendorDashboard url={url} />} />
               <Route path="/vendor/products" element={<BuyProduct url={url} />} />
               <Route path="/vendor/wallet" element={<WalletPage url={url} />} />
-
-
-<Route path="/admin/wallet-approvals" element={<ManageWalletApprovalsPage url={url} />} />
-              <Route path="/employee/dashboard" element={<EmployeeDashboard url={url} />} />
               <Route path="/vendor/purchase-history" element={<PurchaseHistoryPage url={url} />} />
               <Route path="/product-trading" element={<ProductTradingPage url={url} />} />
+
+              {/* Employee */}
+              <Route path="/employee/dashboard" element={<EmployeeDashboard url={url} />} />
             </Route>
 
             {/* --- Fallback Route --- */}
