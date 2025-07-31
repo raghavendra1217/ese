@@ -35,8 +35,11 @@ exports.getVendorDashboardStats = async (req, res) => {
             // Query 3: Get trading-related stats with your specific logic
             db.query(`
                 SELECT 
-                    COUNT(*) FILTER (WHERE is_approved = 'approved') as "approvedPurchasesCount",
-                    COALESCE(SUM(total_amount_paid) FILTER (WHERE is_approved = 'approved'), 0) as "approvedPurchasesValue",
+        
+                    COUNT(*) FILTER (WHERE LOWER(is_approved) = 'approved') as "approvedPurchasesCount",
+                    COALESCE(SUM(total_amount_paid) FILTER (WHERE LOWER(is_approved) = 'approved'), 0) as "approvedPurchasesValue",
+
+
                     COUNT(*) FILTER (WHERE is_approved = 'pending' AND payment_url IS NOT NULL) as "pendingPurchasesCount"
                 FROM trading WHERE vendor_id = $1
             `, [vendorId]),

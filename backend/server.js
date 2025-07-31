@@ -23,7 +23,7 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5000',
   'http://localhost:10000',
-  'https://1f38f451dfd8.ngrok-free.app',
+  'https://81b81f02a64e.ngrok-free.app',
   'https://esepapertrading.vercel.app',
   'https://esepapertrading.onrender.com',
 ];

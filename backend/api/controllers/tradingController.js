@@ -313,6 +313,8 @@ const submitProof = async (req, res) => {
 //     }
 // };
 
+
+
 const sellProduct = async (req, res) => {
     const vendorId = req.user.user_id;
     const { trade_id } = req.body; 

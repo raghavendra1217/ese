@@ -32,4 +32,5 @@ router.get('/rejected', protect, tradingController.getRejectedTrades);
 router.get('/history', protect, tradingController.getPurchaseHistory);
 
 
+
 module.exports = router;

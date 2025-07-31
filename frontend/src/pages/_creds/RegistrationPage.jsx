@@ -4,9 +4,10 @@ import {
   useColorModeValue, Center, Divider, Textarea, FormHelperText,
   useToast
 } from '@chakra-ui/react';
-import { useNavigate } from 'react-router-dom';
+// 1. Import 'useSearchParams' to read URL query parameters
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
-// --- Validation Helper Functions (Unchanged) ---
+// --- Validation Helper Functions ---
 const validatePhoneNumber = (phone) => /^\d{10}$/.test(phone);
 const validateAadharNumber = (aadhar) => /^\d{12}$/.test(aadhar);
 const validatePanCardNumber = (pan) => /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan);
@@ -16,7 +17,9 @@ const RegistrationPage = ({ url }) => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
-  // --- UPDATED: 'referralId' added to the initial state ---
+  // 2. Initialize the hook to get URL search parameters
+  const [searchParams] = useSearchParams();
+
   const initialFormData = {
     email: '',
     vendorName: '',
@@ -27,7 +30,7 @@ const RegistrationPage = ({ url }) => {
     accountNumber: '',
     ifscCode: '',
     address: '',
-    referralId: '', // <-- New optional field
+    referralId: '', // This will be auto-filled if present in the URL
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -38,12 +41,19 @@ const RegistrationPage = ({ url }) => {
   const cardBg = useColorModeValue('white', 'gray.800');
   const cardBorder = useColorModeValue('gray.200', 'gray.700');
 
+  // 3. This useEffect runs once to check the URL and auto-fill the form
   useEffect(() => {
+    // Get the value of the 'ref' parameter from the URL (e.g., /register?ref=v_001)
+    const referralCode = searchParams.get('ref');
+    if (referralCode) {
+      // If a code exists, update the form state with it
+      setFormData(prevData => ({ ...prevData, referralId: referralCode }));
+    }
+    // Always clear previous registration attempts from session storage
     sessionStorage.removeItem('registrationData');
-  }, []);
+  }, [searchParams]); // Dependency array ensures this runs if the URL query changes
 
   const handleInputChange = (e) => {
-    // This function handles the new field automatically
     const { id, value } = e.target;
     const finalValue = id === 'panCardNumber' ? value.toUpperCase() : value;
     setFormData({ ...formData, [id]: finalValue });
@@ -80,9 +90,7 @@ const RegistrationPage = ({ url }) => {
     }
 
     setIsLoading(true);
-
     const uploadData = new FormData();
-    // This loop correctly includes the new 'referralId' field if it has a value
     for (const key in formData) {
       uploadData.append(key, formData[key]);
     }
@@ -95,7 +103,6 @@ const RegistrationPage = ({ url }) => {
         method: 'POST',
         body: uploadData,
       });
-
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.message || 'Registration failed. Please try again.');
@@ -124,12 +131,14 @@ const RegistrationPage = ({ url }) => {
     }
   };
 
-  // --- UPDATED: Exclude optional 'referralId' from form validity check ---
   const requiredFields = { ...formData };
-  delete requiredFields.referralId; // Remove optional field before checking
+  delete requiredFields.referralId; 
   const isFormValid = !Object.values(requiredFields).some(val => val === '') && 
-                      passportPhoto !== null && // Also ensure a photo is selected
+                      passportPhoto !== null &&
                       !Object.values(formErrors).some(err => err !== '');
+
+  // 4. A clear boolean to check if the field should be locked
+  const isReferralFromLink = !!searchParams.get('ref');
 
   return (
     <Center minH="100vh" py={10} px={4}>
@@ -158,26 +167,37 @@ const RegistrationPage = ({ url }) => {
               <FormControl isRequired isInvalid={!!formErrors.phoneNumber}>
                 <FormLabel htmlFor="phoneNumber">Phone Number</FormLabel>
                 <Input id="phoneNumber" type="tel" value={formData.phoneNumber} onChange={handleInputChange} maxLength="10"/>
-                {formErrors.phoneNumber ? ( <FormHelperText color="red.500">{formErrors.phoneNumber}</FormHelperText> ) : ( <FormHelperText>Enter a 10-digit mobile number.</FormHelperText> )}
+                <FormHelperText>{formErrors.phoneNumber || 'Enter a 10-digit mobile number.'}</FormHelperText>
               </FormControl>
 
               <FormControl isRequired isInvalid={!!formErrors.aadharNumber}>
                 <FormLabel htmlFor="aadharNumber">Aadhar Number</FormLabel>
                 <Input id="aadharNumber" value={formData.aadharNumber} onChange={handleInputChange} maxLength="12" />
-                {formErrors.aadharNumber ? ( <FormHelperText color="red.500">{formErrors.aadharNumber}</FormHelperText> ) : ( <FormHelperText>Enter your 12-digit Aadhar number without spaces.</FormHelperText> )}
+                <FormHelperText>{formErrors.aadharNumber || 'Enter your 12-digit Aadhar number without spaces.'}</FormHelperText>
               </FormControl>
 
               <FormControl isRequired isInvalid={!!formErrors.panCardNumber}>
                 <FormLabel htmlFor="panCardNumber">PAN Card Number</FormLabel>
                 <Input id="panCardNumber" value={formData.panCardNumber} onChange={handleInputChange} maxLength="10"/>
-                {formErrors.panCardNumber ? ( <FormHelperText color="red.500">{formErrors.panCardNumber}</FormHelperText> ) : ( <FormHelperText>Format: ABCDE1234F</FormHelperText> )}
+                <FormHelperText>{formErrors.panCardNumber || 'Format: ABCDE1234F'}</FormHelperText>
               </FormControl>
-
-              {/* --- NEW FIELD: Referral ID (Optional) --- */}
+              
+              {/* 5. The Referral ID field with its conditional read-only logic */}
               <FormControl>
                 <FormLabel htmlFor="referralId">Referral ID (Optional)</FormLabel>
-                <Input id="referralId" value={formData.referralId} onChange={handleInputChange} placeholder="e.g., v_001"/>
-                <FormHelperText>If another vendor referred you, enter their ID here.</FormHelperText>
+                <Input
+                  id="referralId"
+                  value={formData.referralId}
+                  onChange={handleInputChange}
+                  placeholder="e.g., v_001"
+                  isReadOnly={isReferralFromLink}
+                  _readOnly={{ bg: useColorModeValue('gray.100', 'gray.600'), cursor: 'not-allowed' }}
+                />
+                <FormHelperText>
+                  {isReferralFromLink 
+                    ? "Referral ID applied from link." 
+                    : "If a vendor referred you, enter their ID here."}
+                </FormHelperText>
               </FormControl>
 
               <Divider my={4} />
