@@ -45,7 +45,7 @@ const VendorApprovalCard = ({ vendor, onApprove, onReject }) => {
                     <Button size="sm" onClick={() => viewImage(vendor.payment_screenshot_url)} isDisabled={!vendor.payment_screenshot_url}>View Payment SS</Button>
                 </SimpleGrid>
                 <SimpleGrid columns={2} spacing={2} pt={2}>
-                    <Button colorScheme="red" onClick={() => onReject(vendor.id)}>Reject</Button>
+                    <Button colorScheme="red" onClick={() => onReject(vendor.id)}>Mark as Rejected</Button>
                     <Button colorScheme="teal" onClick={() => onApprove(vendor.id)}>Approve</Button>
                 </SimpleGrid>
             </VStack>
@@ -116,19 +116,19 @@ const ManageVendorApprovalsPage = ({ url }) => {
 
     // Handler for Rejecting (This part is correct and needs no changes)
     const handleRejectVendor = async (vendorId) => {
-        if (!window.confirm('Are you sure you want to permanently reject and delete this vendor? This action cannot be undone.')) {
+        if (!window.confirm('Are you sure you want to reject this vendor? They will not be deleted, but marked as rejected.')) {
             return;
         }
 
         try {
             const response = await fetch(`${url}/api/admin/reject-vendor/${vendorId}`, {
-                method: 'DELETE',
+                method: 'PUT',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Failed to reject vendor.');
             
-            toast({ title: 'Success', description: 'Vendor has been rejected and deleted.', status: 'success', duration: 3000 });
+            toast({ title: 'Success', description: 'Vendor has been rejected.', status: 'success', duration: 3000 });
             setVendors(current => current.filter(v => v.id !== vendorId));
         } catch (error) {
             toast({ title: 'Error', description: error.message, status: 'error', duration: 5000 });

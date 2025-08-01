@@ -24,7 +24,6 @@ const LoginPage = ({ url }) => {
   const navigate = useNavigate();
   const toast = useToast();
 
-  
 
   const [step, setStep] = useState('email');
   const [isLoading, setIsLoading] = useState(false);
@@ -193,15 +192,17 @@ const LoginPage = ({ url }) => {
   };
 
   return (
-    <Center py={8}>
+      <Center py={{ base: 6, sm: 8 }} minH="100vh" overflowX="hidden">
       <Box
-        p={8}
+        p={{ base: 4, md: 8 }}
         borderWidth={1}
         borderRadius="lg"
         boxShadow="lg"
         bg={cardBg}
         w={{ base: '90%', sm: '400px' }}
+        maxW="95vw"
       >
+
         <VStack spacing={6}>
           <Heading size="lg" color="blue.600">
             Sign In
@@ -212,6 +213,7 @@ const LoginPage = ({ url }) => {
             <HStack>
               <Input
                 type="email"
+                width="100%"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
@@ -286,7 +288,12 @@ const LoginPage = ({ url }) => {
                 />
               </FormControl>
               <HStack width="full" justify="flex-end">
-                <Link color="blue.500" fontSize="sm" onClick={() => alert('Forgot Password flow initiated!')}>
+                <Link
+                  color="blue.500"
+                  fontSize="sm"
+                  as="button"
+                  onClick={() => navigate(`/forgot-password?email=${encodeURIComponent(email)}`)}
+                >
                   Forgot Password?
                 </Link>
               </HStack>

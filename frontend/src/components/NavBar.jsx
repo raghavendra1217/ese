@@ -33,10 +33,15 @@ const SidebarIcon = ({ icon, label, to = "#", onClick, active = false, colorSche
 );
 
 
-const NavBar = () => {
+const NavBar = ({ variant = 'static' }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // This variable tells the component how to display itself
+const displayStyles = variant === 'static' 
+    ? { base: 'none', lg: 'flex' } // On desktop: hide on mobile, show on large screens
+    : { base: 'flex' };             // In drawer: always show
 
   const handleLogout = () => {
     logout();
@@ -64,28 +69,29 @@ const NavBar = () => {
     { icon: <FaUserPlus size={22} />, label: "Register", to: "/register", colorScheme: 'teal', activePaths: ['/register', '/payment'] }
   ];
 
-
   return (
-    
-    <VStack
-      as="nav"
-      h="100vh"
-      w="80px"
-      position="fixed"
-      left={0}
-      top={0}
-      bg="gray.900" // Using fixed dark theme for consistency
-      boxShadow="md"
-      spacing={2} // Reduced spacing for a tighter look
-      py={6}
-      zIndex={10}
+    <Box
+        as="nav"
+        pos="fixed"
+        top="0"
+        left="0"
+        zIndex="sticky"
+        h="full"
+        w="80px"
+        bg="gray.900"
+        display={displayStyles} // This applies the responsive style
     >
-      {/* Logo/Home Button */}
-      <Tooltip label="Home" placement="right" hasArrow>
+        <VStack
+            h="full" // Changed from 100vh
+            w="full" // Changed from 80px
+            boxShadow="md"
+            spacing={2}
+            py={6}
+            zIndex={10}
+        >
+          <Tooltip label="Home" placement="right" hasArrow>
         <Box as={RouterLink} to="/" boxSize="40px" bg="teal.400" borderRadius="md" cursor="pointer" mb={4} _hover={{ opacity: 0.9 }}/>
       </Tooltip>
-      
-      {/* Role-based navigation */}
       {user ? (
         <>
           {user.role === 'admin' && adminLinks.map(link => (
@@ -99,9 +105,7 @@ const NavBar = () => {
           ))}
           
           <Spacer />
-
-          {/* Logout Button */}
-          <SidebarIcon icon={<FaPowerOff />} label="Logout" onClick={handleLogout} colorScheme="red" />
+             <SidebarIcon icon={<FaPowerOff />} label="Logout" onClick={handleLogout} colorScheme="red" />
         </>
       ) : (
         <>
@@ -115,19 +119,21 @@ const NavBar = () => {
           ))}
         </>
       )}
+      <Spacer />
+       <Divider borderColor="gray.700" />
+
+       <Tooltip label="Toggle Theme" placement="right" hasArrow>
+        <Box w="full">
+      <ThemeToggle />
+   </Box>
+ </Tooltip>
+      
 
       <Spacer />
-      <Divider borderColor="gray.700" />
+            
+        </VStack>
+    </Box>
+);
 
-      {/* Color Mode Toggle - Kept for utility */}
-      <Tooltip label="Toggle Theme" placement="right" hasArrow>
-       <Box w="full">
-     <ThemeToggle />
-  </Box>
-</Tooltip>
-
-    </VStack>
-  );
 };
-
 export default NavBar;

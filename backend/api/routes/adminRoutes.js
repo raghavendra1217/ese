@@ -13,7 +13,8 @@ router.get('/vendors/recent', protect, authorize('admin'), adminController.getRe
 router.get('/vendors/all', protect, authorize('admin'), adminController.getAllVendors);
 router.get('/pending-vendors', protect, authorize('admin'), adminController.getPendingVendors);
 router.put('/approve-vendor/:vendorId', protect, authorize('admin'), adminController.approveVendor);
-router.delete('/reject-vendor/:vendorId', protect, authorize('admin'), adminController.rejectVendor);
+router.put('/reject-vendor/:vendorId', protect, authorize('admin'), adminController.rejectVendor);
+router.get('/transactions/recent', protect, authorize('admin'), adminController.getRecentTransactions);
 
 
 // =======================================================
@@ -40,5 +41,9 @@ router.post('/trades/review', protect, authorize('admin'), adminController.revie
 router.get('/pending-wallet-transactions', protect, authorize('admin'), adminController.getPendingWalletTransactions);
 router.post('/review-wallet-transaction', protect, authorize('admin'), adminController.reviewWalletTransaction);
 
+router.get('/wallets-with-percentages', protect, authorize('admin'), adminController.getWalletsWithPercentages);
+
+// POST /api/admin/update-percentage - Updates the percentage for a specific user
+router.post('/update-percentage', protect, authorize('admin'), adminController.updateUserPercentage)
 
 module.exports = router;

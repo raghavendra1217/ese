@@ -23,7 +23,7 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5000',
   'http://localhost:10000',
-  'https://81b81f02a64e.ngrok-free.app',
+  'https://2df35b2f33ff.ngrok-free.app',
   'https://esepapertrading.vercel.app',
   'https://esepapertrading.onrender.com',
 ];
@@ -59,6 +59,8 @@ app.use('/api/vendor', vendorRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/trading', tradingRoutes);
 app.use('/api/wallet', walletRoutes);
+app.use('/api/auth', require('./api/routes/authRoutes')); // Reuse authRoutes for OTP
+
 
 // // --- Serve Uploaded Product Images ---
 // app.use('/products', express.static(path.join(__dirname, 'public/products')));

@@ -24,7 +24,11 @@ const AllVendorsPage = ({ url, mode = 'fullpage' }) => {
     // --- STYLING ---
     const cardBg = useColorModeValue('white', 'gray.800');
     const headerColor = useColorModeValue('gray.600', 'gray.400');
+    const hoverBg = useColorModeValue('gray.100', 'gray.600');
+    const boxBg = useColorModeValue('white', 'gray.800');
+
     const dashboardCardBg = useColorModeValue('gray.700', 'gray.800');
+
 
     // --- DATA FETCHING ---
 
@@ -108,7 +112,14 @@ const AllVendorsPage = ({ url, mode = 'fullpage' }) => {
     if (mode === 'dashboard') {
         return (
             <>
-                <Box bg={dashboardCardBg} p={6} borderRadius="lg" mt={8}>
+                <Box
+                bg={boxBg}
+                p={6}
+                borderRadius="lg"
+                mt={8}
+                boxShadow="md"
+                >
+
                     <Flex justify="space-between" align="center" mb={4}>
                         <Heading size="md">Recent Vendors</Heading>
                         <Button onClick={onOpen} size="sm" colorScheme="blue">View All</Button>
@@ -118,7 +129,7 @@ const AllVendorsPage = ({ url, mode = 'fullpage' }) => {
                     : (
                         <VStack spacing={4} align="stretch">
                             {recentVendors.map((vendor) => (
-                                <HStack key={vendor.vendor_id || vendor.email} p={2} borderRadius="md" _hover={{ bg: 'gray.600' }}>
+                                <HStack key={vendor.vendor_id || vendor.email} p={2} borderRadius="md" _hover={{ bg: hoverBg }}>
                                     <Avatar size="sm" src={`${url}${vendor.passport_photo_url}`} name={vendor.vendor_name} />
                                     <Text fontWeight="medium">{vendor.vendor_name}</Text>
                                 </HStack>
@@ -131,9 +142,15 @@ const AllVendorsPage = ({ url, mode = 'fullpage' }) => {
                 <Modal isOpen={isOpen} onClose={onClose} size="4xl" isCentered>
                     <ModalOverlay />
                     <ModalContent bg={dashboardCardBg}>
-                        <ModalHeader>All Registered Vendors ({pageLoading ? '...' : allVendors.length})</ModalHeader>
+                        <ModalHeader>All Registered Vendors ({pageLoading ? '...' : filteredVendors.length})</ModalHeader>
                         <ModalCloseButton />
                         <ModalBody>
+                            <Input
+                                placeholder="Search by name or email..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                mb={4}
+                            />
                             {pageLoading ? (<Center h="400px"><Spinner size="xl" /></Center>) 
                             : (
                                 <Box maxH="60vh" overflowY="auto">
@@ -185,13 +202,13 @@ const AllVendorsPage = ({ url, mode = 'fullpage' }) => {
                     )}
                 </Flex>
                 <Box bg={cardBg} borderRadius="lg" p={6} boxShadow="base">
-                    <Input
-                        placeholder="Search by name or email..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        mb={6}
-                    />
-                    {pageLoading ? ( <Center h="200px"><Spinner size="xl" /></Center> ) 
+                   <Input
+                                placeholder="Search by name or email..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                mb={4}
+                            />
+    {pageLoading ? (<Center h="400px"><Spinner size="xl" /></Center>) 
                     : error ? ( <Center h="200px"><Text color="red.500">Error: {error}</Text></Center> ) 
                     : (
                         <TableContainer>

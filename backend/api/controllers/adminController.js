@@ -1,9 +1,36 @@
 // backend/api/controllers/adminController.js
 
 const db = require('../config/database');
-
+const { execFile } = require('child_process');
+const path = require('path');
 // --- ADDED: New functions from incoming change ---
 // These are new features and do not conflict with your existing code.
+
+const getRecentTransactions = async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                trans_id, 
+                user_id, 
+                transaction_type, 
+                balance_after_transaction,
+                amount,
+                created_at 
+            FROM 
+                transaction 
+            ORDER BY 
+                created_at DESC 
+            LIMIT 10;
+        `;
+        const { rows } = await db.query(query);
+        res.status(200).json(rows);
+    } catch (error) {
+        console.error('❌ Error fetching recent transactions:', error);
+        res.status(500).json({ message: 'Failed to fetch recent transactions.' });
+    }
+};
+
+
 const getPendingWalletTransactions = async (req, res) => {
     const client = await db.connect();
     try {
@@ -147,21 +174,54 @@ const approveVendor = async (req, res) => {
 
 // --- RESOLVED: Kept your existing rejectVendor function ---
 // This preserves your feature of deleting from the local database without cloud logic.
+
 const rejectVendor = async (req, res) => {
     const { vendorId } = req.params;
     if (!vendorId) {
         return res.status(400).json({ message: 'Vendor ID is required.' });
     }
+
     const client = await db.connect();
+
     try {
         await client.query('BEGIN');
-        const loginDeleteResult = await client.query(`DELETE FROM login WHERE user_id = $1 AND role = 'vendor' AND is_approved = FALSE`, [vendorId]);
-        if (loginDeleteResult.rowCount === 0) {
-            throw new Error('No pending vendor found with this ID to reject. They may have been approved or already rejected.');
+
+        // Fetch vendor email and name
+        const vendorRes = await client.query(
+            'SELECT vendor_name, email FROM vendors WHERE id = $1',
+            [vendorId]
+        );
+
+        if (vendorRes.rows.length === 0) {
+            throw new Error('Vendor not found.');
         }
-        await client.query(`DELETE FROM vendors WHERE id = $1`, [vendorId]);
+
+        const { vendor_name, email } = vendorRes.rows[0];
+
+        // ✅ Update status only (DO NOT delete)
+        const loginUpdateResult = await client.query(
+            `UPDATE login SET is_approved = FALSE, status = 'rejected' WHERE user_id = $1 AND role = 'vendor'`,
+            [vendorId]
+        );
+
+        if (loginUpdateResult.rowCount === 0) {
+            throw new Error('Vendor login not found or already rejected.');
+        }
+
         await client.query('COMMIT');
-        res.status(200).json({ message: 'Vendor rejected and data deleted successfully.' });
+
+        // ✅ Send rejection email
+        const pythonPath = path.join(__dirname, '..', 'utils', 'sendRejectionEmail.py');
+        execFile('python3', [pythonPath, email, vendor_name], (error, stdout, stderr) => {
+            if (error) {
+                console.error(`❌ Failed to send rejection email: ${error.message}`);
+            } else {
+                console.log(`📧 Rejection email sent: ${stdout}`);
+            }
+        });
+
+        res.status(200).json({ message: 'Vendor marked as rejected. Email sent.' });
+
     } catch (error) {
         await client.query('ROLLBACK');
         console.error(`❌ Error rejecting vendor ${vendorId}:`, error);
@@ -269,6 +329,76 @@ const getAdminDashboardStats = async (req, res) => {
 };
 
 
+const getWalletsWithPercentages = async (req, res) => {
+    try {
+        // Join wallet with vendors to get names, and only select users who have a wallet.
+        // The subquery gets the most recent percentage for each user.
+        const query = `
+            SELECT
+                w.id AS user_id,
+                v.vendor_name AS name,
+                (
+                    SELECT p ->> 'percentage'
+                    FROM jsonb_array_elements(w.percentage) AS p
+                    ORDER BY (p ->> 'updated_date')::timestamptz DESC
+                    LIMIT 1
+                ) AS current_percentage
+            FROM wallet w
+            JOIN vendors v ON w.id = v.id
+            ORDER BY v.vendor_name;
+        `;
+        
+        const result = await db.query(query);
+        res.status(200).json(result.rows);
+
+    } catch (error) {
+        console.error('❌ Error fetching wallets with percentages:', error);
+        res.status(500).json({ message: 'Server error while fetching wallet data.' });
+    }
+};
+
+const updateUserPercentage = async (req, res) => {
+    const { userId, newPercentage } = req.body;
+
+    if (!userId || newPercentage === undefined) {
+        return res.status(400).json({ message: 'User ID and a new percentage are required.' });
+    }
+
+    const percentageValue = parseFloat(newPercentage);
+    if (isNaN(percentageValue) || percentageValue < 0) {
+        return res.status(400).json({ message: 'A valid, non-negative percentage is required.' });
+    }
+
+    try {
+        // Create the new JSON object to append
+        const newPercentageEntry = {
+            percentage: percentageValue,
+            updated_date: new Date().toISOString()
+        };
+
+        // Append the new entry to the 'percentage' JSONB array in the wallet table
+        // COALESCE ensures that if the 'percentage' column is NULL, it's treated as an empty array.
+        const result = await db.query(
+            `UPDATE wallet 
+             SET percentage = COALESCE(percentage, '[]'::jsonb) || $1::jsonb 
+             WHERE id = $2`,
+            [JSON.stringify(newPercentageEntry), userId]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'User or wallet not found.' });
+        }
+
+        res.status(200).json({ message: `Successfully updated percentage for user ${userId}.` });
+
+    } catch (error) {
+        console.error(`❌ Error updating percentage for user ${userId}:`, error);
+        res.status(500).json({ message: 'Server error while updating percentage.' });
+    }
+};
+
+
+
 // --- RESOLVED: Merged all exports from both versions ---
 module.exports = {
     getPendingVendors,
@@ -282,4 +412,7 @@ module.exports = {
     getRecentVendors,
     getPendingWalletTransactions,
     reviewWalletTransaction,
+    getRecentTransactions,
+    getWalletsWithPercentages,
+    updateUserPercentage,
 };

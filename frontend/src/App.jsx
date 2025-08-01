@@ -27,6 +27,7 @@ import ProductTradingPage from './pages/vendor/ProductTradingPage';
 import WalletPage from './pages/WalletPage';
 import AllVendorsPage from './pages/vendor/AllVendorsPage';
 import ManageWalletApprovalsPage from './pages/admin/ManageWalletApprovalsPage';
+import ForgotPassword from './pages/ForgotPassword';
 
 const url = "";
 
@@ -45,6 +46,7 @@ function App() {
                 <Route path="/login" element={<LoginPage url={url} />} />
                 <Route path="/register" element={<RegistrationPage url={url} />} />
                 <Route path="/payment" element={<PaymentPage url={url} />} />
+                <Route path="/forgot-password" element={<ForgotPassword url={url} />} />
               </Route>
             </Route>
 

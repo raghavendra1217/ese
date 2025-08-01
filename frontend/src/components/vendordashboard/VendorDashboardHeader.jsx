@@ -41,7 +41,7 @@ const AddMemberModal = ({ isOpen, onClose, referralLink, onRegisterAndLogout }) 
                     <Button colorScheme="gray" mr={3} onClick={onClose}>Cancel</Button>
                     {/* This button now triggers the logout and redirect */}
                     <Button colorScheme="blue" onClick={onRegisterAndLogout}>
-                        Register & Logout
+                        Logout & Register
                     </Button>
                 </ModalFooter>
             </ModalContent>

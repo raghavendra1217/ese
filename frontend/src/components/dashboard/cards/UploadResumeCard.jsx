@@ -38,14 +38,14 @@ const UploadResumeCard = ({ count, onUploadSuccess, url }) => {
 
     return (
         <Flex bg={cardBg} p={4} borderRadius="lg" boxShadow="sm" direction="column" justify="space-between" minH="130px">
-            <Box>
+            {/* <Box>
                 <Text fontSize="sm" color="gray.500">Uploaded Resumes</Text>
                 <Heading size="md" color={valueColor}>{count.toLocaleString()}</Heading>
             </Box>
             <Input type="file" multiple ref={fileInputRef} onChange={handleFileUpload} display="none" />
             <Button colorScheme="green" w="full" mt={2} onClick={triggerFileSelect} isLoading={isLoading}>
                 Upload Resumes
-            </Button>
+            </Button> */}
         </Flex>
     );
 };

@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 
 const authController = require('../controllers/authController');
+const ForgotPasswdController = require('../controllers/ForgotPasswdController');
 
 // --- RESOLVED: Kept your existing Multer feature for registration uploads ---
 // This preserves the logic of creating directories and generating sequential filenames
@@ -59,5 +60,8 @@ router.post('/check-email', authController.checkUserStatus);
 router.post('/set-password', authController.setPasswordAndLogin);
 router.post('/login', authController.loginUser);
 
+router.post('/request-otp', ForgotPasswdController.requestOtp);
+router.post('/verify-otp', ForgotPasswdController.verifyOtp);
+router.post('/reset-password', ForgotPasswdController.resetPassword);
 
 module.exports = router;

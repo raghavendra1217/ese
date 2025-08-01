@@ -14,17 +14,15 @@ const TradingStatsSection = ({ stats }) => {
         <Box as="section" mb={8}>
             <Flex justify="space-between" align="center" mb={4}>
                 <Heading as="h2" size="lg" color={secondaryTextColor}>TRADING</Heading>
-                <Flex gap={2}>
+                {/* <Flex gap={2}>
                     <Button variant="outline">Manage</Button>
                     <Button colorScheme="blue">Add Member</Button>
-                </Flex>
+                </Flex> */}
             </Flex>
             <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={6}>
                 <TradeApprovalStatCard value={stats.pendingTradeApprovals} />
                 <ProductStatCard value={stats.availableProducts} />
-                <StatCard label="Purchased Products" value={stats.purchasedProducts} icon={<BsPersonCheckFill size={24} />} iconBgColor="sky.500" />
-                <StatCard label="Purchased Value" value={stats.purchasedValue} icon={<BsCart3 size={24} />} iconBgColor="green.500" />
-            </Grid>
+                </Grid>
         </Box>
     );
 };
