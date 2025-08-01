@@ -117,7 +117,7 @@ exports.getVendorDashboardStats = async (req, res) => {
 exports.claimReferral = async (req, res) => {
     const { referralId } = req.body; // The ID of the user being claimed
     const vendorId = req.user.user_id; // The ID of the user who is claiming
-    const referralBonus = 299; // Define the bonus amount
+    const referralBonus = 2999;
 
     if (!referralId) {
         return res.status(400).json({ message: 'Referral ID is required.' });
