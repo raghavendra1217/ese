@@ -114,6 +114,8 @@ exports.getVendorDashboardStats = async (req, res) => {
 //     }
 // };
 
+
+
 exports.claimReferral = async (req, res) => {
     const { referralId } = req.body; // The ID of the user being claimed
     const vendorId = req.user.user_id; // The ID of the user who is claiming
