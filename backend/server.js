@@ -25,7 +25,7 @@ const payslipRoutes = require('./api/routes/payslipRoutes');
 const coordinatorRoutes = require('./api/routes/coordinatorRoutes');
 const { startCompressorMonitoring } = require('./api/utils/statusMonitor');
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 10000;
 const app = express();
 
 

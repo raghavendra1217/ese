@@ -394,11 +394,18 @@ exports.checkUserStatus = async (req, res) => {
             query = 'SELECT * FROM login WHERE email = $1';
             params = [identifier];
         } else {
+            // Support phone number lookup for ALL roles (admin, vendor, coordinator, employee)
             query = `
-                SELECT l.*
-                FROM login l
-                JOIN vendors v ON v.id = l.user_id
-                WHERE v.phone_number = $1
+                SELECT l.* FROM login l
+                WHERE l.user_id IN (
+                    SELECT id FROM vendors WHERE phone_number = $1
+                    UNION
+                    SELECT coordinator_id FROM coordinator WHERE phone_number = $1
+                    UNION
+                    SELECT admin_id FROM admin WHERE phone_number = $1
+                    UNION
+                    SELECT employee_id FROM employee WHERE phone_number = $1
+                )
             `;
             params = [identifier];
         }
@@ -436,11 +443,19 @@ exports.setPasswordAndLogin = async (req, res) => {
             query = 'SELECT * FROM login WHERE email = $1 AND is_approved = TRUE AND password IS NULL';
             params = [identifier];
         } else {
+            // Support phone number lookup for ALL roles (admin, vendor, coordinator, employee)
             query = `
-                SELECT l.*
-                FROM login l
-                JOIN vendors v ON v.id = l.user_id
-                WHERE v.phone_number = $1 AND l.is_approved = TRUE AND l.password IS NULL
+                SELECT l.* FROM login l
+                WHERE l.user_id IN (
+                    SELECT id FROM vendors WHERE phone_number = $1
+                    UNION
+                    SELECT coordinator_id FROM coordinator WHERE phone_number = $1
+                    UNION
+                    SELECT admin_id FROM admin WHERE phone_number = $1
+                    UNION
+                    SELECT employee_id FROM employee WHERE phone_number = $1
+                )
+                AND l.is_approved = TRUE AND l.password IS NULL
             `;
             params = [identifier];
         }
@@ -480,11 +495,18 @@ exports.loginUser = async (req, res) => {
             query = 'SELECT * FROM login WHERE email = $1';
             params = [identifier];
         } else {
+            // Support phone number login for ALL roles (admin, vendor, coordinator, employee)
             query = `
-                SELECT l.*
-                FROM login l
-                JOIN vendors v ON v.id = l.user_id
-                WHERE v.phone_number = $1
+                SELECT l.* FROM login l
+                WHERE l.user_id IN (
+                    SELECT id FROM vendors WHERE phone_number = $1
+                    UNION
+                    SELECT coordinator_id FROM coordinator WHERE phone_number = $1
+                    UNION
+                    SELECT admin_id FROM admin WHERE phone_number = $1
+                    UNION
+                    SELECT employee_id FROM employee WHERE phone_number = $1
+                )
             `;
             params = [identifier];
         }

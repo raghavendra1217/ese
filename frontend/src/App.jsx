@@ -62,7 +62,7 @@ import NotFound from './components/NotFound';
 
 
 
-const url = "http://localhost:5000";
+const url = "";
 
 function App() {
   return (

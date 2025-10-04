@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "Chess Story Backend API and Frontend Server",
+  "description": "Backend API and Frontend Server",
   "main": "server.js",
   "scripts": {
     "start": "nodemon server.js",
