@@ -1,0 +1,35 @@
+{
+  "investor": {
+    "id": "66",
+    "first_name": "Testing",
+    "mobile_number": "123456789",
+    "bank_account_number": "di",
+    "bank_name": "si",
+    "branch_name": "sdi",
+    "ifsc_code": "di",
+    "address": "xdj",
+    "select_plan": "5 lakh",
+    "investment_date": "15-Sept-2025"
+  },
+  "disbursement_schedule": {
+    "disbursement_dates": [
+      "30-Sept-2025",
+      "15-Oct-2025",
+      "30-Oct-2025",
+      "14-Nov-2025",
+      "29-Nov-2025",
+      "14-Dec-2025",
+      "29-Dec-2025",
+      "13-Jan-2026",
+      "28-Jan-2026",
+      "12-Feb-2026",
+      "27-Feb-2026",
+      "14-Mar-2026",
+      "29-Mar-2026",
+      "13-Apr-2026",
+      "28-Apr-2026",
+      "13-May-2026",
+      "14-May-2026"
+    ]
+  }
+}
