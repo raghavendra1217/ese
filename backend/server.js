@@ -52,7 +52,12 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  preflightContinue: false,
+  optionsSuccessStatus: 200
 }));
 
 // --- Middleware ---
@@ -60,11 +65,26 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// --- Handle Preflight OPTIONS Requests ---
+app.options('*', (req, res) => {
+  console.log('🔄 Preflight OPTIONS request:', req.method, req.url);
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.status(200).end();
+});
+
 // --- Log Request Body ---
 app.use((req, res, next) => {
   // Only log API requests, not static files
   if (req.url.startsWith('/api/')) {
     console.log('🌐 API request:', req.method, req.url);
+    console.log('🌐 Origin:', req.headers.origin);
+    console.log('🌐 User-Agent:', req.headers['user-agent']);
+    if (req.method === 'OPTIONS') {
+      console.log('🔄 Preflight request detected');
+    }
   }
   next();
 });
@@ -99,8 +119,21 @@ app.use((error, req, res, next) => {
     code: error.code,
     url: req.url,
     method: req.method,
+    origin: req.headers.origin,
     timestamp: new Date().toISOString()
   });
+  
+  // Handle CORS errors specifically
+  if (error.message === 'Not allowed by CORS') {
+    console.error('🚫 CORS Error - Origin not allowed:', req.headers.origin);
+    return res.status(403).json({
+      message: 'CORS policy violation',
+      error: 'Origin not allowed',
+      origin: req.headers.origin,
+      allowedOrigins: allowedOrigins,
+      timestamp: new Date().toISOString()
+    });
+  }
   
   res.status(500).json({
     message: 'Internal server error occurred',

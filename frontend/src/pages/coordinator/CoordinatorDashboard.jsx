@@ -111,7 +111,7 @@ const CoordinatorDashboard = ({ url }) => {
       });
       
       console.log('🔍 Dashboard Debug - Products Response Status:', productsResponse.status);
-      const productsData = productsResponse.ok ? await productsResponse.json() : { count: 0 };
+      const productsData = productsResponse.ok ? await productsResponse.json() : { availableProducts: 0 };
       console.log('🔍 Dashboard Debug - Products Data:', productsData);
 
       // Fetch real investors count for coordinator
@@ -127,15 +127,33 @@ const CoordinatorDashboard = ({ url }) => {
       });
       
       console.log('🔍 Dashboard Debug - Investors Response Status:', investorsResponse.status);
-      const investorsData = investorsResponse.ok ? await investorsResponse.json() : { total_my_investors: 0 };
+      const investorsResponseData = investorsResponse.ok ? await investorsResponse.json() : { success: false, data: { total_my_investors: 0 } };
+      const investorsData = investorsResponseData.success ? investorsResponseData.data : { total_my_investors: 0 };
+      console.log('🔍 Dashboard Debug - Investors Response Data:', investorsResponseData);
       console.log('🔍 Dashboard Debug - Investors Data:', investorsData);
 
+      // Fetch real wild products count
+      const wildProductsUrl = `${url}/api/wild-products/stats/available-count?_t=${Date.now()}`;
+      console.log('🔍 Dashboard Debug - Fetching Wild Products Count from:', wildProductsUrl);
+      
+      const wildProductsResponse = await fetch(wildProductsUrl, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+      });
+      
+      console.log('🔍 Dashboard Debug - Wild Products Response Status:', wildProductsResponse.status);
+      const wildProductsData = wildProductsResponse.ok ? await wildProductsResponse.json() : { availableWildProducts: 0 };
+      console.log('🔍 Dashboard Debug - Wild Products Data:', wildProductsData);
+
       const realStats = {
-        availableProducts: productsData.count || 0, // Real products count
+        availableProducts: productsData.availableProducts || 0, // Real products count
         totalVendors: myVendorsData.count || 0, // My vendors count
         vendorsLast8Days: myVendorsLast8DaysData.count || 0, // My vendors from last 8 days
         todayVendors: myVendorsTodayData.count || 0, // My vendors from today
-        availableWildProducts: Math.floor(Math.random() * 20) + 10, // Keep dummy for now
+        availableWildProducts: wildProductsData.availableWildProducts || 0, // Real wild products count
         totalInvestors: investorsData.total_my_investors || 0, // Real investors count for coordinator
         quickRegStats: {
           total_registrations: Math.floor(Math.random() * 500) + 200,
@@ -201,7 +219,7 @@ const CoordinatorDashboard = ({ url }) => {
             <Heading as="h2" fontSize="xl" color={headingColor} textAlign="center">
               Dashboard Overview
             </Heading>
-            <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} spacing={6}>
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
              {/* First Box - All Vendors */}
              <Box
                bg={cardBg}
@@ -577,7 +595,7 @@ const CoordinatorDashboard = ({ url }) => {
             <Heading as="h2" fontSize="xl" color={headingColor} textAlign="center">
               Tools & Management
             </Heading>
-            <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} spacing={6}>
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
               {/* Investors Box */}
               <Box
                 bg={cardBg}
@@ -628,10 +646,10 @@ const CoordinatorDashboard = ({ url }) => {
                   </Box>
                   <VStack spacing={2} align="center">
                     <Text fontSize="4xl" fontWeight="bold" color={headingColor} lineHeight="1">
-                      {stats.total_investors || 0}
+                      {stats.totalInvestors || 0}
                     </Text>
                     <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
-                      Investors
+                      My Investors
                     </Text>
                   </VStack>
                   <Button

@@ -1,114 +1,20 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Box, Flex, Heading, Button, IconButton, useToast, Spinner, Center, Table, Thead, Tbody, Tr, Th, Td,
-  Image, Tag, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton,
-  FormControl, FormLabel, Input, Select, NumberInput, NumberInputField, AlertDialog, AlertDialogBody, AlertDialogFooter,
-  AlertDialogHeader, AlertDialogContent, AlertDialogOverlay, Drawer, DrawerOverlay, DrawerContent, Text, useColorModeValue,
-  Stack, Divider,
+  Box, Flex, Heading, IconButton, useToast, Spinner, Center,
+  Image, Tag, useDisclosure, Drawer, DrawerOverlay, DrawerContent, Text, useColorModeValue,
+  Stack, Divider, SimpleGrid,
 } from '@chakra-ui/react';
-import { EditIcon, DeleteIcon, AddIcon, HamburgerIcon } from '@chakra-ui/icons';
+import { HamburgerIcon } from '@chakra-ui/icons';
 import { useAuth } from '../../AppContext';
 import CoordinatorNavBar, { NAV_WIDTH } from '../../components/layout/CoordinatorNavBar';
 
-const ProductModal = ({ isOpen, onClose, onSave, product, isEditing }) => {
-  const initialFormState = {
-    paper_type: '', size: '', gsm: '', price_per_slot: '', selling_price: '',
-    available_stock: ''
-  };
-
-  const [formData, setFormData] = useState(initialFormState);
-  const [imageFile, setImageFile] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      if (isEditing && product) setFormData(product);
-      else setFormData(initialFormState);
-      setImageFile(null);
-    }
-  }, [isOpen, product, isEditing]);
-
-  const handleChange = (e) => { setFormData({ ...formData, [e.target.name]: e.target.value }); };
-  const handleNumberChange = (value, name) => { setFormData({ ...formData, [name]: value }); };
-  const handleFileChange = (e) => { if (e.target.files && e.target.files[0]) setImageFile(e.target.files[0]); };
-
-  const handleSubmit = async (e) => { e.preventDefault(); setIsLoading(true); await onSave(formData, imageFile); setIsLoading(false); };
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered>
-      <ModalOverlay />
-      <ModalContent as="form" onSubmit={handleSubmit}>
-        <ModalHeader fontWeight="bold">{isEditing ? 'Edit Product' : 'Add New Product'}</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody pb={6}>
-          {!isEditing && (
-            <>
-              <FormControl isRequired><FormLabel fontWeight="bold">Paper Type</FormLabel><Input fontWeight="bold" name="paper_type" value={formData.paper_type || ''} onChange={handleChange} /></FormControl>
-              <FormControl mt={4} isRequired><FormLabel fontWeight="bold">Product Image</FormLabel><Input type="file" name="productImage" onChange={handleFileChange} p={1.5} fontWeight="bold" /></FormControl>
-              <FormControl mt={4} isRequired><FormLabel fontWeight="bold">Size</FormLabel><Input fontWeight="bold" name="size" value={formData.size || ''} onChange={handleChange} /></FormControl>
-              <FormControl mt={4} isRequired><FormLabel fontWeight="bold">GSM</FormLabel>
-                <NumberInput value={formData.gsm || ''} onChange={(value) => handleNumberChange(value, 'gsm')}>
-                  <NumberInputField name="gsm" fontWeight="bold" />
-                </NumberInput>
-              </FormControl>
-            </>
-          )}
-          <FormControl mt={4} isRequired><FormLabel fontWeight="bold">Price Per Slot</FormLabel>
-            <NumberInput precision={2} value={formData.price_per_slot || ''} onChange={(value) => handleNumberChange(value, 'price_per_slot')}>
-              <NumberInputField name="price_per_slot" fontWeight="bold" />
-            </NumberInput>
-          </FormControl>
-          <FormControl mt={4} isRequired><FormLabel fontWeight="bold">Selling Price 1 (Primary)</FormLabel>
-            <NumberInput value={formData.selling_price || ''} onChange={(value) => handleNumberChange(value, 'selling_price')} min={0} precision={2} step={0.01}>
-              <NumberInputField name="selling_price" fontWeight="bold" />
-            </NumberInput>
-          </FormControl>
-          <FormControl mt={4}><FormLabel fontWeight="bold">Selling Price 2 (Secondary)</FormLabel>
-            <NumberInput value={formData.selling_price_2 || ''} onChange={(value) => handleNumberChange(value, 'selling_price_2')} min={0} precision={2} step={0.01}>
-              <NumberInputField name="selling_price_2" fontWeight="bold" />
-            </NumberInput>
-          </FormControl>
-          <FormControl mt={4}><FormLabel fontWeight="bold">Selling Price 3 (Tertiary)</FormLabel>
-            <NumberInput value={formData.selling_price_3 || ''} onChange={(value) => handleNumberChange(value, 'selling_price_3')} min={0} precision={2} step={0.01}>
-              <NumberInputField name="selling_price_3" fontWeight="bold" />
-            </NumberInput>
-          </FormControl>
-          <FormControl mt={4} isRequired><FormLabel fontWeight="bold">Stock Status</FormLabel>
-            <Box p={3} bg="gray.50" borderRadius="md" border="1px solid" borderColor="gray.200">
-              <Text fontSize="sm" color="gray.600">
-                Stock status is automatically calculated based on available stock:
-                <br />• 0 stock = Out of Stock
-                <br />• 1-80 stock = Low
-                <br />• 80+ stock = Available
-              </Text>
-            </Box>
-          </FormControl>
-          <FormControl mt={4} isRequired><FormLabel fontWeight="bold">Available Stock</FormLabel>
-            <NumberInput value={formData.available_stock || ''} onChange={(value) => handleNumberChange(value, 'available_stock')}>
-              <NumberInputField name="available_stock" fontWeight="bold" />
-            </NumberInput>
-          </FormControl>
-        </ModalBody>
-        <ModalFooter>
-          <Button fontWeight="bold" colorScheme="blue" mr={3} type="submit" isLoading={isLoading}>Save</Button>
-          <Button fontWeight="bold" onClick={onClose}>Cancel</Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
-  );
-};
 
 const CoordinatorProductsPage = ({ url }) => {
   const { token } = useAuth();
   const toast = useToast();
   const [products, setProducts] = useState([]);
-  const [currentProduct, setCurrentProduct] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const { isOpen, onOpen, onClose } = useDisclosure();
   const drawer = useDisclosure();
-  const [deleteAlert, setDeleteAlert] = useState({ isOpen: false, productId: null });
-  const cancelRef = useRef();
 
   const fetchProducts = useCallback(async () => {
     console.log('🔍 CoordinatorProductsPage - Starting fetchProducts');
@@ -161,125 +67,6 @@ const CoordinatorProductsPage = ({ url }) => {
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-  const handleSave = async (formData, imageFile) => {
-    console.log('🔍 CoordinatorProductsPage - Starting handleSave');
-    console.log('🔍 CoordinatorProductsPage - Form data:', formData);
-    console.log('🔍 CoordinatorProductsPage - Image file:', imageFile);
-    console.log('🔍 CoordinatorProductsPage - Is editing:', isEditing);
-    console.log('🔍 CoordinatorProductsPage - Current product:', currentProduct);
-    
-    const preparedData = {
-      ...formData,
-      gsm: formData.gsm === '' || formData.gsm === null ? null : Number(formData.gsm),
-      price_per_slot: formData.price_per_slot === '' || formData.price_per_slot === null ? null : Number(formData.price_per_slot),
-      selling_price: formData.selling_price === '' || formData.selling_price === null ? null : Number(formData.selling_price),
-      selling_price_2: formData.selling_price_2 === '' || formData.selling_price_2 === null ? null : Number(formData.selling_price_2),
-      selling_price_3: formData.selling_price_3 === '' || formData.selling_price_3 === null ? null : Number(formData.selling_price_3),
-      available_stock: formData.available_stock === '' || formData.available_stock === null ? null : Number(formData.available_stock),
-    };
-
-    console.log('🔍 CoordinatorProductsPage - Prepared data:', preparedData);
-
-    const apiUrl = isEditing ? `${url}/api/products/${currentProduct.product_id}` : `${url}/api/products`;
-    const method = isEditing ? 'PUT' : 'POST';
-    let body;
-    let headers = { 'Authorization': `Bearer ${token}` };
-
-    console.log('🔍 CoordinatorProductsPage - API URL:', apiUrl);
-    console.log('🔍 CoordinatorProductsPage - Method:', method);
-
-    try {
-      if (isEditing) {
-        body = JSON.stringify(preparedData);
-        headers['Content-Type'] = 'application/json';
-        console.log('🔍 CoordinatorProductsPage - Using JSON body for edit');
-      } else {
-        body = new FormData();
-        for (const key in preparedData) {
-          if (preparedData[key] !== null && preparedData[key] !== undefined) body.append(key, preparedData[key]);
-        }
-        if (imageFile) {
-          body.append('productImage', imageFile);
-          console.log('🔍 CoordinatorProductsPage - Added image file to FormData');
-        }
-        console.log('🔍 CoordinatorProductsPage - Using FormData for create');
-      }
-
-      console.log('🔍 CoordinatorProductsPage - Sending request...');
-      const response = await fetch(apiUrl, { method, headers, body });
-      console.log('🔍 CoordinatorProductsPage - Response status:', response.status);
-      console.log('🔍 CoordinatorProductsPage - Response ok:', response.ok);
-      
-      const data = await response.json();
-      console.log('🔍 CoordinatorProductsPage - Response data:', data);
-      
-      if (!response.ok) {
-        console.error('❌ CoordinatorProductsPage - Save failed:', data);
-        throw new Error(data.message || 'Failed to save product');
-      }
-      
-      console.log('✅ CoordinatorProductsPage - Product saved successfully');
-      toast({ title: `Product ${isEditing ? 'updated' : 'added'}`, status: 'success', isClosable: true });
-      onClose();
-      fetchProducts();
-    } catch (error) {
-      console.error('❌ CoordinatorProductsPage - Save error:', error);
-      toast({ title: 'Error saving product', description: error.message, status: 'error', isClosable: true });
-    }
-  };
-
-  const handleDelete = async () => {
-    console.log('🔍 CoordinatorProductsPage - Starting handleDelete');
-    console.log('🔍 CoordinatorProductsPage - Product ID to delete:', deleteAlert.productId);
-    
-    try {
-      const deleteUrl = `${url}/api/products/${deleteAlert.productId}`;
-      console.log('🔍 CoordinatorProductsPage - Delete URL:', deleteUrl);
-      
-      const response = await fetch(deleteUrl, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      console.log('🔍 CoordinatorProductsPage - Delete response status:', response.status);
-      console.log('🔍 CoordinatorProductsPage - Delete response ok:', response.ok);
-      
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        console.error('❌ CoordinatorProductsPage - Delete failed:', data);
-        throw new Error(data.message || 'Failed to delete product');
-      }
-      
-      console.log('✅ CoordinatorProductsPage - Product deleted successfully');
-      toast({ title: 'Product Deleted', status: 'success', isClosable: true });
-      closeDeleteAlert();
-      fetchProducts();
-    } catch (error) {
-      console.error('❌ CoordinatorProductsPage - Delete error:', error);
-      toast({ title: 'Error deleting product', description: error.message, status: 'error', isClosable: true });
-    }
-  };
-
-  const openAddModal = () => { 
-    console.log('🔍 CoordinatorProductsPage - Opening add modal');
-    setCurrentProduct(null); 
-    setIsEditing(false); 
-    onOpen(); 
-  };
-  const openEditModal = (product) => { 
-    console.log('🔍 CoordinatorProductsPage - Opening edit modal for product:', product);
-    setCurrentProduct(product); 
-    setIsEditing(true); 
-    onOpen(); 
-  };
-  const openDeleteAlert = (productId) => { 
-    console.log('🔍 CoordinatorProductsPage - Opening delete alert for product ID:', productId);
-    setDeleteAlert({ isOpen: true, productId }); 
-  };
-  const closeDeleteAlert = () => { 
-    console.log('🔍 CoordinatorProductsPage - Closing delete alert');
-    setDeleteAlert({ isOpen: false, productId: null }); 
-  };
   
   const pageBg = useColorModeValue('gray.50', 'gray.900');
   const headingColor = useColorModeValue('gray.800', 'gray.200');
@@ -303,73 +90,19 @@ const CoordinatorProductsPage = ({ url }) => {
       <Box p={{ base: 4, sm: 6, md: 8 }} ml={{ base: 0, md: NAV_WIDTH }} flex="1">
         <Flex align="center" gap={2} mb={4} display={{ base: 'flex', md: 'none' }}>
           <IconButton aria-label="Open menu" icon={<HamburgerIcon w={5} h={5} />} onClick={drawer.onOpen} size="sm" variant="ghost" />
-          <Heading as="h1" fontSize="lg" color={headingColor} lineHeight="1.2" fontWeight="bold">Manage Products</Heading>
+          <Heading as="h1" fontSize="lg" color={headingColor} lineHeight="1.2" fontWeight="bold">Products</Heading>
         </Flex>
 
         <Flex justify="space-between" align="center" mb={8} display={{ base: 'none', md: 'flex' }}>
-          <Heading fontWeight="bold">Manage Products</Heading>
-          <Button fontWeight="bold" leftIcon={<AddIcon />} colorScheme="teal" onClick={openAddModal}>Add New Product</Button>
+          <Heading fontWeight="bold">Products</Heading>
         </Flex>
-
-        <Box display={{ base: 'block', md: 'none' }} mb={4}>
-          <Button fontWeight="bold" leftIcon={<AddIcon />} colorScheme="teal" onClick={openAddModal} w="full">Add New Product</Button>
-        </Box>
 
         {isLoading ? (
           <Center h="300px"><Spinner /></Center>
         ) : (
           <>
-            {/* Desktop table - Hide table on mobile, show on desktop */}
-            <Box overflowX="auto" display={{ base: 'none', md: 'block' }}>
-              <Table variant="simple" minW="1000px">
-                <Thead>
-                  <Tr>
-                    <Th>Image</Th><Th>ID</Th><Th>Paper Type</Th><Th>GSM</Th>
-                    <Th isNumeric>Price/Slot</Th><Th isNumeric>Selling Price 1</Th><Th isNumeric>Selling Price 2</Th><Th isNumeric>Selling Price 3</Th><Th isNumeric>Profit</Th><Th isNumeric>Stock</Th>
-                    <Th>Status</Th><Th isNumeric>Margin %</Th><Th>Last Updated</Th><Th>Actions</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {products.map(p => {
-                    const pricePerSlot = parseFloat(p.price_per_slot);
-                    const sellingPrice = parseFloat(p.selling_price);
-                    const profit = !isNaN(sellingPrice) && !isNaN(pricePerSlot) ? sellingPrice - pricePerSlot : null;
-                    const marginPercentage = profit !== null && pricePerSlot > 0 ? (profit * 100) / pricePerSlot : null;
-                    const lastUpdatedDate = new Date(p.last_updated);
-                    const displayLastUpdated = p.last_updated && !isNaN(lastUpdatedDate.getTime()) ? lastUpdatedDate.toLocaleString('en-IN') : 'N/A';
-                    
-                    return (
-                      <Tr key={p.product_id}>
-                        <Td><Image src={p.product_image_url} boxSize="50px" objectFit="cover" borderRadius="md" /></Td>
-                        <Td>{p.product_id}</Td>
-                        <Td>{p.paper_type}</Td>
-                        <Td>{p.gsm}</Td>
-                        <Td isNumeric>₹{pricePerSlot.toFixed(2)}</Td>
-                        <Td isNumeric>₹{sellingPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Td>
-                        <Td isNumeric>₹{!isNaN(parseFloat(p.selling_price_2)) ? parseFloat(p.selling_price_2).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : 'N/A'}</Td>
-                        <Td isNumeric>₹{!isNaN(parseFloat(p.selling_price_3)) ? parseFloat(p.selling_price_3).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : 'N/A'}</Td>
-                        <Td isNumeric color={profit > 0 ? 'green.500' : profit < 0 ? 'red.500' : 'inherit'}>
-                           ₹{profit !== null ? profit.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : 'N/A'}
-                        </Td>
-                        <Td isNumeric>{p.available_stock}</Td>
-                        <Td><Tag colorScheme={p.stock_status === 'available' ? 'green' : p.stock_status === 'low' ? 'orange' : 'red'}>{p.stock_status}</Tag></Td>
-                        <Td isNumeric color={marginPercentage > 0 ? 'green.500' : marginPercentage < 0 ? 'red.500' : 'inherit'}>
-                          {marginPercentage !== null ? `${marginPercentage.toFixed(2)}%` : 'N/A'}
-                        </Td>
-                        <Td>{displayLastUpdated}</Td>
-                        <Td>
-                          <IconButton icon={<EditIcon />} aria-label="Edit" mr={2} onClick={() => openEditModal(p)} />
-                          <IconButton icon={<DeleteIcon />} aria-label="Delete" colorScheme="red" onClick={() => openDeleteAlert(p.product_id)} />
-                        </Td>
-                      </Tr>
-                    );
-                  })}
-                </Tbody>
-              </Table>
-            </Box>
-
-            {/* Mobile card layout - Card layout for mobile, hidden on desktop */}
-            <Stack spacing={4} display={{ base: 'block', md: 'none' }}>
+            {/* Grid layout with 3 cards per row */}
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
               {products.map(p => {
                  const pricePerSlot = parseFloat(p.price_per_slot);
                  const sellingPrice = parseFloat(p.selling_price);
@@ -377,15 +110,15 @@ const CoordinatorProductsPage = ({ url }) => {
                  const marginPercentage = profit !== null && pricePerSlot > 0 ? (profit * 100) / pricePerSlot : null;
 
                  return (
-                  <Box key={p.product_id} bg={cardBg} p={4} borderRadius="lg" boxShadow="md">
-                    <Flex gap={4} align="start">
-                      <Image src={p.product_image_url} boxSize="75px" objectFit="cover" borderRadius="md" />
+                  <Box key={p.product_id} bg={cardBg} p={6} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="gray.200">
+                    <Flex gap={4} align="start" mb={4}>
+                      <Image src={p.product_image_url} boxSize="80px" objectFit="cover" borderRadius="md" />
                       <Stack spacing={1} flex="1">
-                        <Heading as="h3" size="sm">{p.paper_type}</Heading>
-                        <Text fontSize="xs" color="gray.500">ID: {p.product_id} | GSM: {p.gsm}</Text>
+                        <Heading as="h3" size="md" fontWeight="bold">{p.paper_type}</Heading>
+                        <Text fontSize="sm" color="gray.500">ID: {p.product_id} | GSM: {p.gsm}</Text>
                         <Tag 
                           size="sm" 
-                          mt={1} 
+                          mt={2} 
                           w="fit-content"
                           colorScheme={p.stock_status === 'available' ? 'green' : p.stock_status === 'low' ? 'orange' : 'red'}>
                             {p.stock_status} ({p.available_stock} in stock)
@@ -393,13 +126,11 @@ const CoordinatorProductsPage = ({ url }) => {
                       </Stack>
                     </Flex>
                     
-                    <Divider my={3} />
+                    <Divider my={4} />
 
-                    <Stack spacing={2.5}>
+                    <Stack spacing={3}>
                        <CardDataRow label="Price/Slot">₹{pricePerSlot.toFixed(2)}</CardDataRow>
-                       <CardDataRow label="Selling Price 1">₹{sellingPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</CardDataRow>
-                       <CardDataRow label="Selling Price 2">₹{!isNaN(parseFloat(p.selling_price_2)) ? parseFloat(p.selling_price_2).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : 'N/A'}</CardDataRow>
-                       <CardDataRow label="Selling Price 3">₹{!isNaN(parseFloat(p.selling_price_3)) ? parseFloat(p.selling_price_3).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : 'N/A'}</CardDataRow>
+                       <CardDataRow label="Selling Price">₹{sellingPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</CardDataRow>
                        <CardDataRow label="Profit">
                          <Text as="span" color={profit > 0 ? 'green.500' : profit < 0 ? 'red.500' : 'inherit'}>
                            ₹{profit !== null ? profit.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : 'N/A'}
@@ -412,37 +143,20 @@ const CoordinatorProductsPage = ({ url }) => {
                        </CardDataRow>
                     </Stack>
 
-                    <Divider my={3} />
+                    <Divider my={4} />
                     
                     <Flex justify="space-between" align="center">
-                        <Text fontSize="xs" color="gray.500">
+                        <Text fontSize="sm" color="gray.500">
                           Updated: {new Date(p.last_updated).toLocaleDateString('en-IN')}
                         </Text>
-                        <Stack direction="row">
-                          <IconButton size="sm" icon={<EditIcon />} aria-label="Edit" onClick={() => openEditModal(p)} />
-                          <IconButton size="sm" icon={<DeleteIcon />} aria-label="Delete" colorScheme="red" onClick={() => openDeleteAlert(p.product_id)} />
-                        </Stack>
                     </Flex>
                   </Box>
                  )
               })}
-            </Stack>
+            </SimpleGrid>
           </>
         )}
 
-        <ProductModal isOpen={isOpen} onClose={onClose} onSave={handleSave} product={currentProduct} isEditing={isEditing} />
-        <AlertDialog isOpen={deleteAlert.isOpen} leastDestructiveRef={cancelRef} onClose={closeDeleteAlert}>
-             <AlertDialogOverlay>
-            <AlertDialogContent>
-              <AlertDialogHeader fontWeight="bold">Delete Product</AlertDialogHeader>
-              <AlertDialogBody fontWeight="bold">Are you sure you want to delete this product? This action cannot be undone.</AlertDialogBody>
-              <AlertDialogFooter>
-                <Button fontWeight="bold" ref={cancelRef} onClick={closeDeleteAlert}>Cancel</Button>
-                <Button fontWeight="bold" colorScheme="red" onClick={handleDelete} ml={3}>Delete</Button>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialogOverlay>
-        </AlertDialog>
       </Box>
     </Flex>
   );

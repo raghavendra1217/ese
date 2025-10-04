@@ -4,7 +4,7 @@ import {
   Image, Tag, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton,
   FormControl, FormLabel, Input, NumberInput, NumberInputField, AlertDialog, AlertDialogBody, AlertDialogFooter,
   AlertDialogHeader, AlertDialogContent, AlertDialogOverlay, useColorModeValue, Text, Badge, HStack,
-  Drawer, DrawerOverlay, DrawerContent
+  Drawer, DrawerOverlay, DrawerContent, SimpleGrid, Stack, Divider
 } from '@chakra-ui/react';
 import { EditIcon, DeleteIcon, AddIcon, HamburgerIcon } from '@chakra-ui/icons';
 import { useAuth } from '../../AppContext';
@@ -226,6 +226,15 @@ const CoordinatorWildProductsPage = ({ url }) => {
 
   const pageBg = useColorModeValue('gray.50', 'gray.900');
   const headingColor = useColorModeValue('gray.800', 'gray.200');
+  const cardBg = useColorModeValue('white', 'gray.700');
+
+  // A component to render a single wild product's data row in a card
+  const CardDataRow = ({ label, children, labelColor = 'gray.500' }) => (
+    <Flex justify="space-between" align="center">
+      <Text fontSize="sm" color={labelColor} fontWeight="bold">{label}</Text>
+      <Box textAlign="right" fontWeight="bold">{children}</Box>
+    </Flex>
+  );
 
   const fetchWildProducts = useCallback(async () => {
     console.log('🔍 CoordinatorWildProductsPage - Starting fetchWildProducts');
@@ -477,100 +486,102 @@ const CoordinatorWildProductsPage = ({ url }) => {
             </HStack>
           </Box>
 
-          {/* Wild Products Table */}
+          {/* Wild Products Grid */}
           {isLoading ? (
             <Center h="300px"><Spinner /></Center>
           ) : (
-            <Box overflowX="auto">
-              <Table variant="simple" minW="1200px">
-                <Thead>
-                  <Tr>
-                    <Th>Image</Th>
-                    <Th>ID</Th>
-                    <Th>Product Name</Th>
-                    <Th>Base Price</Th>
-                    <Th>Selling Price 1</Th>
-                    <Th>Selling Price 2</Th>
-                    <Th>Selling Price 3</Th>
-                    <Th>GST %</Th>
-                    <Th>Final Price</Th>
-                    <Th>Profit</Th>
-                    <Th>Stock</Th>
-                    <Th>Status</Th>
-                    <Th>Margin %</Th>
-                    <Th>Selling Days</Th>
-                    <Th>Actions</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {wildProducts.map((wildProduct) => {
-                    const basePrice = parseFloat(wildProduct.base_price);
-                    const profit = parseFloat(wildProduct.profit);
-                    const marginPercentage = profit !== null && basePrice > 0 ? (profit * 100) / basePrice : null;
-                    
-                    return (
-                    <Tr key={wildProduct.wild_product_id}>
-                      <Td>
-                        <Image 
-                          src={wildProduct.product_image_url} 
-                          alt={wildProduct.product_name}
-                          boxSize="50px"
-                          objectFit="cover"
-                          borderRadius="md"
-                          fallbackSrc="https://via.placeholder.com/50"
-                        />
-                      </Td>
-                      <Td fontFamily="monospace" fontSize="sm">
-                        {wildProduct.wild_product_id}
-                      </Td>
-                      <Td fontWeight="medium">{wildProduct.product_name}</Td>
-                      <Td>₹{wildProduct.base_price}</Td>
-                      <Td>₹{wildProduct.selling_price}</Td>
-                      <Td>₹{wildProduct.selling_price_2 || 'N/A'}</Td>
-                      <Td>₹{wildProduct.selling_price_3 || 'N/A'}</Td>
-                      <Td>{wildProduct.gst_percentage}%</Td>
-                      <Td fontWeight="bold" color="green.500">
-                        ₹{wildProduct.final_price}
-                      </Td>
-                      <Td fontWeight="bold" color={wildProduct.profit >= 0 ? "green.500" : "red.500"}>
-                        ₹{wildProduct.profit?.toFixed(2) || '0.00'}
-                      </Td>
-                      <Td>{wildProduct.available_stock}</Td>
-                      <Td>
-                        <Badge colorScheme={getStockStatusColor(wildProduct.stock_status)}>
-                          {wildProduct.stock_status}
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+              {wildProducts.map((wildProduct) => {
+                const basePrice = parseFloat(wildProduct.base_price);
+                const profit = parseFloat(wildProduct.profit);
+                const marginPercentage = profit !== null && basePrice > 0 ? (profit * 100) / basePrice : null;
+                
+                return (
+                  <Box key={wildProduct.wild_product_id} bg={cardBg} p={6} borderRadius="xl" boxShadow="lg" borderWidth="1px" borderColor="gray.200">
+                    <Flex gap={4} align="start" mb={4}>
+                      <Image 
+                        src={wildProduct.product_image_url} 
+                        alt={wildProduct.product_name}
+                        boxSize="80px"
+                        objectFit="cover"
+                        borderRadius="md"
+                        fallbackSrc="https://via.placeholder.com/80"
+                      />
+                      <Stack spacing={1} flex="1">
+                        <Heading as="h3" size="md" fontWeight="bold">{wildProduct.product_name}</Heading>
+                        <Text fontSize="sm" color="gray.500" fontFamily="monospace">
+                          ID: {wildProduct.wild_product_id}
+                        </Text>
+                        <Badge 
+                          colorScheme={getStockStatusColor(wildProduct.stock_status)}
+                          size="sm"
+                          w="fit-content"
+                          mt={2}
+                        >
+                          {wildProduct.stock_status} ({wildProduct.available_stock} in stock)
                         </Badge>
-                      </Td>
-                      <Td fontWeight="bold" color={marginPercentage > 0 ? "green.500" : marginPercentage < 0 ? "red.500" : "inherit"}>
-                        {marginPercentage !== null ? `${marginPercentage.toFixed(2)}%` : 'N/A'}
-                      </Td>
-                      <Td>{wildProduct.selling_date_count || 30} days</Td>
-                      <Td>
-                        <HStack spacing={2}>
-                          <IconButton
-                            icon={<EditIcon />}
-                            aria-label="Edit wild product"
-                            size="sm"
-                            colorScheme="blue"
-                            variant="ghost"
-                            onClick={() => handleEdit(wildProduct)}
-                          />
-                          <IconButton
-                            icon={<DeleteIcon />}
-                            aria-label="Delete wild product"
-                            size="sm"
-                            colorScheme="red"
-                            variant="ghost"
-                            onClick={() => handleDeleteClick(wildProduct)}
-                          />
-                        </HStack>
-                      </Td>
-                    </Tr>
-                    );
-                  })}
-                </Tbody>
-              </Table>
-            </Box>
+                      </Stack>
+                    </Flex>
+                    
+                    <Divider my={4} />
+
+                    <Stack spacing={3}>
+                      <CardDataRow label="Base Price">₹{wildProduct.base_price}</CardDataRow>
+                      <CardDataRow label="Selling Price 1">₹{wildProduct.selling_price}</CardDataRow>
+                      <CardDataRow label="Selling Price 2">
+                        ₹{wildProduct.selling_price_2 || 'N/A'}
+                      </CardDataRow>
+                      <CardDataRow label="Selling Price 3">
+                        ₹{wildProduct.selling_price_3 || 'N/A'}
+                      </CardDataRow>
+                      <CardDataRow label="GST %">{wildProduct.gst_percentage}%</CardDataRow>
+                      <CardDataRow label="Final Price">
+                        <Text color="green.500">₹{wildProduct.final_price}</Text>
+                      </CardDataRow>
+                      <CardDataRow label="Profit">
+                        <Text color={wildProduct.profit >= 0 ? "green.500" : "red.500"}>
+                          ₹{wildProduct.profit?.toFixed(2) || '0.00'}
+                        </Text>
+                      </CardDataRow>
+                      <CardDataRow label="Margin %">
+                        <Text color={marginPercentage > 0 ? "green.500" : marginPercentage < 0 ? "red.500" : "inherit"}>
+                          {marginPercentage !== null ? `${marginPercentage.toFixed(2)}%` : 'N/A'}
+                        </Text>
+                      </CardDataRow>
+                      <CardDataRow label="Selling Days">
+                        {wildProduct.selling_date_count || 30} days
+                      </CardDataRow>
+                    </Stack>
+
+                    <Divider my={4} />
+                    
+                    <Flex justify="space-between" align="center">
+                      <Text fontSize="sm" color="gray.500">
+                        Updated: {new Date(wildProduct.last_updated).toLocaleDateString('en-IN')}
+                      </Text>
+                      <HStack spacing={2}>
+                        <IconButton
+                          icon={<EditIcon />}
+                          aria-label="Edit wild product"
+                          size="sm"
+                          colorScheme="blue"
+                          variant="ghost"
+                          onClick={() => handleEdit(wildProduct)}
+                        />
+                        <IconButton
+                          icon={<DeleteIcon />}
+                          aria-label="Delete wild product"
+                          size="sm"
+                          colorScheme="red"
+                          variant="ghost"
+                          onClick={() => handleDeleteClick(wildProduct)}
+                        />
+                      </HStack>
+                    </Flex>
+                  </Box>
+                );
+              })}
+            </SimpleGrid>
           )}
         </VStack>
 

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Box, Flex, Heading, Button, IconButton, useToast, Spinner, Center, Table, Thead, Tbody, Tr, Th, Td,
+  Box, Flex, Heading, Button, IconButton, useToast, Spinner, Center, Table, Thead, Tbody, Tr, Th, Td, TableContainer,
   Text, useColorModeValue, Input, Select, HStack, VStack, Badge, InputGroup, InputLeftElement,
   Popover, PopoverTrigger, PopoverContent, PopoverBody, PopoverArrow, PopoverCloseButton,
   Tag, TagLabel, TagCloseButton, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader,
-  ModalBody, ModalCloseButton, ModalFooter, ButtonGroup, Tooltip, useBreakpointValue
+  ModalBody, ModalCloseButton, ModalFooter, ButtonGroup, Tooltip, useBreakpointValue,
+  Grid, Wrap, WrapItem, Divider, PopoverHeader
 } from '@chakra-ui/react';
 import { SearchIcon, CalendarIcon } from '@chakra-ui/icons';
 import { useAuth } from '../../AppContext';
@@ -149,20 +150,22 @@ const CoordinatorTransactions = ({ url }) => {
   };
 
   const getTransactionTypeColor = (type) => {
-    switch (type) {
+    switch (String(type).toLowerCase()) {
       case 'deposit': return 'green';
-      case 'withdrawal': return 'red';
+      case 'sale': return 'purple';
       case 'purchase': return 'blue';
-      case 'referral_earning': return 'purple';
-      case 'registration_fee': return 'orange';
+      case 'withdrawal': return 'red';
+      case 'commission_claim': return 'orange';
+      case 'registration_fee': return 'yellow';
+      case 'referral_bonus': return 'teal';
       default: return 'gray';
     }
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
+    switch (String(status).toLowerCase()) {
       case 'approved': return 'green';
-      case 'pending': return 'yellow';
+      case 'pending_approval': return 'yellow';
       case 'rejected': return 'red';
       default: return 'gray';
     }
@@ -195,65 +198,86 @@ const CoordinatorTransactions = ({ url }) => {
   }
 
   return (
-    <Box>
-      <Flex justify="space-between" align="center" mb={6}>
-        <Heading size="lg" color={headingColor}>
-          My Vendors' Transactions
-        </Heading>
-        <Text fontSize="sm" color={textColor}>
-          Showing transactions from vendors assigned to you
-        </Text>
-      </Flex>
+    <Box bg={bgColor} minH="100vh" p={{ base: 2, md: 4 }}>
+      <Box bg={tableBg} p={{ base: 3, md: 6 }} borderRadius="lg" boxShadow="lg" w={{ base: '100%', lg: '90%' }} mx="auto">
+        <Flex justify="space-between" align="center" mb={6} flexWrap="wrap" gap={4}>
+          <Heading size="lg">My Vendors' Transactions</Heading>
+          <Tooltip 
+            label="Download all transactions (ignores current filters and pagination)" 
+            placement="top"
+            hasArrow
+          >
+            <Button 
+              colorScheme="green" 
+              onClick={() => {}} 
+              data-download-btn
+              isDisabled={loading}
+            >
+              Download CSV
+            </Button>
+          </Tooltip>
+        </Flex>
 
-      {/* Search and Filters */}
-      <Box mb={6}>
-        <Flex direction={{ base: 'column', md: 'row' }} gap={4} align="center">
-          {/* Search */}
-          <InputGroup maxW="400px">
-            <InputLeftElement pointerEvents="none">
-              <SearchIcon color="gray.300" />
-            </InputLeftElement>
-            <Input
-              placeholder="Search by vendor name, email, phone, transaction ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </InputGroup>
+        <Grid templateColumns={'1fr'} gap={4} mb={4}>
+          <Input
+            placeholder="Search by Name, Email, Phone, Transaction ID..."
+            value={searchTerm}
+            onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
+          />
+        </Grid>
 
-          {/* Filter Controls */}
-          <HStack spacing={2}>
-            {/* Date Filter */}
-            <Popover>
+        {/* Filters - Desktop Only */}
+        <Box display={{ base: 'none', md: 'block' }}>
+          <HStack spacing={4} mb={4}>
+            <Popover placement="bottom-start">
               <PopoverTrigger>
-                <Button leftIcon={<CalendarIcon />} variant="outline" size="sm">
-                  Date
+                <Button variant="outline" size="sm">
+                  {(appliedStartDate || appliedEndDate) ? 
+                    `Date: ${appliedStartDate === appliedEndDate ? 
+                      formatDateForChip(appliedStartDate) : 
+                      `${formatDateForChip(appliedStartDate)} → ${formatDateForChip(appliedEndDate)}`}` 
+                    : 'Filter Date'}
                 </Button>
               </PopoverTrigger>
               <PopoverContent>
-                <PopoverArrow />
-                <PopoverCloseButton />
-                <PopoverBody p={4}>
+                <PopoverArrow /> <PopoverCloseButton />
+                <PopoverHeader>Filter by Date</PopoverHeader>
+                <PopoverBody>
                   <VStack spacing={3} align="stretch">
-                    <Text fontSize="sm" fontWeight="bold">Filter by Date</Text>
-                    <Input
-                      type="date"
-                      placeholder="Exact Date"
-                      value={uiExactDate}
-                      onChange={(e) => setUiExactDate(e.target.value)}
+                    <Text fontSize="sm" color={textColor}>Specific Date</Text>
+                    <Input 
+                      type="date" 
+                      value={uiExactDate} 
+                      onChange={(e) => { 
+                        setUiExactDate(e.target.value); 
+                        if (e.target.value) { 
+                          setUiStartDate(''); 
+                          setUiEndDate(''); 
+                        } 
+                      }} 
                     />
-                    <Text fontSize="xs" color="gray.500" textAlign="center">OR</Text>
-                    <Input
-                      type="date"
-                      placeholder="Start Date"
-                      value={uiStartDate}
-                      onChange={(e) => setUiStartDate(e.target.value)}
-                    />
-                    <Input
-                      type="date"
-                      placeholder="End Date"
-                      value={uiEndDate}
-                      onChange={(e) => setUiEndDate(e.target.value)}
-                    />
+                    <Divider />
+                    <Text fontSize="sm" color={textColor}>Date Range</Text>
+                    <HStack>
+                      <Input 
+                        type="date" 
+                        value={uiStartDate} 
+                        onChange={(e) => { 
+                          setUiStartDate(e.target.value); 
+                          if (e.target.value) setUiExactDate(''); 
+                        }} 
+                        placeholder="From" 
+                      />
+                      <Input 
+                        type="date" 
+                        value={uiEndDate} 
+                        onChange={(e) => { 
+                          setUiEndDate(e.target.value); 
+                          if (e.target.value) setUiExactDate(''); 
+                        }} 
+                        placeholder="To" 
+                      />
+                    </HStack>
                     <Button size="sm" colorScheme="blue" onClick={applyDateFilter}>
                       Apply
                     </Button>
@@ -262,29 +286,29 @@ const CoordinatorTransactions = ({ url }) => {
               </PopoverContent>
             </Popover>
 
-            {/* Type Filter */}
-            <Popover>
+            <Popover placement="bottom-start">
               <PopoverTrigger>
                 <Button variant="outline" size="sm">
-                  Type
+                  {appliedType ? `Type: ${appliedType}` : 'Filter Type'}
                 </Button>
               </PopoverTrigger>
               <PopoverContent>
-                <PopoverArrow />
-                <PopoverCloseButton />
-                <PopoverBody p={4}>
-                  <VStack spacing={3} align="stretch">
-                    <Text fontSize="sm" fontWeight="bold">Filter by Type</Text>
-                    <Select
-                      placeholder="Select transaction type"
-                      value={uiType}
+                <PopoverArrow /><PopoverCloseButton />
+                <PopoverHeader>Filter by Type</PopoverHeader>
+                <PopoverBody>
+                  <VStack align="stretch" spacing={3}>
+                    <Select 
+                      placeholder="Select transaction type" 
+                      value={uiType} 
                       onChange={(e) => setUiType(e.target.value)}
                     >
-                      <option value="deposit">Deposit</option>
-                      <option value="withdrawal">Withdrawal</option>
-                      <option value="purchase">Purchase</option>
-                      <option value="referral_earning">Referral Earning</option>
-                      <option value="registration_fee">Registration Fee</option>
+                      <option value="deposit">deposit</option>
+                      <option value="sale">sale</option>
+                      <option value="purchase">purchase</option>
+                      <option value="withdrawal">withdrawal</option>
+                      <option value="commission_claim">commission_claim</option>
+                      <option value="registration_fee">registration_fee</option>
+                      <option value="referral_bonus">referral_bonus</option>
                     </Select>
                     <Button size="sm" colorScheme="blue" onClick={applyTypeFilter}>
                       Apply
@@ -294,134 +318,156 @@ const CoordinatorTransactions = ({ url }) => {
               </PopoverContent>
             </Popover>
 
-            {/* Clear Filters */}
             {hasAnyFilter && (
-              <Button size="sm" variant="ghost" onClick={clearAllFilters}>
-                Clear All
+              <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                Clear Filters
               </Button>
             )}
           </HStack>
-        </Flex>
+        </Box>
 
-        {/* Applied Filters */}
+        {/* Active Filters Display - Desktop Only */}
         {hasAnyFilter && (
-          <HStack spacing={2} mt={3} flexWrap="wrap">
-            {(appliedStartDate || appliedEndDate) && (
-              <Tag colorScheme="blue" size="sm">
-                <TagLabel>
-                  Date: {appliedStartDate === appliedEndDate 
-                    ? formatDateForChip(appliedStartDate)
-                    : `${formatDateForChip(appliedStartDate)} - ${formatDateForChip(appliedEndDate)}`
-                  }
-                </TagLabel>
-                <TagCloseButton onClick={removeDateFilter} />
-              </Tag>
-            )}
-            {appliedType && (
-              <Tag colorScheme="green" size="sm">
-                <TagLabel>Type: {appliedType}</TagLabel>
-                <TagCloseButton onClick={removeTypeFilter} />
-              </Tag>
-            )}
-          </HStack>
+          <Box display={{ base: 'none', md: 'block' }} mb={5}>
+            <Wrap spacing={2}>
+              {(appliedStartDate || appliedEndDate) && (
+                <WrapItem>
+                  <Tag size="md" variant="subtle" colorScheme="cyan" borderRadius="full">
+                    <TagLabel>
+                      Date:&nbsp;
+                      {appliedStartDate === appliedEndDate
+                        ? formatDateForChip(appliedStartDate)
+                        : `${formatDateForChip(appliedStartDate)} → ${formatDateForChip(appliedEndDate)}`}
+                    </TagLabel>
+                    <TagCloseButton onClick={removeDateFilter} />
+                  </Tag>
+                </WrapItem>
+              )}
+              {appliedType && (
+                <WrapItem>
+                  <Tag size="md" variant="subtle" colorScheme={getTransactionTypeColor(appliedType)} borderRadius="full">
+                    <TagLabel>Type: {appliedType}</TagLabel>
+                    <TagCloseButton onClick={removeTypeFilter} />
+                  </Tag>
+                </WrapItem>
+              )}
+            </Wrap>
+          </Box>
         )}
-      </Box>
 
-      {/* Results Summary */}
-      <Text fontSize="sm" color={textColor} mb={4}>
-        Showing {transactions.length} of {totalCount} transactions
-      </Text>
+        {loading && <Center p={10}><Spinner size="xl" /></Center>}
+        {error && <Center p={10}><Text color="red.500">{error}</Text></Center>}
 
-      {/* Transactions Table */}
-      <Box overflowX="auto" bg={tableBg} borderRadius="lg" border="1px solid" borderColor={borderColor}>
-        <Table variant="simple" size="sm">
-          <Thead>
-            <Tr>
-              <Th>ID</Th>
-              <Th>Date</Th>
-              <Th>Vendor</Th>
-              <Th>Type</Th>
-              <Th isNumeric>Amount</Th>
-              <Th>Status</Th>
-              <Th>Description</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {transactions.map((transaction) => (
-              <Tr key={transaction.trans_id}>
-                <Td fontFamily="monospace" fontSize="xs">
-                  {transaction.trans_id}
-                </Td>
-                <Td fontSize="sm">
-                  {formatTimestampIST(transaction.created_at)}
-                </Td>
-                <Td>
-                  <VStack align="start" spacing={0}>
-                    <Text fontSize="sm" fontWeight="medium">
-                      {transaction.vendor_name || 'N/A'}
+      {!loading && !error && (
+        <>
+          {/* Transactions Table */}
+          <TableContainer display={{ base: 'none', md: 'block' }} overflowX="auto">
+            <Table variant="simple" size="md" minW="980px">
+              <Thead>
+                <Tr>
+                  <Th>
+                    <Text>Vendor</Text>
+                  </Th>
+                  <Th>
+                    <HStack justify="space-between">
+                      <Text>Date</Text>
+                    </HStack>
+                  </Th>
+                  <Th>Type</Th>
+                  <Th isNumeric>Amount</Th>
+                  <Th>Status</Th>
+                  <Th>Description</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {transactions.map((transaction) => (
+                  <Tr key={transaction.trans_id}>
+                    <Td fontWeight="bold">
+                      <Text>{transaction.vendor_name || 'N/A'}</Text>
+                      <Text fontSize="sm" color={textColor} fontWeight="normal">{transaction.email || 'N/A'}</Text>
+                      <Text fontSize="sm" color={textColor} fontWeight="normal">{transaction.phone_number || 'N/A'}</Text>
+                    </Td>
+                    <Td fontWeight="bold">
+                      {formatTimestampIST(transaction.created_at)}
+                    </Td>
+                    <Td fontWeight="bold">
+                      <Tag colorScheme={getTransactionTypeColor(transaction.transaction_type)}>{transaction.transaction_type}</Tag>
+                    </Td>
+                    <Td isNumeric color={getTransactionTypeColor(transaction.transaction_type) + ".400"} fontWeight="bold">
+                      ₹{Number(transaction.amount || 0).toFixed(2)}
+                    </Td>
+                    <Td fontWeight="bold" textTransform="capitalize">
+                      <Tag size="sm" variant="subtle" colorScheme={getStatusColor(transaction.status)}>
+                        {transaction.status}
+                      </Tag>
+                    </Td>
+                    <Td>
+                      <Text fontSize="sm" noOfLines={2} maxW="200px">
+                        {transaction.description ? transaction.description.split('(')[0].trim() || 'N/A' : 'N/A'}
+                      </Text>
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </TableContainer>
+
+          {/* Mobile view - Simple Cards */}
+          <VStack spacing={4} display={{ base: 'flex', md: 'none' }}>
+            {transactions.map(transaction => (
+              <Box key={transaction.trans_id} w="100%" p={4} borderWidth="1px" borderColor={borderColor} borderRadius="lg" boxShadow="sm">
+                <VStack spacing={2} align="stretch">
+                  <Flex justify="space-between" align="center">
+                    <Text fontWeight="bold" fontSize="md">{transaction.vendor_name || 'N/A'}</Text>
+                    <Tag colorScheme={getTransactionTypeColor(transaction.transaction_type)} size="sm">{transaction.transaction_type}</Tag>
+                  </Flex>
+                  <Text fontSize="sm" color={textColor}>{transaction.email || 'N/A'}</Text>
+                  <Text fontSize="sm" color={textColor}>{transaction.phone_number || 'N/A'}</Text>
+                  <Flex justify="space-between" align="center">
+                    <Text fontSize="lg" fontWeight="bold" color={getTransactionTypeColor(transaction.transaction_type) + ".400"}>
+                      ₹{Number(transaction.amount || 0).toFixed(2)}
                     </Text>
-                    <Text fontSize="xs" color={textColor}>
-                      {transaction.email || transaction.phone_number || 'N/A'}
-                    </Text>
-                  </VStack>
-                </Td>
-                <Td>
-                  <Badge colorScheme={getTransactionTypeColor(transaction.transaction_type)}>
-                    {transaction.transaction_type}
-                  </Badge>
-                </Td>
-                <Td isNumeric fontWeight="medium">
-                  {formatAmount(transaction.amount)}
-                </Td>
-                <Td>
-                  <Badge colorScheme={getStatusColor(transaction.status)}>
-                    {transaction.status}
-                  </Badge>
-                </Td>
-                <Td fontSize="sm" maxW="200px" isTruncated>
-                  {transaction.description || '—'}
-                </Td>
-              </Tr>
+                    <Tag size="sm" colorScheme={getStatusColor(transaction.status)}>{transaction.status}</Tag>
+                  </Flex>
+                  <Text fontSize="sm" color={textColor}>
+                    {formatTimestampIST(transaction.created_at)}
+                  </Text>
+                </VStack>
+              </Box>
             ))}
-          </Tbody>
-        </Table>
-      </Box>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <Flex justify="center" mt={6}>
-          <ButtonGroup size="sm" isAttached variant="outline">
-            <Button
-              onClick={() => setPage(Math.max(1, page - 1))}
-              isDisabled={page === 1}
-            >
-              Previous
-            </Button>
-            <Button variant="solid" colorScheme="blue">
-              {page} of {totalPages}
-            </Button>
-            <Button
-              onClick={() => setPage(Math.min(totalPages, page + 1))}
-              isDisabled={page === totalPages}
-            >
-              Next
-            </Button>
-          </ButtonGroup>
-        </Flex>
-      )}
-
-      {transactions.length === 0 && !loading && (
-        <Center h="200px">
-          <VStack spacing={3}>
-            <Text color={textColor}>No transactions found</Text>
-            {hasAnyFilter && (
-              <Button size="sm" onClick={clearAllFilters}>
-                Clear filters to see all transactions
-              </Button>
-            )}
           </VStack>
-        </Center>
+
+          {transactions.length === 0 && !loading ? (
+            <Center p={10}><Text>No transactions found for the selected filters.</Text></Center>
+          ) : (
+            <Flex justify="space-between" align="center" mt={6} flexWrap="wrap" gap={4}>
+              <HStack>
+                <Button onClick={() => setPage(p => p - 1)} isDisabled={page === 1 || loading}>
+                  Previous
+                </Button>
+                <Button onClick={() => setPage(p => p + 1)} isDisabled={page >= totalPages || loading}>
+                  Next
+                </Button>
+              </HStack>
+              <Text whiteSpace="nowrap">
+                Page {page} of {totalPages} ({totalCount} total)
+              </Text>
+              <HStack>
+                <Text whiteSpace="nowrap">Rows:</Text>
+                <Select 
+                  w="fit-content" 
+                  value={limit} 
+                  onChange={e => { setLimit(Number(e.target.value)); setPage(1); }} 
+                  isDisabled={loading}
+                >
+                  {[5, 10, 15, 25, 50].map(val => <option key={val} value={val}>{val}</option>)}
+                </Select>
+              </HStack>
+            </Flex>
+          )}
+        </>
       )}
+      </Box>
     </Box>
   );
 };
