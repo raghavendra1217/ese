@@ -34,7 +34,6 @@ const allowedOrigins = [
   'http://localhost:3000', // Your local frontend dev server
   'http://localhost:5000', // The backend itself
   'http://localhost:10000', 
-  'https://8d1806552441.ngrok-free.app',// Another possible port
   'https://esepapertrading.onrender.com'
 ];
 

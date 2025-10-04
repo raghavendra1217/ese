@@ -380,10 +380,7 @@ exports.submitPaymentAndRegister = async (req, res) => {
 
 const isEmail = (value) => /\S+@\S+\.\S+/.test(value);
 
-/**
- * Checks the status of a user's account to determine the next login step.
- * Supports email OR phone number.
- */
+
 exports.checkUserStatus = async (req, res) => {
     const { identifier } = req.body;
     if (!identifier) return res.status(400).json({ message: 'Email or phone number is required.' });
@@ -398,13 +395,9 @@ exports.checkUserStatus = async (req, res) => {
             query = `
                 SELECT l.* FROM login l
                 WHERE l.user_id IN (
-                    SELECT id FROM vendors WHERE phone_number = $1
+                    SELECT id FROM vendors WHERE phone_number = $1 
                     UNION
                     SELECT coordinator_id FROM coordinator WHERE phone_number = $1
-                    UNION
-                    SELECT admin_id FROM admin WHERE phone_number = $1
-                    UNION
-                    SELECT employee_id FROM employee WHERE phone_number = $1
                 )
             `;
             params = [identifier];
@@ -450,10 +443,6 @@ exports.setPasswordAndLogin = async (req, res) => {
                     SELECT id FROM vendors WHERE phone_number = $1
                     UNION
                     SELECT coordinator_id FROM coordinator WHERE phone_number = $1
-                    UNION
-                    SELECT admin_id FROM admin WHERE phone_number = $1
-                    UNION
-                    SELECT employee_id FROM employee WHERE phone_number = $1
                 )
                 AND l.is_approved = TRUE AND l.password IS NULL
             `;
@@ -502,10 +491,6 @@ exports.loginUser = async (req, res) => {
                     SELECT id FROM vendors WHERE phone_number = $1
                     UNION
                     SELECT coordinator_id FROM coordinator WHERE phone_number = $1
-                    UNION
-                    SELECT admin_id FROM admin WHERE phone_number = $1
-                    UNION
-                    SELECT employee_id FROM employee WHERE phone_number = $1
                 )
             `;
             params = [identifier];
