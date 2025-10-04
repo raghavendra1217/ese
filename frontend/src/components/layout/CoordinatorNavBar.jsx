@@ -9,7 +9,7 @@ import { HamburgerIcon } from '@chakra-ui/icons';
 import { useAuth } from '../../AppContext';
 import ThemeToggle from '../ThemeToggle';
 import {
-  FaUserCog, FaPowerOff,
+  FaUserCog, FaPowerOff, FaBox, FaLeaf,
 } from 'react-icons/fa';
 
 // Sidebar widths
@@ -74,6 +74,8 @@ const CoordinatorNavContent = ({ onLinkClick, showLabels }) => {
 
   const links = [
     { icon: <FaUserCog size={22} />, label: 'Dashboard', to: '/coordinator/dashboard' },
+    { icon: <FaBox size={22} />, label: 'Products', to: '/coordinator/products' },
+    { icon: <FaLeaf size={22} />, label: 'Wild Products', to: '/coordinator/wild-products' },
   ];
 
   return (

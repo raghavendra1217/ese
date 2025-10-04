@@ -120,11 +120,13 @@ exports.getDashboardStats = async (req, res) => {
             AND DATE(dd.disbursement_date) = CURRENT_DATE
         `;
 
-        // Total disbursed (all time) - showing 0 for now since no paid disbursements yet
+        // Total disbursed (all time) - count all paid disbursements
         const totalDisbursedQuery = `
             SELECT 
-                0 as total_amount,
-                0 as disbursement_count
+                COALESCE(SUM(disbursement_amount), 0) as total_amount,
+                COUNT(*) as disbursement_count
+            FROM disbursement_detail 
+            WHERE status = 'paid'
         `;
 
         // Total invested (all time)

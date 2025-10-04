@@ -5,7 +5,7 @@ import {
   ModalFooter, ModalBody, ModalCloseButton, VStack, HStack, Button
 } from '@chakra-ui/react';
 import { useClipboard } from '@chakra-ui/react';
-import { FaRegUserCircle, FaUserPlus, FaBolt, FaWallet } from 'react-icons/fa';
+import { FaRegUserCircle, FaUserPlus, FaBolt } from 'react-icons/fa';
 import { Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../AppContext';
 import useApi from '../../hooks/useApi';
@@ -50,7 +50,6 @@ const AddMemberModal = ({ isOpen, onClose, referralLink, onRegisterAndLogout }) 
 
 const CoordinatorDashboardHeader = ({ stats, url }) => {
   const textAndIconColor = useColorModeValue('gray.800', 'white');
-  const hasPendingWalletApprovals = stats?.pendingWalletApprovals > 0;
 
   // Modal state management
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -113,32 +112,6 @@ const CoordinatorDashboardHeader = ({ stats, url }) => {
             />
           </Tooltip>
 
-          <Tooltip label="Manage Wallet Approvals" hasArrow>
-            <Box position="relative">
-              <IconButton
-                as={RouterLink}
-                to="/admin/wallet-approvals"
-                variant="ghost"
-                aria-label="Wallet Approvals"
-                color={textAndIconColor}
-                fontSize={{ base: '24px', lg: '26px' }}
-                icon={<FaWallet />}
-              />
-              {hasPendingWalletApprovals && (
-                <Box
-                  as="span"
-                  position="absolute"
-                  top="1"
-                  right="1"
-                  fontSize="xs"
-                  w={2}
-                  h={2}
-                  bg="red.500"
-                  borderRadius="full"
-                />
-              )}
-            </Box>
-          </Tooltip>
         </Flex>
       </Flex>
 

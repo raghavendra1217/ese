@@ -260,23 +260,22 @@ exports.getCoordinators = async (req, res) => {
  */
 exports.getCoordinatorById = async (req, res) => {
     const { coordinatorId } = req.params;
-
+    
     try {
         const query = `
             SELECT c.coordinator_id, c.name, c.email, c.phone_number,
-                   c.created_at,
-                   c.last_updated,
+                   c.created_at, c.last_updated,
                    l.joining_date as last_login
             FROM coordinator c
-            LEFT JOIN login l ON c.coordinator_id::text = l.user_id
+            LEFT JOIN login l ON c.coordinator_id = l.user_id
             WHERE c.coordinator_id = $1
         `;
         const { rows } = await db.query(query, [coordinatorId]);
-
+        
         if (rows.length === 0) {
             return res.status(404).json({ message: 'Coordinator not found.' });
         }
-
+        
         res.status(200).json({
             success: true,
             coordinator: rows[0]
@@ -286,6 +285,462 @@ exports.getCoordinatorById = async (req, res) => {
         res.status(500).json({ message: 'Server error while fetching coordinator.' });
     }
 };
+
+/**
+ * Get coordinator's assigned investors
+ */
+exports.getMyInvestors = async (req, res) => {
+    try {
+        const coordinatorId = req.user.user_id; // From auth middleware
+        const { page = 1, limit = 50, search = '' } = req.query;
+        
+        const offset = (page - 1) * limit;
+        let whereConditions = ['coordinator_id = $1'];
+        let queryParams = [coordinatorId];
+        let paramCount = 1;
+        
+        // Add search filter
+        if (search) {
+            paramCount++;
+            whereConditions.push(`(first_name ILIKE $${paramCount} OR mobile_number ILIKE $${paramCount})`);
+            queryParams.push(`%${search}%`);
+        }
+        
+        const whereClause = whereConditions.join(' AND ');
+        
+        // Get investors with pagination
+        const query = `
+            SELECT
+                id, first_name, mobile_number, pan_card, coordinator, co_name,
+                bank_account_number, bank_name, branch_name, ifsc_code, mode_of_payment,
+                plan_type, select_plan, transaction_id, address, investment_date,
+                created_at
+            FROM investordetails
+            WHERE ${whereClause}
+            ORDER BY investment_date DESC NULLS LAST
+            LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
+        `;
+        
+        // Count query
+        const countQuery = `
+            SELECT COUNT(*) as total
+            FROM investordetails
+            WHERE ${whereClause}
+        `;
+        
+        queryParams.push(limit, offset);
+        
+        const [investorsResult, countResult] = await Promise.all([
+            db.query(query, queryParams),
+            db.query(countQuery, queryParams.slice(0, -2))
+        ]);
+        
+        const totalCount = parseInt(countResult.rows[0].total);
+        const totalPages = Math.ceil(totalCount / limit);
+        
+        res.status(200).json({
+            success: true,
+            data: {
+                investors: investorsResult.rows,
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages,
+                    totalCount,
+                    limit: parseInt(limit),
+                    hasNext: page < totalPages,
+                    hasPrev: page > 1
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching coordinator investors:', error);
+        res.status(500).json({ message: 'Failed to fetch investors.' });
+    }
+};
+
+/**
+ * Get unassigned investors
+ */
+exports.getUnassignedInvestors = async (req, res) => {
+    try {
+        const { page = 1, limit = 50, search = '' } = req.query;
+        
+        const offset = (page - 1) * limit;
+        let whereConditions = ['(coordinator_id IS NULL OR coordinator_id = \'\')'];
+        let queryParams = [];
+        let paramCount = 0;
+        
+        // Add search filter
+        if (search) {
+            paramCount++;
+            whereConditions.push(`(first_name ILIKE $${paramCount} OR mobile_number ILIKE $${paramCount})`);
+            queryParams.push(`%${search}%`);
+        }
+        
+        const whereClause = whereConditions.join(' AND ');
+        
+        // Get unassigned investors with pagination
+        const query = `
+            SELECT
+                id, first_name, mobile_number, pan_card, coordinator, co_name,
+                bank_account_number, bank_name, branch_name, ifsc_code, mode_of_payment,
+                plan_type, select_plan, transaction_id, address, investment_date,
+                created_at
+            FROM investordetails
+            WHERE ${whereClause}
+            ORDER BY investment_date DESC NULLS LAST
+            LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
+        `;
+        
+        // Count query
+        const countQuery = `
+            SELECT COUNT(*) as total
+            FROM investordetails
+            WHERE ${whereClause}
+        `;
+        
+        queryParams.push(limit, offset);
+        
+        const [investorsResult, countResult] = await Promise.all([
+            db.query(query, queryParams),
+            db.query(countQuery, queryParams.slice(0, -2))
+        ]);
+        
+        const totalCount = parseInt(countResult.rows[0].total);
+        const totalPages = Math.ceil(totalCount / limit);
+        
+        res.status(200).json({
+            success: true,
+            data: {
+                investors: investorsResult.rows,
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages,
+                    totalCount,
+                    limit: parseInt(limit),
+                    hasNext: page < totalPages,
+                    hasPrev: page > 1
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching unassigned investors:', error);
+        res.status(500).json({ message: 'Failed to fetch unassigned investors.' });
+    }
+};
+
+/**
+ * Assign investor to coordinator
+ */
+exports.assignInvestor = async (req, res) => {
+    try {
+        const { investorId } = req.params;
+        const coordinatorId = req.user.user_id; // From auth middleware
+        
+        // Get coordinator name
+        const coordinatorQuery = 'SELECT name FROM coordinator WHERE coordinator_id = $1';
+        const coordinatorResult = await db.query(coordinatorQuery, [coordinatorId]);
+        
+        if (coordinatorResult.rows.length === 0) {
+            return res.status(400).json({ message: 'Invalid coordinator.' });
+        }
+        
+        const coordinatorName = coordinatorResult.rows[0].name;
+        
+        // Update investor with coordinator assignment
+        const updateQuery = `
+            UPDATE investordetails
+            SET coordinator_id = $1, coordinator = $2
+            WHERE id = $3
+            RETURNING *
+        `;
+        
+        const { rows } = await db.query(updateQuery, [coordinatorId, coordinatorName, investorId]);
+        
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Investor not found.' });
+        }
+        
+        res.status(200).json({
+            success: true,
+            message: 'Investor assigned successfully',
+            investor: rows[0]
+        });
+    } catch (error) {
+        console.error('Error assigning investor:', error);
+        res.status(500).json({ message: 'Failed to assign investor.' });
+    }
+};
+
+/**
+ * Remove investor from coordinator
+ */
+exports.removeInvestor = async (req, res) => {
+    try {
+        const { investorId } = req.params;
+        const coordinatorId = req.user.user_id; // From auth middleware
+        
+        // Update investor to remove coordinator assignment
+        const updateQuery = `
+            UPDATE investordetails
+            SET coordinator_id = NULL, coordinator = NULL
+            WHERE id = $1 AND coordinator_id = $2
+            RETURNING *
+        `;
+        
+        const { rows } = await db.query(updateQuery, [investorId, coordinatorId]);
+        
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Investor not found or not assigned to you.' });
+        }
+        
+        res.status(200).json({
+            success: true,
+            message: 'Investor removed successfully',
+            investor: rows[0]
+        });
+    } catch (error) {
+        console.error('Error removing investor:', error);
+        res.status(500).json({ message: 'Failed to remove investor.' });
+    }
+};
+
+/**
+ * Get coordinator investor statistics
+ */
+exports.getCoordinatorInvestorStats = async (req, res) => {
+    try {
+        const coordinatorId = req.user.user_id; // From auth middleware
+        
+        const query = `
+            SELECT 
+                COUNT(*) as total_my_investors,
+                COUNT(CASE WHEN created_at >= CURRENT_DATE THEN 1 END) as today_investors,
+                COUNT(CASE WHEN created_at >= CURRENT_DATE - INTERVAL '7 days' THEN 1 END) as last_7_days_investors,
+                COUNT(CASE WHEN created_at >= CURRENT_DATE - INTERVAL '30 days' THEN 1 END) as last_30_days_investors,
+                COALESCE(SUM(
+                    CASE 
+                        WHEN select_plan = '10k' THEN 10000
+                        WHEN select_plan = '50k' THEN 50000
+                        WHEN select_plan = '1 lakh' THEN 100000
+                        WHEN select_plan = '5 lakh' THEN 500000
+                        WHEN select_plan = '10 lakh' THEN 1000000
+                        ELSE 0
+                    END
+                ), 0) as total_investment_amount
+            FROM investordetails
+            WHERE coordinator_id = $1
+        `;
+        
+        const { rows } = await db.query(query, [coordinatorId]);
+        
+        // Get unassigned investors count
+        const unassignedQuery = `
+            SELECT COUNT(*) as total_unassigned_investors
+            FROM investordetails
+            WHERE coordinator_id IS NULL OR coordinator_id = ''
+        `;
+        
+        const { rows: unassignedRows } = await db.query(unassignedQuery);
+        
+        const stats = {
+            ...rows[0],
+            total_unassigned_investors: parseInt(unassignedRows[0].total_unassigned_investors),
+            monthly_growth: 12.5, // This would be calculated based on historical data
+            active_investors: parseInt(rows[0].total_my_investors), // Simplified for now
+            pending_approvals: 0 // This would be calculated based on pending status
+        };
+        
+        res.status(200).json({
+            success: true,
+            data: stats
+        });
+    } catch (error) {
+        console.error('Error fetching coordinator investor stats:', error);
+        res.status(500).json({ message: 'Failed to fetch investor statistics.' });
+    }
+};
+
+/**
+ * Get coordinator disbursements
+ */
+exports.getCoordinatorDisbursements = async (req, res) => {
+    const client = await db.connect();
+    try {
+        // Ensure disbursement tables exist
+        await ensureDisbursementTables(client);
+        
+        const coordinatorId = req.user.user_id; // From auth middleware
+        const { 
+            status, 
+            startDate, 
+            endDate, 
+            page = 1,
+            limit = 50
+        } = req.query;
+        
+        const offset = (page - 1) * limit;
+        let whereConditions = ['i.coordinator_id = $1'];
+        let queryParams = [coordinatorId];
+        let paramCount = 1;
+        
+        // Build dynamic WHERE clause
+        if (status) {
+            if (status === 'overdue') {
+                whereConditions.push(`dd.status = 'pending' AND dd.disbursement_date < CURRENT_DATE`);
+            } else {
+                paramCount++;
+                whereConditions.push(`dd.status = $${paramCount}`);
+                queryParams.push(status);
+            }
+        }
+        
+        if (startDate) {
+            paramCount++;
+            whereConditions.push(`dd.disbursement_date >= $${paramCount}`);
+            queryParams.push(startDate);
+        }
+        
+        if (endDate) {
+            paramCount++;
+            whereConditions.push(`dd.disbursement_date <= $${paramCount}`);
+            queryParams.push(endDate);
+        }
+        
+        const whereClause = whereConditions.join(' AND ');
+        
+        // Main query
+        const mainQuery = `
+            SELECT 
+                dd.id,
+                dd.disbursement_date,
+                dd.disbursement_amount,
+                dd.status,
+                dd.payment_reference,
+                dd.notes,
+                dd.paid_date,
+                dd.created_at,
+                i.first_name,
+                i.mobile_number,
+                i.coordinator,
+                i.plan_type,
+                i.select_plan
+            FROM disbursement_detail dd
+            JOIN disbursement_schedules ds ON dd.schedule_id = ds.id
+            JOIN investordetails i ON ds.investor_id = i.id
+            WHERE ${whereClause}
+            ORDER BY dd.disbursement_date DESC
+            LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
+        `;
+        
+        // Count query
+        const countQuery = `
+            SELECT COUNT(*) as total
+            FROM disbursement_detail dd
+            JOIN disbursement_schedules ds ON dd.schedule_id = ds.id
+            JOIN investordetails i ON ds.investor_id = i.id
+            WHERE ${whereClause}
+        `;
+        
+        queryParams.push(limit, offset);
+        
+        const [disbursementsResult, countResult] = await Promise.all([
+            client.query(mainQuery, queryParams),
+            client.query(countQuery, queryParams.slice(0, -2))
+        ]);
+        
+        const totalCount = parseInt(countResult.rows[0].total);
+        const totalPages = Math.ceil(totalCount / limit);
+        
+        res.status(200).json({
+            success: true,
+            data: {
+                disbursements: disbursementsResult.rows,
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages,
+                    totalCount,
+                    limit: parseInt(limit),
+                    hasNext: page < totalPages,
+                    hasPrev: page > 1
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching coordinator disbursements:', error);
+        res.status(500).json({ message: 'Failed to fetch disbursements.' });
+    } finally {
+        client.release();
+    }
+};
+
+/**
+ * Update disbursement status (coordinator)
+ */
+exports.updateDisbursement = async (req, res) => {
+    const client = await db.connect();
+    try {
+        // Ensure disbursement tables exist
+        await ensureDisbursementTables(client);
+        
+        const { disbursementId } = req.params;
+        const coordinatorId = req.user.user_id; // From auth middleware
+        const { status, paymentReference, notes } = req.body;
+        
+        if (!status || !['pending', 'paid', 'overdue'].includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid status. Must be pending, paid, or overdue'
+            });
+        }
+        
+        // Verify the disbursement belongs to coordinator's investors
+        const verifyQuery = `
+            SELECT dd.id
+            FROM disbursement_detail dd
+            JOIN disbursement_schedules ds ON dd.schedule_id = ds.id
+            JOIN investordetails i ON ds.investor_id = i.id
+            WHERE dd.id = $1 AND i.coordinator_id = $2
+        `;
+        
+        const { rows: verifyRows } = await client.query(verifyQuery, [disbursementId, coordinatorId]);
+        
+        if (verifyRows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Disbursement not found or not assigned to you'
+            });
+        }
+        
+        // Update disbursement
+        const updateQuery = `
+            UPDATE disbursement_detail
+            SET
+                status = $1,
+                paid_date = CASE WHEN $1 = 'paid' AND paid_date IS NULL THEN CURRENT_DATE ELSE paid_date END,
+                payment_reference = COALESCE($2, payment_reference),
+                notes = COALESCE($3, notes),
+                updated_at = NOW()
+            WHERE id = $4
+            RETURNING *
+        `;
+        
+        const { rows } = await client.query(updateQuery, [status, paymentReference, notes, disbursementId]);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Disbursement updated successfully',
+            disbursement: rows[0]
+        });
+    } catch (error) {
+        console.error('Error updating disbursement:', error);
+        res.status(500).json({ message: 'Failed to update disbursement.' });
+    } finally {
+        client.release();
+    }
+};
+
+// All functions are exported individually above using exports.functionName
 
 /**
  * UPDATE: Update coordinator details
@@ -1286,6 +1741,309 @@ exports.getVendorsTodayPaginated = async (req, res) => {
             success: false,
             message: 'Failed to fetch vendors from today.' 
         });
+    }
+};
+
+/**
+ * @desc    Get transactions for vendors assigned to the coordinator
+ * @route   GET /api/coordinator/transactions
+ * @access  Private (Coordinator)
+ */
+exports.getCoordinatorVendorTransactions = async (req, res) => {
+    try {
+        console.log('🔍 Coordinator transaction request:', {
+            user: req.user,
+            userRole: req.user?.role,
+            userId: req.user?.user_id,
+            headers: req.headers
+        });
+
+        const {
+            page = 1,
+            limit = 10,
+            sortBy = 'created_at',
+            sortOrder = 'desc',
+            search = '',
+            transaction_type = '',
+            startDate = '',
+            endDate = ''
+        } = req.query;
+
+        const coordinatorId = req.user.user_id; // Current coordinator ID
+
+        // Validate sortBy to prevent SQL injection
+        const allowedSortBy = [
+            'trans_id', 'created_at', 'user_id', 'vendor_name', 'balance_after_transaction',
+            'transaction_type', 'amount', 'status', 'description'
+        ];
+        if (!allowedSortBy.includes(sortBy)) {
+            return res.status(400).json({ message: 'Invalid sort column.' });
+        }
+        
+        const sortColumn = sortBy === 'vendor_name' ? 'v.vendor_name' : `t.${sortBy}`;
+        const sanitizedSortOrder = sortOrder.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+        const queryParams = [coordinatorId];
+        let baseQuery = `
+            FROM transaction t 
+            LEFT JOIN vendors v ON t.user_id = v.id 
+            WHERE v.coordinator_id = $1
+        `;
+
+        // Add search filter
+        if (search) {
+            queryParams.push(`%${search}%`);
+            const searchIndex = queryParams.length;
+            baseQuery += ` AND (t.user_id ILIKE $${searchIndex} OR t.upi_transaction_id ILIKE $${searchIndex} OR t.description ILIKE $${searchIndex} OR v.vendor_name ILIKE $${searchIndex} OR v.email ILIKE $${searchIndex} OR v.phone_number ILIKE $${searchIndex})`;
+        }
+
+        // Add transaction type filter
+        if (transaction_type) {
+            queryParams.push(transaction_type);
+            baseQuery += ` AND t.transaction_type = $${queryParams.length}`;
+        }
+
+        // Add date filters
+        if (startDate) {
+            queryParams.push(startDate);
+            baseQuery += ` AND t.created_at >= $${queryParams.length}`;
+        }
+        if (endDate) {
+            queryParams.push(endDate);
+            baseQuery += ` AND t.created_at < ($${queryParams.length}::date + interval '1 day')`;
+        }
+        
+        // Get total count
+        const countQuery = `SELECT COUNT(*) ${baseQuery}`;
+        const totalResult = await db.query(countQuery, queryParams);
+        const totalCount = parseInt(totalResult.rows[0].count, 10);
+
+        const offset = (page - 1) * limit;
+        
+        // Get paginated data
+        const dataQuery = `
+            SELECT 
+                t.trans_id, 
+                t.created_at as created_at,
+                t.user_id, 
+                t.balance_after_transaction, 
+                t.transaction_type, 
+                t.amount, 
+                t.status, 
+                t.description, 
+                t.upi_transaction_id,
+                v.vendor_name, 
+                v.email, 
+                v.phone_number
+            ${baseQuery}
+            ORDER BY ${sortColumn} ${sanitizedSortOrder}
+            LIMIT $${queryParams.length + 1} 
+            OFFSET $${queryParams.length + 2}
+        `;
+        
+        const dataResult = await db.query(dataQuery, [...queryParams, limit, offset]);
+
+        console.log('✅ Coordinator vendor transactions fetched:', {
+            coordinatorId,
+            count: dataResult.rows.length,
+            totalCount,
+            page: parseInt(page),
+            limit: parseInt(limit)
+        });
+
+        res.status(200).json({
+            success: true,
+            data: dataResult.rows,
+            totalCount,
+            page: parseInt(page, 10),
+            limit: parseInt(limit, 10),
+            totalPages: Math.ceil(totalCount / limit)
+        });
+
+    } catch (error) {
+        console.error('❌ Error fetching coordinator vendor transactions:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Failed to fetch vendor transactions.' 
+        });
+    }
+};
+
+/**
+ * @desc    Get disbursement statistics for coordinator's assigned investors
+ * @route   GET /api/coordinator/disbursements/stats
+ * @access  Private (Coordinator)
+ */
+exports.getCoordinatorDisbursementStats = async (req, res) => {
+    const client = await db.connect();
+    try {
+        // Ensure disbursement tables exist
+        await ensureDisbursementTables(client);
+        
+        const coordinatorId = req.user.user_id; // Current coordinator ID
+        
+        // Get start and end of next 15 days (including today)
+        const startOf15Days = new Date();
+        const endOf15Days = new Date();
+        endOf15Days.setDate(startOf15Days.getDate() + 15);
+
+        // Pending disbursements (due today) for coordinator's investors
+        const pendingTodayQuery = `
+            SELECT 
+                COALESCE(SUM(dd.disbursement_amount), 0) as total_amount,
+                COUNT(*) as disbursement_count
+            FROM disbursement_detail dd
+            JOIN disbursement_schedules ds ON dd.schedule_id = ds.id
+            JOIN investordetails i ON ds.investor_id = i.id
+            WHERE dd.status = 'pending'
+            AND DATE(dd.disbursement_date) = CURRENT_DATE
+            AND i.coordinator_id = $1
+        `;
+
+        // Total disbursed (all time) for coordinator's investors
+        const totalDisbursedQuery = `
+            SELECT 
+                COALESCE(SUM(dd.disbursement_amount), 0) as total_amount,
+                COUNT(*) as disbursement_count
+            FROM disbursement_detail dd
+            JOIN disbursement_schedules ds ON dd.schedule_id = ds.id
+            JOIN investordetails i ON ds.investor_id = i.id
+            WHERE dd.status = 'paid'
+            AND i.coordinator_id = $1
+        `;
+
+        // Total invested (all time) for coordinator's investors
+        const totalInvestedQuery = `
+            SELECT 
+                COALESCE(SUM(ds.investment_amount), 0) as total_amount,
+                COUNT(*) as disbursement_count
+            FROM disbursement_schedules ds
+            JOIN investordetails i ON ds.investor_id = i.id
+            WHERE i.coordinator_id = $1
+        `;
+
+        // Pending disbursements (due tomorrow) for coordinator's investors
+        const pendingTomorrowQuery = `
+            SELECT 
+                COALESCE(SUM(dd.disbursement_amount), 0) as total_amount,
+                COUNT(*) as disbursement_count
+            FROM disbursement_detail dd
+            JOIN disbursement_schedules ds ON dd.schedule_id = ds.id
+            JOIN investordetails i ON ds.investor_id = i.id
+            WHERE dd.status = 'pending'
+            AND DATE(dd.disbursement_date) = CURRENT_DATE + INTERVAL '1 day'
+            AND i.coordinator_id = $1
+        `;
+
+        // Upcoming disbursements (future) for coordinator's investors
+        const upcomingQuery = `
+            SELECT 
+                COALESCE(SUM(dd.disbursement_amount), 0) as total_amount,
+                COUNT(*) as disbursement_count
+            FROM disbursement_detail dd
+            JOIN disbursement_schedules ds ON dd.schedule_id = ds.id
+            JOIN investordetails i ON ds.investor_id = i.id
+            WHERE dd.status = 'pending'
+            AND DATE(dd.disbursement_date) > CURRENT_DATE + INTERVAL '1 day'
+            AND i.coordinator_id = $1
+        `;
+
+        // Overdue disbursements (past) for coordinator's investors
+        const overdueQuery = `
+            SELECT 
+                COALESCE(SUM(dd.disbursement_amount), 0) as total_amount,
+                COUNT(*) as disbursement_count
+            FROM disbursement_detail dd
+            JOIN disbursement_schedules ds ON dd.schedule_id = ds.id
+            JOIN investordetails i ON ds.investor_id = i.id
+            WHERE dd.status = 'pending'
+            AND DATE(dd.disbursement_date) < CURRENT_DATE
+            AND i.coordinator_id = $1
+        `;
+
+        // Future 15 days disbursements for coordinator's investors
+        const future15DaysQuery = `
+            SELECT
+                COALESCE(SUM(dd.disbursement_amount), 0) as total_amount,
+                COUNT(*) as disbursement_count
+            FROM disbursement_detail dd
+            JOIN disbursement_schedules ds ON dd.schedule_id = ds.id
+            JOIN investordetails i ON ds.investor_id = i.id
+            WHERE dd.status = 'pending'
+            AND DATE(dd.disbursement_date) >= CURRENT_DATE
+            AND DATE(dd.disbursement_date) <= DATE($2)
+            AND i.coordinator_id = $1
+        `;
+
+        // Execute all queries
+        const [
+            pendingTodayResult,
+            totalDisbursedResult,
+            totalInvestedResult,
+            pendingTomorrowResult,
+            upcomingResult,
+            overdueResult,
+            future15DaysResult
+        ] = await Promise.all([
+            client.query(pendingTodayQuery, [coordinatorId]),
+            client.query(totalDisbursedQuery, [coordinatorId]),
+            client.query(totalInvestedQuery, [coordinatorId]),
+            client.query(pendingTomorrowQuery, [coordinatorId]),
+            client.query(upcomingQuery, [coordinatorId]),
+            client.query(overdueQuery, [coordinatorId]),
+            client.query(future15DaysQuery, [coordinatorId, endOf15Days])
+        ]);
+
+        const stats = {
+            pendingToday: {
+                amount: parseFloat(pendingTodayResult.rows[0].total_amount) || 0,
+                count: parseInt(pendingTodayResult.rows[0].disbursement_count) || 0
+            },
+            totalDisbursed: {
+                amount: parseFloat(totalDisbursedResult.rows[0].total_amount) || 0,
+                count: parseInt(totalDisbursedResult.rows[0].disbursement_count) || 0
+            },
+            totalInvested: {
+                amount: parseFloat(totalInvestedResult.rows[0].total_amount) || 0,
+                count: parseInt(totalInvestedResult.rows[0].disbursement_count) || 0
+            },
+            pendingTomorrow: {
+                amount: parseFloat(pendingTomorrowResult.rows[0].total_amount) || 0,
+                count: parseInt(pendingTomorrowResult.rows[0].disbursement_count) || 0
+            },
+            upcoming: {
+                amount: parseFloat(upcomingResult.rows[0].total_amount) || 0,
+                count: parseInt(upcomingResult.rows[0].disbursement_count) || 0
+            },
+            overdue: {
+                amount: parseFloat(overdueResult.rows[0].total_amount) || 0,
+                count: parseInt(overdueResult.rows[0].disbursement_count) || 0
+            },
+            future15Days: {
+                amount: parseFloat(future15DaysResult.rows[0].total_amount) || 0,
+                count: parseInt(future15DaysResult.rows[0].disbursement_count) || 0
+            }
+        };
+
+        console.log('✅ Coordinator disbursement stats fetched:', {
+            coordinatorId,
+            stats
+        });
+
+        res.json({
+            success: true,
+            data: stats
+        });
+
+    } catch (error) {
+        console.error('❌ Error fetching coordinator disbursement stats:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching disbursement statistics',
+            error: error.message
+        });
+    } finally {
+        client.release();
     }
 };
 

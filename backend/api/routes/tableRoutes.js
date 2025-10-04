@@ -7,8 +7,8 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 
 // @desc    Get all transactions with pagination, sorting, and filtering
 // @route   GET /api/table/transactions
-// @access  Private/Admin
-router.get('/transactions', protect, authorize('admin') , tableController.getAllTransactions);
+// @access  Private/Admin/Coordinator
+router.get('/transactions', protect, authorize('admin', 'coordinator') , tableController.getAllTransactions);
 
 
 // You can add more routes here in the future for other tables

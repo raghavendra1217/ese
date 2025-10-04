@@ -40,6 +40,9 @@ import CoordinatorDashboard from './pages/coordinator/CoordinatorDashboard';
 import CoordinatorAllVendorsPage from './pages/coordinator/CoordinatorAllVendorsPage';
 import CoordinatorVendorsLast8DaysPage from './pages/coordinator/CoordinatorVendorsLast8DaysPage';
 import CoordinatorVendorsTodayPage from './pages/coordinator/CoordinatorVendorsTodayPage';
+import CoordinatorInvestorPage from './pages/coordinator/CoordinatorInvestorPage';
+import CoordinatorProductsPage from './pages/coordinator/CoordinatorProductsPage';
+import CoordinatorWildProductsPage from './pages/coordinator/CoordinatorWildProductsPage';
 
 import VendorDashboard from './pages/vendor/VendorDashboard';
 import BuyProduct from './pages/vendor/BuyProduct';
@@ -59,7 +62,7 @@ import NotFound from './components/NotFound';
 
 
 
-const url = "";
+const url = "http://localhost:5000";
 
 function App() {
   return (
@@ -270,6 +273,30 @@ function App() {
                 element={
                   <ProtectedRoute role="coordinator">
                     <CoordinatorVendorsTodayPage url={url} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/coordinator/investors"
+                element={
+                  <ProtectedRoute role="coordinator">
+                    <CoordinatorInvestorPage url={url} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/coordinator/products"
+                element={
+                  <ProtectedRoute role="coordinator">
+                    <CoordinatorProductsPage url={url} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/coordinator/wild-products"
+                element={
+                  <ProtectedRoute role="coordinator">
+                    <CoordinatorWildProductsPage url={url} />
                   </ProtectedRoute>
                 }
               />

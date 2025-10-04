@@ -300,21 +300,36 @@ exports.addInvestor = async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!first_name || !mobile_number || !coordinator_id) {
+    if (!first_name || !mobile_number) {
         return res.status(400).json({
-            message: 'First name, mobile number, and coordinator are required.'
+            message: 'First name and mobile number are required.'
         });
     }
 
-    // Get coordinator name from coordinator_id
-    const coordinatorQuery = 'SELECT name FROM coordinator WHERE coordinator_id = $1';
-    const coordinatorResult = await db.query(coordinatorQuery, [coordinator_id]);
+    // Determine coordinator_id and coordinator_name
+    let finalCoordinatorId = coordinator_id;
+    let coordinator_name;
 
-    if (coordinatorResult.rows.length === 0) {
-        return res.status(400).json({ message: 'Invalid coordinator selected.' });
+    // If user is a coordinator and no coordinator_id provided, assign to themselves
+    if (req.user.role === 'coordinator' && !coordinator_id) {
+        finalCoordinatorId = req.user.user_id;
     }
 
-    const coordinator_name = coordinatorResult.rows[0].name;
+    // If coordinator_id is provided or determined, validate it
+    if (finalCoordinatorId) {
+        const coordinatorQuery = 'SELECT name FROM coordinator WHERE coordinator_id = $1';
+        const coordinatorResult = await db.query(coordinatorQuery, [finalCoordinatorId]);
+
+        if (coordinatorResult.rows.length === 0) {
+            return res.status(400).json({ message: 'Invalid coordinator selected.' });
+        }
+
+        coordinator_name = coordinatorResult.rows[0].name;
+    } else {
+        return res.status(400).json({
+            message: 'Coordinator assignment is required.'
+        });
+    }
 
     // Validate transaction_id if provided
     if (transaction_id) {
@@ -346,7 +361,7 @@ exports.addInvestor = async (req, res) => {
         `;
 
         const params = [
-            first_name, mobile_number, pan_card, coordinator_name, coordinator_id, co_name,
+            first_name, mobile_number, pan_card, coordinator_name, finalCoordinatorId, co_name,
             bank_account_number, bank_name, branch_name, ifsc_code, mode_of_payment,
             plan_type, select_plan, transaction_id,
             address, investment_date

@@ -27,20 +27,20 @@ const upload = multer({
 // --- WILD PRODUCT ROUTES ---
 // =======================================================================
 
-// POST a new wild product with an image [Admin Only]
-router.post('/', protect, authorize('admin'), upload.single('productImage'), wildProductController.addWildProduct);
+// POST a new wild product with an image [Admin/Coordinator Only]
+router.post('/', protect, authorize('admin', 'coordinator'), upload.single('productImage'), wildProductController.addWildProduct);
 
-// GET Dashboard Stats [Admin Only]
-router.get('/stats/dashboard', protect, authorize('admin'), wildProductController.getWildProductStats);
+// GET Dashboard Stats [Admin/Coordinator Only]
+router.get('/stats/dashboard', protect, authorize('admin', 'coordinator'), wildProductController.getWildProductStats);
 
-// GET all wild products for management [Admin Only]
-router.get('/', protect, authorize('admin'), wildProductController.getAllWildProducts);
+// GET all wild products for management [Admin/Coordinator Only]
+router.get('/', protect, authorize('admin', 'coordinator'), wildProductController.getAllWildProducts);
 
-// PUT (update) a wild product [Admin Only]
-router.put('/:wildProductId', protect, authorize('admin'), wildProductController.updateWildProduct);
+// PUT (update) a wild product [Admin/Coordinator Only]
+router.put('/:wildProductId', protect, authorize('admin', 'coordinator'), wildProductController.updateWildProduct);
 
-// DELETE a wild product [Admin Only]
-router.delete('/:wildProductId', protect, authorize('admin'), wildProductController.deleteWildProduct);
+// DELETE a wild product [Admin/Coordinator Only]
+router.delete('/:wildProductId', protect, authorize('admin', 'coordinator'), wildProductController.deleteWildProduct);
 
 // GET available wild products for any authenticated user
 router.get('/available', protect, wildProductController.getAvailableWildProducts);
@@ -48,8 +48,8 @@ router.get('/available', protect, wildProductController.getAvailableWildProducts
 // GET count of available wild products
 router.get('/stats/available-count', protect, wildProductController.getAvailableWildProductCount);
 
-// POST increment selling date count [Admin Only]
-router.post('/increment-dates', protect, authorize('admin'), wildProductController.incrementSellingDateCount);
+// POST increment selling date count [Admin/Coordinator Only]
+router.post('/increment-dates', protect, authorize('admin', 'coordinator'), wildProductController.incrementSellingDateCount);
 
 // =======================================================================
 // --- WILD PRODUCT TRADING ROUTES ---
@@ -61,10 +61,10 @@ router.post('/purchase', protect, authorize('vendor'), wildProductTradingControl
 // GET wild product trading history for vendor [Vendor Only]
 router.get('/trading/history', protect, authorize('vendor'), wildProductTradingController.getWildProductTradingHistory);
 
-// GET all wild product trades for admin [Admin Only]
-router.get('/trading/all', protect, authorize('admin'), wildProductTradingController.getAllWildProductTrades);
+// GET all wild product trades for admin [Admin/Coordinator Only]
+router.get('/trading/all', protect, authorize('admin', 'coordinator'), wildProductTradingController.getAllWildProductTrades);
 
-// GET wild product trading stats for admin dashboard [Admin Only]
-router.get('/trading/stats', protect, authorize('admin'), wildProductTradingController.getWildProductTradingStats);
+// GET wild product trading stats for admin dashboard [Admin/Coordinator Only]
+router.get('/trading/stats', protect, authorize('admin', 'coordinator'), wildProductTradingController.getWildProductTradingStats);
 
 module.exports = router;

@@ -9,8 +9,8 @@ const { protect, authorize } = require('../middleware/authMiddleware');
 router.get('/', protect, authorize('admin'), investorController.getAllInvestors);
 router.get('/stats', protect, authorize('admin'), investorController.getInvestorStats);
 router.get('/:id', protect, authorize('admin'), investorController.getInvestorById);
-router.post('/', protect, authorize('admin'), investorController.addInvestor);
-router.put('/:id', protect, authorize('admin'), investorController.updateInvestor);
+router.post('/', protect, authorize('admin', 'coordinator'), investorController.addInvestor);
+router.put('/:id', protect, authorize('admin', 'coordinator'), investorController.updateInvestor);
 router.delete('/:id', protect, authorize('admin'), investorController.deleteInvestor);
 
 // Disbursement schedule routes

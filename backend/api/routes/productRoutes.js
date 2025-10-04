@@ -92,24 +92,24 @@ const upload = multer({
 // --- PRODUCT ROUTES (Updated to use the new 'upload' middleware) ---
 // =======================================================================
 
-// POST a new product with an image [Admin Only]
+// POST a new product with an image [Admin/Coordinator Only]
 // The string 'productImage' must match the 'name' attribute of the file input on your frontend.
-router.post('/', protect, authorize('admin'), upload.single('productImage'), productController.addProduct);
+router.post('/', protect, authorize('admin', 'coordinator'), upload.single('productImage'), productController.addProduct);
 
 
 // --- NO CHANGES NEEDED FOR OTHER ROUTES ---
 
-// GET Dashboard Stats [Admin Only]
-router.get('/stats/dashboard', protect, authorize('admin'), productController.getProductStats);
+// GET Dashboard Stats [Admin/Coordinator Only]
+router.get('/stats/dashboard', protect, authorize('admin', 'coordinator'), productController.getProductStats);
 
-// GET all products for management [Admin Only]
-router.get('/', protect, authorize('admin'), productController.getAllProducts);
+// GET all products for management [Admin/Coordinator Only]
+router.get('/', protect, authorize('admin', 'coordinator'), productController.getAllProducts);
 
-// PUT (update) a product [Admin Only]
-router.put('/:productId', protect, authorize('admin'), productController.updateProduct);
+// PUT (update) a product [Admin/Coordinator Only]
+router.put('/:productId', protect, authorize('admin', 'coordinator'), productController.updateProduct);
 
-// DELETE a product [Admin Only]
-router.delete('/:productId', protect, authorize('admin'), productController.deleteProduct);
+// DELETE a product [Admin/Coordinator Only]
+router.delete('/:productId', protect, authorize('admin', 'coordinator'), productController.deleteProduct);
 
 // GET available products for any authenticated user
 router.get('/available', protect, productController.getAvailableProducts);
