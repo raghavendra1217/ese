@@ -190,31 +190,51 @@ const CoordinatorVendorsTable = ({ url, viewType = 'all' }) => {
         page, limit, sortBy, sortOrder, search: debouncedSearch,
       }).toString();
 
-      const res = await fetch(`${url}/api/coordinator/vendors/paginated?${query}`, {
+      // Determine API endpoint based on viewType
+      let apiEndpoint;
+      switch (viewType) {
+        case 'last8days_all':
+          apiEndpoint = `${url}/api/coordinator/vendors/last8days/paginated?${query}`;
+          break;
+        case 'last8days_my':
+          apiEndpoint = `${url}/api/coordinator/vendors/last8days/paginated?${query}&filter=my`;
+          break;
+        case 'last8days_unassigned':
+          apiEndpoint = `${url}/api/coordinator/vendors/last8days/paginated?${query}&filter=unassigned`;
+          break;
+        case 'today_all':
+          apiEndpoint = `${url}/api/coordinator/vendors/today/paginated?${query}`;
+          break;
+        case 'today_my':
+          apiEndpoint = `${url}/api/coordinator/vendors/today/paginated?${query}&filter=my`;
+          break;
+        case 'today_unassigned':
+          apiEndpoint = `${url}/api/coordinator/vendors/today/paginated?${query}&filter=unassigned`;
+          break;
+        case 'my':
+          apiEndpoint = `${url}/api/coordinator/vendors/paginated?${query}&filter=my`;
+          break;
+        case 'unassigned':
+          apiEndpoint = `${url}/api/coordinator/vendors/paginated?${query}&filter=unassigned`;
+          break;
+        case 'all':
+        default:
+          apiEndpoint = `${url}/api/coordinator/vendors/paginated?${query}`;
+          break;
+      }
+
+      console.log('📡 Fetching vendors from:', apiEndpoint);
+      const res = await fetch(apiEndpoint, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      
       if (!res.ok) throw new Error('Failed to fetch vendors');
       const data = await res.json();
 
       let filteredVendors = data.data || [];
       
-      // Apply client-side filtering based on viewType
-      switch (viewType) {
-        case 'my':
-          // Show only vendors assigned to current coordinator
-          // Note: This would need the current coordinator ID from JWT token
-          // For now, we'll filter vendors that have any coordinator assigned
-          filteredVendors = filteredVendors.filter(v => v.coordinator_id !== null);
-          break;
-        case 'unassigned':
-          // Show only vendors without coordinator
-          filteredVendors = filteredVendors.filter(v => v.coordinator_id === null);
-          break;
-        case 'all':
-        default:
-          // Show all vendors (no additional filtering needed)
-          break;
-      }
+      // Note: Client-side filtering is removed because backend already handles filtering correctly
+      // Backend sends the correct data based on the API endpoint and filter parameter
 
       setVendors(filteredVendors);
       const serverTotal = data.total ?? data.totalCount ?? data.count ?? (Array.isArray(data.data) ? data.data.length : 0);
@@ -320,7 +340,7 @@ const CoordinatorVendorsTable = ({ url, viewType = 'all' }) => {
       { key: 'percentage', label: 'Commission %' },
       { key: 'wallet_balance', label: 'Wallet' },
       { key: 'created_at', label: 'Joined' },
-      ...((viewType === 'unassigned' || viewType === 'my') ? [{ key: 'actions', label: 'Actions' }] : []),
+      ...((viewType === 'unassigned' || viewType === 'my' || viewType === 'last8days_unassigned' || viewType === 'last8days_my' || viewType === 'today_unassigned' || viewType === 'today_my') ? [{ key: 'actions', label: 'Actions' }] : []),
     ], [viewType]
   );
 
@@ -628,6 +648,82 @@ const CoordinatorVendorsTable = ({ url, viewType = 'all' }) => {
                           </HStack>
                         </Td>
                       )}
+                      {(viewType === 'last8days_unassigned') && (
+                        <Td>
+                          <HStack spacing={2}>
+                            <Button
+                              size="sm"
+                              colorScheme="blue"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                assignVendor(vendor.id, vendor.vendor_name);
+                              }}
+                              isLoading={assigningVendors.has(vendor.id)}
+                              loadingText="Assigning..."
+                            >
+                              Assign
+                            </Button>
+                          </HStack>
+                        </Td>
+                      )}
+                      {(viewType === 'last8days_my') && (
+                        <Td>
+                          <HStack spacing={2}>
+                            <Button
+                              size="sm"
+                              colorScheme="red"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeVendor(vendor.id, vendor.vendor_name);
+                              }}
+                              isLoading={removingVendors.has(vendor.id)}
+                              loadingText="Removing..."
+                            >
+                              Remove
+                            </Button>
+                          </HStack>
+                        </Td>
+                      )}
+                      {(viewType === 'today_unassigned') && (
+                        <Td>
+                          <HStack spacing={2}>
+                            <Button
+                              size="sm"
+                              colorScheme="blue"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                assignVendor(vendor.id, vendor.vendor_name);
+                              }}
+                              isLoading={assigningVendors.has(vendor.id)}
+                              loadingText="Assigning..."
+                            >
+                              Assign
+                            </Button>
+                          </HStack>
+                        </Td>
+                      )}
+                      {(viewType === 'today_my') && (
+                        <Td>
+                          <HStack spacing={2}>
+                            <Button
+                              size="sm"
+                              colorScheme="red"
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeVendor(vendor.id, vendor.vendor_name);
+                              }}
+                              isLoading={removingVendors.has(vendor.id)}
+                              loadingText="Removing..."
+                            >
+                              Remove
+                            </Button>
+                          </HStack>
+                        </Td>
+                      )}
                     </Tr>
                   );
                 })}
@@ -713,6 +809,86 @@ const CoordinatorVendorsTable = ({ url, viewType = 'all' }) => {
 
                     {/* Action Button for My Vendors view */}
                     {viewType === 'my' && (
+                      <Flex justify="center" pt={2}>
+                        <Button
+                          size="sm"
+                          colorScheme="red"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeVendor(vendor.id, vendor.vendor_name);
+                          }}
+                          isLoading={removingVendors.has(vendor.id)}
+                          loadingText="Removing..."
+                          w="100%"
+                        >
+                          Remove from My Coordination
+                        </Button>
+                      </Flex>
+                    )}
+
+                    {/* Action Button for Last 8 Days Unassigned view */}
+                    {viewType === 'last8days_unassigned' && (
+                      <Flex justify="center" pt={2}>
+                        <Button
+                          size="sm"
+                          colorScheme="blue"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            assignVendor(vendor.id, vendor.vendor_name);
+                          }}
+                          isLoading={assigningVendors.has(vendor.id)}
+                          loadingText="Assigning..."
+                          w="100%"
+                        >
+                          Assign to Me
+                        </Button>
+                      </Flex>
+                    )}
+
+                    {/* Action Button for Last 8 Days My Vendors view */}
+                    {viewType === 'last8days_my' && (
+                      <Flex justify="center" pt={2}>
+                        <Button
+                          size="sm"
+                          colorScheme="red"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeVendor(vendor.id, vendor.vendor_name);
+                          }}
+                          isLoading={removingVendors.has(vendor.id)}
+                          loadingText="Removing..."
+                          w="100%"
+                        >
+                          Remove from My Coordination
+                        </Button>
+                      </Flex>
+                    )}
+
+                    {/* Action Button for Today's Unassigned view */}
+                    {viewType === 'today_unassigned' && (
+                      <Flex justify="center" pt={2}>
+                        <Button
+                          size="sm"
+                          colorScheme="blue"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            assignVendor(vendor.id, vendor.vendor_name);
+                          }}
+                          isLoading={assigningVendors.has(vendor.id)}
+                          loadingText="Assigning..."
+                          w="100%"
+                        >
+                          Assign to Me
+                        </Button>
+                      </Flex>
+                    )}
+
+                    {/* Action Button for Today's My Vendors view */}
+                    {viewType === 'today_my' && (
                       <Flex justify="center" pt={2}>
                         <Button
                           size="sm"

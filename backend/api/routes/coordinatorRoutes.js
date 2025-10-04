@@ -23,6 +23,27 @@ router.get('/', coordinatorController.getCoordinators);
 // Get all vendors (accessible by coordinators)
 router.get('/vendors/paginated', coordinatorController.getVendorsPaginated);
 
+// Get count of MY vendors (accessible by coordinators)
+router.get('/vendors/my-count', coordinatorController.getMyVendorsCount);
+
+// Get vendors from last 8 days (accessible by coordinators)
+router.get('/vendors/last8days', coordinatorController.getVendorsLast8Days);
+
+// Get paginated vendors from last 8 days (accessible by coordinators)
+router.get('/vendors/last8days/paginated', coordinatorController.getVendorsLast8DaysPaginated);
+
+// Get count of MY vendors from last 8 days (accessible by coordinators)
+router.get('/vendors/last8days/my-count', coordinatorController.getMyVendorsLast8DaysCount);
+
+// Get vendors from today (accessible by coordinators)
+router.get('/vendors/today', coordinatorController.getVendorsToday);
+
+// Get paginated vendors from today (accessible by coordinators)
+router.get('/vendors/today/paginated', coordinatorController.getVendorsTodayPaginated);
+
+// Get count of MY vendors from today (accessible by coordinators)
+router.get('/vendors/today/my-count', coordinatorController.getMyVendorsTodayCount);
+
 // Vendor assignment route (accessible by coordinators)
 router.put('/assign-vendor/:vendorId', coordinatorController.assignVendor);
 

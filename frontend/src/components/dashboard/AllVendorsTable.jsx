@@ -485,41 +485,72 @@ const AllVendorsTable = ({ url }) => {
 
   // Fetch coordinators for dropdown
   const fetchCoordinators = useCallback(async () => {
+    console.log('🔄 fetchCoordinators: Starting to fetch coordinators...');
     try {
       const response = await fetch(`${url}/api/coordinator`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      console.log('📡 fetchCoordinators: Response status:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ fetchCoordinators: Data received:', data);
         setCoordinators(data.coordinators || []);
+        console.log('✅ fetchCoordinators: Coordinators set in state:', data.coordinators?.length || 0);
+      } else {
+        console.error('❌ fetchCoordinators: Response not ok:', response.status);
       }
     } catch (error) {
-      console.error('Error fetching coordinators:', error);
+      console.error('❌ fetchCoordinators: Error:', error);
     }
   }, [url, token]);
 
   // Update vendor coordinator
   const updateVendorCoordinator = async () => {
-    if (!editingVendor || !selectedCoordinator) return;
+    console.log('🔄 updateVendorCoordinator: Starting update process...');
+    console.log('📋 updateVendorCoordinator: editingVendor:', editingVendor);
+    console.log('📋 updateVendorCoordinator: selectedCoordinator:', selectedCoordinator);
+    
+    if (!editingVendor || selectedCoordinator === undefined) {
+      console.log('❌ updateVendorCoordinator: Validation failed - missing vendor or coordinator');
+      return;
+    }
 
     try {
+      console.log('📡 updateVendorCoordinator: Making API call...');
+      const requestBody = { coordinator_id: selectedCoordinator };
+      console.log('📡 updateVendorCoordinator: Request body:', requestBody);
+      
       const response = await fetch(`${url}/api/admin/update-vendor-coordinator/${editingVendor.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ coordinator_id: selectedCoordinator })
+        body: JSON.stringify(requestBody)
       });
 
+      console.log('📡 updateVendorCoordinator: Response status:', response.status);
+
       if (response.ok) {
+        const responseData = await response.json();
+        console.log('✅ updateVendorCoordinator: Success response:', responseData);
+        
         // Refresh vendors data
-        fetchVendors();
+        console.log('🔄 updateVendorCoordinator: Refreshing vendors data...');
+        await fetchVendors();
+        console.log('✅ updateVendorCoordinator: Vendors data refreshed');
+        
         onEditClose();
         setSelectedCoordinator('');
+        console.log('✅ updateVendorCoordinator: Modal closed and state reset');
+      } else {
+        const errorData = await response.json();
+        console.error('❌ updateVendorCoordinator: Error response:', errorData);
+        alert(`Error: ${errorData.message}`);
       }
     } catch (error) {
-      console.error('Error updating vendor coordinator:', error);
+      console.error('❌ updateVendorCoordinator: Network error:', error);
+      alert('Network error occurred while updating coordinator');
     }
   };
 
@@ -549,37 +580,58 @@ const AllVendorsTable = ({ url }) => {
 
   // fetch paginated (server pagination)
   const fetchVendors = useCallback(async () => {
+    console.log('🔄 fetchVendors: Starting to fetch vendors...');
     setLoading(true);
     try {
       const query = new URLSearchParams({
         page, limit, sortBy, sortOrder, search: debouncedSearch,
       }).toString();
 
+      console.log('📡 fetchVendors: Query params:', { page, limit, sortBy, sortOrder, search: debouncedSearch });
+
       const res = await fetch(`${url}/api/admin/vendors/paginated?${query}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      console.log('📡 fetchVendors: Response status:', res.status);
+      
       if (!res.ok) throw new Error('Failed to fetch vendors');
       const data = await res.json();
+      console.log('✅ fetchVendors: Data received:', data);
 
       setVendors(data.data || []);
       const serverTotal =
         data.total ?? data.totalCount ?? data.count ?? (Array.isArray(data.data) ? data.data.length : 0);
       setTotalCount(serverTotal);
+      console.log('✅ fetchVendors: Vendors set in state:', data.data?.length || 0);
+      console.log('✅ fetchVendors: Total count set:', serverTotal);
     } catch (e) {
-      console.error(e);
+      console.error('❌ fetchVendors: Error:', e);
       setVendors([]);
       setTotalCount(0);
     } finally {
       setLoading(false);
+      console.log('✅ fetchVendors: Loading set to false');
     }
   }, [page, limit, sortBy, sortOrder, debouncedSearch, token, url]);
 
   useEffect(() => {
     if (token) {
+      console.log('🔄 useEffect: Token available, fetching vendors and coordinators');
       fetchVendors();
       fetchCoordinators();
+    } else {
+      console.log('❌ useEffect: No token available');
     }
   }, [fetchVendors, fetchCoordinators, token]);
+
+  // Log state changes
+  useEffect(() => {
+    console.log('📊 State Update: vendors count:', vendors.length);
+    console.log('📊 State Update: coordinators count:', coordinators.length);
+    console.log('📊 State Update: editingVendor:', editingVendor);
+    console.log('📊 State Update: selectedCoordinator:', selectedCoordinator);
+    console.log('📊 State Update: isEditOpen:', isEditOpen);
+  }, [vendors, coordinators, editingVendor, selectedCoordinator, isEditOpen]);
 
   const getStatusColor = (status) => {
     switch ((status || '').toLowerCase()) {
@@ -931,9 +983,13 @@ const AllVendorsTable = ({ url }) => {
                             variant="outline"
                             onClick={(e) => {
                               e.stopPropagation();
+                              console.log('🔄 Edit Coordinator Button: Clicked for vendor:', vendor);
+                              console.log('📋 Edit Coordinator Button: Current coordinator_id:', vendor.coordinator_id);
                               setEditingVendor(vendor);
                               setSelectedCoordinator(vendor.coordinator_id || '');
+                              console.log('📋 Edit Coordinator Button: Selected coordinator set to:', vendor.coordinator_id || '');
                               onEditOpen();
+                              console.log('✅ Edit Coordinator Button: Modal opened');
                             }}
                           >
                             Edit Coordinator
@@ -1008,7 +1064,10 @@ const AllVendorsTable = ({ url }) => {
       )}
 
       {/* Coordinator Edit Modal */}
-      <Modal isOpen={isEditOpen} onClose={onEditClose} size="lg">
+      <Modal isOpen={isEditOpen} onClose={() => {
+        console.log('🔄 Modal: Closing edit coordinator modal');
+        onEditClose();
+      }} size="lg">
         <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px)" />
         <ModalContent borderRadius="xl" boxShadow="2xl">
           <ModalHeader
@@ -1051,7 +1110,10 @@ const AllVendorsTable = ({ url }) => {
                   <FormLabel fontWeight="medium" color="gray.700">Select Coordinator</FormLabel>
                   <Select
                     value={selectedCoordinator}
-                    onChange={(e) => setSelectedCoordinator(e.target.value)}
+                    onChange={(e) => {
+                      console.log('🔄 Coordinator Dropdown: Changed to:', e.target.value);
+                      setSelectedCoordinator(e.target.value);
+                    }}
                     placeholder="Choose a coordinator..."
                     size="lg"
                     borderRadius="md"
@@ -1085,7 +1147,10 @@ const AllVendorsTable = ({ url }) => {
             <Button
               variant="ghost"
               mr={3}
-              onClick={onEditClose}
+              onClick={() => {
+                console.log('🔄 Cancel Button: Closing modal without saving');
+                onEditClose();
+              }}
               borderRadius="md"
             >
               Cancel

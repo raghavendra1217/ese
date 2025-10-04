@@ -396,18 +396,21 @@ const updateVendorCoordinator = async (req, res) => {
     const { vendorId } = req.params;
     const { coordinator_id } = req.body;
 
-    if (!coordinator_id) {
+    // Allow empty coordinator_id to remove coordinator assignment
+    if (coordinator_id === undefined || coordinator_id === null) {
         return res.status(400).json({ message: 'Coordinator ID is required.' });
     }
 
-    // Validate coordinator exists
-    const coordinatorCheck = await db.query(
-        'SELECT coordinator_id FROM coordinator WHERE coordinator_id = $1',
-        [coordinator_id]
-    );
+    // Validate coordinator exists only if coordinator_id is not empty
+    if (coordinator_id !== '') {
+        const coordinatorCheck = await db.query(
+            'SELECT coordinator_id, name FROM coordinator WHERE coordinator_id = $1',
+            [coordinator_id]
+        );
 
-    if (coordinatorCheck.rows.length === 0) {
-        return res.status(400).json({ message: 'Invalid coordinator selected.' });
+        if (coordinatorCheck.rows.length === 0) {
+            return res.status(400).json({ message: 'Invalid coordinator selected.' });
+        }
     }
 
     try {
@@ -418,7 +421,7 @@ const updateVendorCoordinator = async (req, res) => {
             RETURNING *;
         `;
 
-        const { rows } = await db.query(query, [coordinator_id, vendorId]);
+        const { rows } = await db.query(query, [coordinator_id || null, vendorId]);
 
         if (rows.length === 0) {
             return res.status(404).json({ message: 'Vendor not found.' });
@@ -426,14 +429,14 @@ const updateVendorCoordinator = async (req, res) => {
 
         console.log('✅ Vendor coordinator updated:', {
             vendorId,
-            coordinator_id,
-            coordinator_name: coordinatorCheck.rows[0].name
+            coordinator_id: coordinator_id || 'No Coordinator',
+            action: coordinator_id ? 'Assigned' : 'Removed'
         });
 
         res.status(200).json({
             success: true,
             vendor: rows[0],
-            message: 'Vendor coordinator updated successfully.'
+            message: coordinator_id ? 'Vendor coordinator updated successfully.' : 'Coordinator removed from vendor successfully.'
         });
     } catch (error) {
         console.error('❌ Error updating vendor coordinator:', error);
@@ -1095,6 +1098,7 @@ const getAllVendorsPaginated = async (req, res) => {
             FROM vendors v
             JOIN login l ON v.id = l.user_id
             LEFT JOIN wallet w ON v.id = w.id
+            LEFT JOIN coordinator c ON v.coordinator_id = c.coordinator_id
             WHERE l.role = 'vendor'
         `;
 
@@ -1124,7 +1128,9 @@ const getAllVendorsPaginated = async (req, res) => {
                 v.passport_photo_url,
                 l.status, -- ✅ Fetching the status from login table
                 COALESCE(w.digital_money, 0) AS wallet_balance,
-                w.percentage
+                w.percentage,
+                v.coordinator_id,
+                c.name AS coordinator_name
             ${baseQuery}
             ORDER BY ${sortColumn} ${sanitizedSortOrder} NULLS LAST
             LIMIT $${queryParams.length + 1} 

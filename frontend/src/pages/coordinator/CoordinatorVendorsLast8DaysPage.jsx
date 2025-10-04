@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import {
   Box, Flex, VStack, useColorModeValue, useDisclosure,
   Drawer, DrawerContent, DrawerOverlay, Heading, IconButton,
-  Button, HStack, Tabs, TabList, TabPanel,TabPanels, Tab, TabIndicator
+  Button, HStack, Tabs, TabList, TabPanel, TabPanels, Tab
 } from '@chakra-ui/react';
 import { HamburgerIcon, ArrowBackIcon } from '@chakra-ui/icons';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../AppContext';
 
 import CoordinatorNavBar from '../../components/layout/CoordinatorNavBar';
@@ -13,24 +13,12 @@ import CoordinatorVendorsTable from '../../components/dashboard/CoordinatorVendo
 
 const NAV_SIDEBAR_WIDTH = '80px';
 
-const CoordinatorAllVendorsPage = ({ url }) => {
+const CoordinatorVendorsLast8DaysPage = ({ url }) => {
   const { token } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  // Determine initial active tab based on URL parameter
-  const getInitialTab = () => {
-    const urlParams = new URLSearchParams(location.search);
-    const tab = urlParams.get('tab');
-    switch (tab) {
-      case 'my': return 1;
-      case 'unassigned': return 2;
-      default: return 0;
-    }
-  };
-
-  const [activeTab, setActiveTab] = useState(getInitialTab());
+  const [activeTab, setActiveTab] = useState(0);
 
   const pageBg = useColorModeValue('gray.50', 'gray.900');
   const headingColor = useColorModeValue('gray.800', 'gray.200');
@@ -64,7 +52,7 @@ const CoordinatorAllVendorsPage = ({ url }) => {
             variant="ghost"
           />
           <Heading as="h1" fontSize="lg" color={headingColor} lineHeight="1.2">
-            All Vendors
+            Vendors Last 8 Days
           </Heading>
         </Flex>
 
@@ -82,44 +70,44 @@ const CoordinatorAllVendorsPage = ({ url }) => {
                   Back to Dashboard
                 </Button>
                 <Heading size="lg" color={headingColor}>
-                  Vendors Management
+                  Vendors from Last 8 Days
                 </Heading>
               </HStack>
             </HStack>
           </Box>
 
-          {/* Tabs for different vendor segments */}
+          {/* Tabs for different vendor segments from last 8 days */}
           <Box>
             <Tabs
               index={activeTab}
               onChange={setActiveTab}
               variant="enclosed"
-              colorScheme="blue"
+              colorScheme="teal"
               size="lg"
             >
               <TabList>
-                <Tab>All Vendors</Tab>
-                <Tab>My Vendors</Tab>
-                <Tab>Unassigned Vendors</Tab>
+                <Tab>All Vendors (Last 8 Days)</Tab>
+                <Tab>My Vendors (Last 8 Days)</Tab>
+                <Tab>Unassigned Vendors (Last 8 Days)</Tab>
               </TabList>
 
               <TabPanels>
                 <TabPanel p={0} pt={6}>
                   <CoordinatorVendorsTable
                     url={url}
-                    viewType="all"
+                    viewType="last8days_all"
                   />
                 </TabPanel>
                 <TabPanel p={0} pt={6}>
                   <CoordinatorVendorsTable
                     url={url}
-                    viewType="my"
+                    viewType="last8days_my"
                   />
                 </TabPanel>
                 <TabPanel p={0} pt={6}>
                   <CoordinatorVendorsTable
                     url={url}
-                    viewType="unassigned"
+                    viewType="last8days_unassigned"
                   />
                 </TabPanel>
               </TabPanels>
@@ -131,4 +119,4 @@ const CoordinatorAllVendorsPage = ({ url }) => {
   );
 };
 
-export default CoordinatorAllVendorsPage;
+export default CoordinatorVendorsLast8DaysPage;

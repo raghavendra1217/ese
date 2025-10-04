@@ -41,28 +41,82 @@ const CoordinatorDashboard = ({ url }) => {
     };
   });
 
-  // Dummy data function - replaces real API calls
+  // Fetch real vendor counts for coordinator
   const fetchAllStats = useCallback(async () => {
-    if (!token) return;
+    if (!token) {
+      console.log('🔍 Dashboard Debug - No token available');
+      return;
+    }
 
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log('🔍 Dashboard Debug - Starting fetchAllStats');
+    console.log('🔍 Dashboard Debug - URL:', url);
+    console.log('🔍 Dashboard Debug - Token:', token ? 'Present' : 'Missing');
 
     try {
-      // Generate dummy data instead of making real API calls
-      const dummyStats = {
-        pendingVendorApprovals: Math.floor(Math.random() * 20) + 5,
-        pendingTradeApprovals: Math.floor(Math.random() * 15) + 3,
-        availableProducts: Math.floor(Math.random() * 50) + 25,
-        pendingWalletApprovals: Math.floor(Math.random() * 10) + 2,
-        totalVendors: Math.floor(Math.random() * 200) + 150,
-        vendorsLast8Days: Math.floor(Math.random() * 30) + 15,
-        todayVendors: Math.floor(Math.random() * 15) + 5,
-        totalWalletAmount: Math.floor(Math.random() * 500000) + 100000,
-        totalWithdrawnAmount: Math.floor(Math.random() * 200000) + 50000,
-        totalDepositedAmount: Math.floor(Math.random() * 300000) + 150000,
-        availableWildProducts: Math.floor(Math.random() * 20) + 10,
-        totalInvestors: Math.floor(Math.random() * 100) + 50,
+      // Fetch my vendors count (vendors assigned to current coordinator)
+      const myVendorsUrl = `${url}/api/coordinator/vendors/my-count?_t=${Date.now()}`;
+      console.log('🔍 Dashboard Debug - Fetching My Vendors Count from:', myVendorsUrl);
+      
+      const myVendorsResponse = await fetch(myVendorsUrl, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+      });
+      
+      console.log('🔍 Dashboard Debug - My Vendors Response Status:', myVendorsResponse.status);
+      console.log('🔍 Dashboard Debug - My Vendors Response OK:', myVendorsResponse.ok);
+      
+      const myVendorsData = myVendorsResponse.ok ? await myVendorsResponse.json() : { count: 0 };
+      console.log('🔍 Dashboard Debug - My Vendors Data:', myVendorsData);
+      console.log('🔍 Dashboard Debug - My Vendors Count:', myVendorsData.count);
+
+      // Fetch my vendors from last 8 days
+      const myVendorsLast8DaysUrl = `${url}/api/coordinator/vendors/last8days/my-count?_t=${Date.now()}`;
+      console.log('🔍 Dashboard Debug - Fetching My Vendors Last 8 Days Count from:', myVendorsLast8DaysUrl);
+      
+      const myVendorsLast8DaysResponse = await fetch(myVendorsLast8DaysUrl, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+      });
+      
+      console.log('🔍 Dashboard Debug - My Vendors Last 8 Days Response Status:', myVendorsLast8DaysResponse.status);
+      const myVendorsLast8DaysData = myVendorsLast8DaysResponse.ok ? await myVendorsLast8DaysResponse.json() : { count: 0 };
+      console.log('🔍 Dashboard Debug - My Vendors Last 8 Days Data:', myVendorsLast8DaysData);
+
+      // Fetch my vendors from today
+      const myVendorsTodayUrl = `${url}/api/coordinator/vendors/today/my-count?_t=${Date.now()}`;
+      console.log('🔍 Dashboard Debug - Fetching My Vendors Today Count from:', myVendorsTodayUrl);
+      
+      const myVendorsTodayResponse = await fetch(myVendorsTodayUrl, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        },
+      });
+      
+      console.log('🔍 Dashboard Debug - My Vendors Today Response Status:', myVendorsTodayResponse.status);
+      const myVendorsTodayData = myVendorsTodayResponse.ok ? await myVendorsTodayResponse.json() : { count: 0 };
+      console.log('🔍 Dashboard Debug - My Vendors Today Data:', myVendorsTodayData);
+
+      const realStats = {
+        pendingVendorApprovals: Math.floor(Math.random() * 20) + 5, // Keep dummy for now
+        pendingTradeApprovals: Math.floor(Math.random() * 15) + 3, // Keep dummy for now
+        availableProducts: Math.floor(Math.random() * 50) + 25, // Keep dummy for now
+        pendingWalletApprovals: Math.floor(Math.random() * 10) + 2, // Keep dummy for now
+        totalVendors: myVendorsData.count || 0, // My vendors count
+        vendorsLast8Days: myVendorsLast8DaysData.count || 0, // My vendors from last 8 days
+        todayVendors: myVendorsTodayData.count || 0, // My vendors from today
+        totalWalletAmount: Math.floor(Math.random() * 500000) + 100000, // Keep dummy for now
+        totalWithdrawnAmount: Math.floor(Math.random() * 200000) + 50000, // Keep dummy for now
+        totalDepositedAmount: Math.floor(Math.random() * 300000) + 150000, // Keep dummy for now
+        availableWildProducts: Math.floor(Math.random() * 20) + 10, // Keep dummy for now
+        totalInvestors: Math.floor(Math.random() * 100) + 50, // Keep dummy for now
         quickRegStats: {
           total_registrations: Math.floor(Math.random() * 500) + 200,
           today_registrations: Math.floor(Math.random() * 20) + 5,
@@ -71,12 +125,17 @@ const CoordinatorDashboard = ({ url }) => {
         },
       };
 
-      setStats(prev => ({ ...prev, ...dummyStats }));
-      localStorage.setItem('coordinatorDashboardStats', JSON.stringify(dummyStats));
+      console.log('🔍 Dashboard Debug - Final Real Stats:', realStats);
+      console.log('🔍 Dashboard Debug - Setting stats with totalVendors:', realStats.totalVendors);
+
+      setStats(prev => ({ ...prev, ...realStats }));
+      localStorage.setItem('coordinatorDashboardStats', JSON.stringify(realStats));
+      
+      console.log('🔍 Dashboard Debug - Stats updated and saved to localStorage');
     } catch (error) {
-      console.error('Failed to fetch dummy dashboard stats:', error);
+      console.error('Failed to fetch dashboard stats:', error);
     }
-  }, [token]);
+  }, [token, url]);
 
   useEffect(() => { if (token) fetchAllStats(); }, [token, fetchAllStats]);
 
@@ -133,8 +192,8 @@ const CoordinatorDashboard = ({ url }) => {
                boxShadow="lg"
                cursor="pointer"
                onClick={() => {
-                 // Navigate to coordinator vendors page
-                 navigate('/coordinator/all-vendors');
+                 // Navigate to coordinator vendors page - My Vendors tab
+                 navigate('/coordinator/all-vendors?tab=my');
                }}
                _hover={{
                  boxShadow: "xl",
@@ -176,7 +235,7 @@ const CoordinatorDashboard = ({ url }) => {
                      {stats.totalVendors || 0}
                    </Text>
                    <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
-                     All Vendors
+                     My Vendors
             </Text>
                  </VStack>
                  <Button
@@ -191,7 +250,7 @@ const CoordinatorDashboard = ({ url }) => {
                    }}
                    transition="all 0.2s ease"
                  >
-                   View All Vendors
+                   View My Vendors
                  </Button>
                </VStack>
           </Box>
@@ -206,8 +265,8 @@ const CoordinatorDashboard = ({ url }) => {
                boxShadow="lg"
                cursor="pointer"
                onClick={() => {
-                 // Dummy function - no real navigation
-                 alert('Recent Vendors functionality - Coming Soon!');
+                 // Navigate to coordinator vendors last 8 days page
+                 navigate('/coordinator/vendors-last8days');
                }}
                _hover={{
                  boxShadow: "xl",
@@ -249,7 +308,7 @@ const CoordinatorDashboard = ({ url }) => {
                      {stats.vendorsLast8Days || 0}
                    </Text>
                    <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
-                     Vendors (Last 8 Days)
+                     My Vendors (Last 8 Days)
                    </Text>
                  </VStack>
                  <Button
@@ -279,8 +338,8 @@ const CoordinatorDashboard = ({ url }) => {
                boxShadow="lg"
                cursor="pointer"
                onClick={() => {
-                 // Dummy function - no real navigation
-                 alert('Today\'s Vendors functionality - Coming Soon!');
+                 // Navigate to coordinator vendors today page
+                 navigate('/coordinator/vendors-today');
                }}
                _hover={{
                  boxShadow: "xl",
@@ -322,7 +381,7 @@ const CoordinatorDashboard = ({ url }) => {
                      {stats.todayVendors || 0}
                           </Text>
                    <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
-                     Today's Vendors
+                     My Today's Vendors
                           </Text>
                         </VStack>
                  <Button

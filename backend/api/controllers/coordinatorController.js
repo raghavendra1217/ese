@@ -676,6 +676,56 @@ exports.removeVendor = async (req, res) => {
 };
 
 /**
+ * @desc    Get count of vendors assigned to current coordinator
+ * @route   GET /api/coordinator/vendors/my-count
+ * @access  Private (Coordinator)
+ */
+exports.getMyVendorsCount = async (req, res) => {
+    try {
+        const coordinatorId = req.user.user_id; // Current coordinator ID
+        
+        console.log('🔍 Backend Debug - getMyVendorsCount called with coordinator ID:', coordinatorId);
+
+        const countQuery = `
+            SELECT COUNT(*) as count 
+            FROM vendors v
+            JOIN login l ON v.id = l.user_id
+            WHERE l.role = 'vendor' 
+            AND v.coordinator_id = $1
+        `;
+
+        console.log('🔍 Backend Debug - Count query:', countQuery);
+        console.log('🔍 Backend Debug - Query params:', [coordinatorId]);
+
+        const result = await db.query(countQuery, [coordinatorId]);
+        const count = parseInt(result.rows[0].count, 10);
+
+        console.log('🔍 Backend Debug - Count result:', result.rows[0]);
+        console.log('🔍 Backend Debug - Parsed count:', count);
+
+        // Add cache-busting headers
+        res.set({
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
+
+        res.status(200).json({
+            success: true,
+            count: count,
+            coordinator_id: coordinatorId
+        });
+
+    } catch (error) {
+        console.error('❌ Error fetching my vendors count:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to fetch my vendors count.' 
+        });
+    }
+};
+
+/**
  * @desc    Get a paginated, searchable, and sortable list of ALL vendors for coordinators
  * @route   GET /api/coordinator/vendors/paginated
  * @access  Private (Coordinator)
@@ -687,8 +737,15 @@ exports.getVendorsPaginated = async (req, res) => {
             limit = 10,
             sortBy = 'created_at',
             sortOrder = 'desc',
-            search = ''
+            search = '',
+            filter = 'all' // 'all', 'my', 'unassigned'
         } = req.query;
+
+        console.log('🔍 Backend Debug - getVendorsPaginated called with:', {
+            page, limit, sortBy, sortOrder, search, filter,
+            user_id: req.user?.user_id,
+            user_role: req.user?.role
+        });
 
         // ✅ Define allowed columns for sorting
         const allowedSortBy = [
@@ -696,6 +753,7 @@ exports.getVendorsPaginated = async (req, res) => {
             'created_at', 'wallet_balance', 'percentage', 'status'
         ];
         if (!allowedSortBy.includes(sortBy)) {
+            console.log('❌ Backend Debug - Invalid sort column:', sortBy);
             return res.status(400).json({ message: 'Invalid sort column.' });
         }
         
@@ -711,6 +769,9 @@ exports.getVendorsPaginated = async (req, res) => {
         
         const sanitizedSortOrder = sortOrder.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
+        const coordinatorId = req.user.user_id; // Current coordinator ID
+        console.log('🔍 Backend Debug - Coordinator ID extracted:', coordinatorId, 'Type:', typeof coordinatorId);
+        
         const queryParams = [];
         // ✅ Base query to fetch all vendors with coordinator information
         let baseQuery = `
@@ -721,6 +782,27 @@ exports.getVendorsPaginated = async (req, res) => {
             WHERE l.role = 'vendor'
         `;
 
+        console.log('🔍 Backend Debug - Base query:', baseQuery);
+
+        // Add filter conditions
+        switch (filter) {
+            case 'my':
+                queryParams.push(coordinatorId);
+                const myFilterIndex = queryParams.length;
+                baseQuery += ` AND v.coordinator_id = $${myFilterIndex}`;
+                console.log('🔍 Backend Debug - My filter applied. Query params:', queryParams);
+                console.log('🔍 Backend Debug - Final query with my filter:', baseQuery);
+                break;
+            case 'unassigned':
+                baseQuery += ` AND v.coordinator_id IS NULL`;
+                console.log('🔍 Backend Debug - Unassigned filter applied');
+                break;
+            case 'all':
+            default:
+                console.log('🔍 Backend Debug - No additional filter (showing all)');
+                break;
+        }
+
         // ✅ Robust search across multiple relevant columns
         if (search) {
             queryParams.push(`%${search}%`);
@@ -730,8 +812,14 @@ exports.getVendorsPaginated = async (req, res) => {
         
         // --- Get Total Count for Pagination ---
         const countQuery = `SELECT COUNT(*) ${baseQuery}`;
+        console.log('🔍 Backend Debug - Count query:', countQuery);
+        console.log('🔍 Backend Debug - Count query params:', queryParams);
+        
         const totalResult = await db.query(countQuery, queryParams);
+        console.log('🔍 Backend Debug - Count query result:', totalResult.rows);
+        
         const totalCount = parseInt(totalResult.rows[0].count, 10);
+        console.log('🔍 Backend Debug - Parsed total count:', totalCount);
 
         // --- Get Paginated Data ---
         const offset = (page - 1) * limit;
@@ -754,7 +842,20 @@ exports.getVendorsPaginated = async (req, res) => {
             OFFSET $${queryParams.length + 2}
         `;
         
+        console.log('🔍 Backend Debug - Data query:', dataQuery);
+        console.log('🔍 Backend Debug - Data query params:', [...queryParams, limit, offset]);
+        
         const dataResult = await db.query(dataQuery, [...queryParams, limit, offset]);
+        console.log('🔍 Backend Debug - Data query result rows:', dataResult.rows.length);
+        console.log('🔍 Backend Debug - Sample data row:', dataResult.rows[0] || 'No rows returned');
+
+        const response = {
+            data: dataResult.rows,
+            totalCount,
+            page: parseInt(page, 10),
+            limit: parseInt(limit, 10),
+            totalPages: Math.ceil(totalCount / limit)
+        };
 
         console.log('✅ Coordinator vendors data fetched successfully:', {
             count: dataResult.rows.length,
@@ -763,17 +864,428 @@ exports.getVendorsPaginated = async (req, res) => {
             limit: parseInt(limit, 10)
         });
 
-        res.status(200).json({
-            data: dataResult.rows,
-            totalCount,
-            page: parseInt(page, 10),
-            limit: parseInt(limit, 10),
-            totalPages: Math.ceil(totalCount / limit)
+        console.log('🔍 Backend Debug - Final response:', response);
+        
+        // Add cache-busting headers
+        res.set({
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
         });
+        
+        res.status(200).json(response);
 
     } catch (error) {
         console.error('❌ Error fetching coordinator vendors:', error);
         res.status(500).json({ message: 'Failed to fetch vendors.' });
+    }
+};
+
+/**
+ * @desc    Get count of vendors from last 8 days
+ * @route   GET /api/coordinator/vendors/last8days
+ * @access  Private (Coordinator)
+ */
+exports.getVendorsLast8Days = async (req, res) => {
+    try {
+        const query = `
+            SELECT COUNT(*) as count 
+            FROM vendors v
+            JOIN login l ON v.id = l.user_id
+            WHERE l.role = 'vendor' 
+            AND l.status = 'approved' 
+            AND v.created_at >= NOW() - INTERVAL '8 days'
+        `;
+        const result = await db.query(query);
+        const count = parseInt(result.rows[0].count, 10);
+        
+        res.status(200).json({ count });
+    } catch (error) {
+        console.error('❌ Error fetching last 8 days vendors:', error);
+        res.status(500).json({ message: 'Failed to fetch last 8 days vendors.' });
+    }
+};
+
+/**
+ * @desc Get count of MY vendors from last 8 days
+ * @route GET /api/coordinator/vendors/last8days/my-count
+ * @access Private (Coordinator)
+ */
+exports.getMyVendorsLast8DaysCount = async (req, res) => {
+    try {
+        const coordinatorId = req.user.user_id;
+        
+        console.log('🔍 Backend Debug - getMyVendorsLast8DaysCount called with coordinator ID:', coordinatorId);
+
+        const countQuery = `
+            SELECT COUNT(*) as count 
+            FROM vendors v
+            JOIN login l ON v.id = l.user_id
+            WHERE l.role = 'vendor' 
+            AND l.status = 'approved' 
+            AND v.created_at >= NOW() - INTERVAL '8 days'
+            AND v.coordinator_id = $1
+        `;
+
+        console.log('🔍 Backend Debug - Last 8 Days Count query:', countQuery);
+        console.log('🔍 Backend Debug - Query params:', [coordinatorId]);
+
+        const result = await db.query(countQuery, [coordinatorId]);
+        const count = parseInt(result.rows[0].count, 10);
+
+        console.log('🔍 Backend Debug - Last 8 Days Count result:', result.rows[0]);
+        console.log('🔍 Backend Debug - Parsed count:', count);
+
+        // Add cache-busting headers
+        res.set({
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
+
+        res.status(200).json({
+            success: true,
+            count: count,
+            coordinator_id: coordinatorId
+        });
+
+    } catch (error) {
+        console.error('❌ Error fetching my vendors last 8 days count:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to fetch my vendors last 8 days count.' 
+        });
+    }
+};
+
+/**
+ * @desc    Get paginated vendors from last 8 days with filtering
+ * @route   GET /api/coordinator/vendors/last8days/paginated
+ * @access  Private (Coordinator)
+ */
+exports.getVendorsLast8DaysPaginated = async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 10,
+            sortBy = 'created_at',
+            sortOrder = 'DESC',
+            search = '',
+            filter = 'all' // 'all', 'my', 'unassigned'
+        } = req.query;
+
+        const coordinatorId = req.user.user_id; // Current coordinator ID
+
+        // Validate sortBy to prevent SQL injection
+        const allowedSortFields = ['created_at', 'vendor_name', 'email', 'phone_number', 'id'];
+        const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+        
+        // Validate sortOrder
+        const validSortOrder = ['ASC', 'DESC'].includes(sortOrder.toUpperCase()) ? sortOrder.toUpperCase() : 'DESC';
+        
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+        
+        // Build base query for last 8 days
+        let baseQuery = `
+            FROM vendors v
+            JOIN login l ON v.id = l.user_id
+            LEFT JOIN wallet w ON v.id = w.id
+            LEFT JOIN coordinator c ON v.coordinator_id = c.coordinator_id
+            WHERE l.role = 'vendor' 
+            AND l.status = 'approved' 
+            AND v.created_at >= NOW() - INTERVAL '8 days'
+        `;
+
+        // Add filter conditions
+        let vendorParams = [];
+        switch (filter) {
+            case 'my':
+                vendorParams.push(coordinatorId);
+                const myFilterIndex = vendorParams.length;
+                baseQuery += ` AND v.coordinator_id = $${myFilterIndex}`;
+                break;
+            case 'unassigned':
+                baseQuery += ` AND v.coordinator_id IS NULL`;
+                break;
+            case 'all':
+            default:
+                // No additional filter
+                break;
+        }
+        
+        // Count total vendors matching criteria
+        const countQuery = `SELECT COUNT(*) as total ${baseQuery}`;
+        const countResult = await db.query(countQuery, vendorParams);
+        const total = parseInt(countResult.rows[0].total, 10);
+        
+        // Add search condition if provided
+        let finalBaseQuery = baseQuery;
+        
+        if (search) {
+            finalBaseQuery += ` AND (v.vendor_name ILIKE $${vendorParams.length + 1} OR v.id ILIKE $${vendorParams.length + 1} OR v.email ILIKE $${vendorParams.length + 1} OR v.phone_number ILIKE $${vendorParams.length + 1} OR l.status ILIKE $${vendorParams.length + 1} OR c.name ILIKE $${vendorParams.length + 1})`;
+            vendorParams.push(`%${search}%`);
+        }
+        
+        // Add limit and offset parameters
+        vendorParams.push(parseInt(limit), offset);
+        
+        // Get paginated vendors
+        const vendorsQuery = `
+            SELECT 
+                v.id,
+                v.vendor_name,
+                v.email,
+                v.phone_number,
+                v.created_at AS joining_date,
+                v.passport_photo_url,
+                v.coordinator_id,
+                c.name AS coordinator_name,
+                l.status,
+                COALESCE(w.digital_money, 0) AS wallet_balance,
+                w.percentage
+            ${finalBaseQuery}
+            ORDER BY v.${validSortBy} ${validSortOrder} NULLS LAST
+            LIMIT $${vendorParams.length - 1} OFFSET $${vendorParams.length}
+        `;
+            
+        const vendorsResult = await db.query(vendorsQuery, vendorParams);
+        
+        const totalPages = Math.ceil(total / parseInt(limit));
+        
+        console.log('✅ Coordinator last 8 days vendors fetched:', {
+            filter,
+            count: vendorsResult.rows.length,
+            total,
+            page: parseInt(page),
+            limit: parseInt(limit)
+        });
+        
+        // Add cache-busting headers
+        res.set({
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
+        
+        res.status(200).json({
+            success: true,
+            data: vendorsResult.rows,
+            total,
+            totalPages,
+            page: parseInt(page),
+            limit: parseInt(limit)
+        });
+        
+    } catch (error) {
+        console.error('❌ Error fetching paginated vendors from last 8 days:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Failed to fetch vendors from last 8 days.' 
+        });
+    }
+};
+
+/**
+ * @desc    Get count of vendors from today
+ * @route   GET /api/coordinator/vendors/today
+ * @access  Private (Coordinator)
+ */
+exports.getVendorsToday = async (req, res) => {
+    try {
+        const query = `
+            SELECT COUNT(*) as count 
+            FROM vendors v
+            JOIN login l ON v.id = l.user_id
+            WHERE l.role = 'vendor' 
+            AND l.status = 'approved' 
+            AND DATE(v.created_at) = CURRENT_DATE
+        `;
+        const result = await db.query(query);
+        const count = parseInt(result.rows[0].count, 10);
+        
+        res.status(200).json({ count });
+    } catch (error) {
+        console.error('❌ Error fetching today vendors:', error);
+        res.status(500).json({ message: 'Failed to fetch today vendors.' });
+    }
+};
+
+/**
+ * @desc Get count of MY vendors from today
+ * @route GET /api/coordinator/vendors/today/my-count
+ * @access Private (Coordinator)
+ */
+exports.getMyVendorsTodayCount = async (req, res) => {
+    try {
+        const coordinatorId = req.user.user_id;
+        
+        console.log('🔍 Backend Debug - getMyVendorsTodayCount called with coordinator ID:', coordinatorId);
+
+        const countQuery = `
+            SELECT COUNT(*) as count 
+            FROM vendors v
+            JOIN login l ON v.id = l.user_id
+            WHERE l.role = 'vendor' 
+            AND l.status = 'approved' 
+            AND DATE(v.created_at) = CURRENT_DATE
+            AND v.coordinator_id = $1
+        `;
+
+        console.log('🔍 Backend Debug - Today Count query:', countQuery);
+        console.log('🔍 Backend Debug - Query params:', [coordinatorId]);
+
+        const result = await db.query(countQuery, [coordinatorId]);
+        const count = parseInt(result.rows[0].count, 10);
+
+        console.log('🔍 Backend Debug - Today Count result:', result.rows[0]);
+        console.log('🔍 Backend Debug - Parsed count:', count);
+
+        // Add cache-busting headers
+        res.set({
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
+
+        res.status(200).json({
+            success: true,
+            count: count,
+            coordinator_id: coordinatorId
+        });
+
+    } catch (error) {
+        console.error('❌ Error fetching my vendors today count:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to fetch my vendors today count.' 
+        });
+    }
+};
+
+/**
+ * @desc    Get paginated vendors from today with filtering
+ * @route   GET /api/coordinator/vendors/today/paginated
+ * @access  Private (Coordinator)
+ */
+exports.getVendorsTodayPaginated = async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 10,
+            sortBy = 'created_at',
+            sortOrder = 'DESC',
+            search = '',
+            filter = 'all' // 'all', 'my', 'unassigned'
+        } = req.query;
+
+        const coordinatorId = req.user.user_id; // Current coordinator ID
+
+        // Validate sortBy to prevent SQL injection
+        const allowedSortFields = ['created_at', 'vendor_name', 'email', 'phone_number', 'id'];
+        const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+        
+        // Validate sortOrder
+        const validSortOrder = ['ASC', 'DESC'].includes(sortOrder.toUpperCase()) ? sortOrder.toUpperCase() : 'DESC';
+        
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+        
+        // Build base query for today
+        let baseQuery = `
+            FROM vendors v
+            JOIN login l ON v.id = l.user_id
+            LEFT JOIN wallet w ON v.id = w.id
+            LEFT JOIN coordinator c ON v.coordinator_id = c.coordinator_id
+            WHERE l.role = 'vendor' 
+            AND l.status = 'approved' 
+            AND DATE(v.created_at) = CURRENT_DATE
+        `;
+
+        // Add filter conditions
+        let vendorParams = [];
+        switch (filter) {
+            case 'my':
+                vendorParams.push(coordinatorId);
+                const myFilterIndex = vendorParams.length;
+                baseQuery += ` AND v.coordinator_id = $${myFilterIndex}`;
+                break;
+            case 'unassigned':
+                baseQuery += ` AND v.coordinator_id IS NULL`;
+                break;
+            case 'all':
+            default:
+                // No additional filter
+                break;
+        }
+        
+        // Count total vendors matching criteria
+        const countQuery = `SELECT COUNT(*) as total ${baseQuery}`;
+        const countResult = await db.query(countQuery, vendorParams);
+        const total = parseInt(countResult.rows[0].total, 10);
+        
+        // Add search condition if provided
+        let finalBaseQuery = baseQuery;
+        
+        if (search) {
+            finalBaseQuery += ` AND (v.vendor_name ILIKE $${vendorParams.length + 1} OR v.id ILIKE $${vendorParams.length + 1} OR v.email ILIKE $${vendorParams.length + 1} OR v.phone_number ILIKE $${vendorParams.length + 1} OR l.status ILIKE $${vendorParams.length + 1} OR c.name ILIKE $${vendorParams.length + 1})`;
+            vendorParams.push(`%${search}%`);
+        }
+        
+        // Add limit and offset parameters
+        vendorParams.push(parseInt(limit), offset);
+        
+        // Get paginated vendors
+        const vendorsQuery = `
+            SELECT 
+                v.id,
+                v.vendor_name,
+                v.email,
+                v.phone_number,
+                v.created_at AS joining_date,
+                v.passport_photo_url,
+                v.coordinator_id,
+                c.name AS coordinator_name,
+                l.status,
+                COALESCE(w.digital_money, 0) AS wallet_balance,
+                w.percentage
+            ${finalBaseQuery}
+            ORDER BY v.${validSortBy} ${validSortOrder} NULLS LAST
+            LIMIT $${vendorParams.length - 1} OFFSET $${vendorParams.length}
+        `;
+            
+        const vendorsResult = await db.query(vendorsQuery, vendorParams);
+        
+        const totalPages = Math.ceil(total / parseInt(limit));
+        
+        console.log('✅ Coordinator today vendors fetched:', {
+            filter,
+            count: vendorsResult.rows.length,
+            total,
+            page: parseInt(page),
+            limit: parseInt(limit)
+        });
+        
+        // Add cache-busting headers
+        res.set({
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
+        
+        res.status(200).json({
+            success: true,
+            data: vendorsResult.rows,
+            total,
+            totalPages,
+            page: parseInt(page),
+            limit: parseInt(limit)
+        });
+        
+    } catch (error) {
+        console.error('❌ Error fetching paginated vendors from today:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Failed to fetch vendors from today.' 
+        });
     }
 };
 

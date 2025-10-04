@@ -38,6 +38,8 @@ import EditCoordinatorPage from './pages/admin/EditCoordinatorPage';
 
 import CoordinatorDashboard from './pages/coordinator/CoordinatorDashboard';
 import CoordinatorAllVendorsPage from './pages/coordinator/CoordinatorAllVendorsPage';
+import CoordinatorVendorsLast8DaysPage from './pages/coordinator/CoordinatorVendorsLast8DaysPage';
+import CoordinatorVendorsTodayPage from './pages/coordinator/CoordinatorVendorsTodayPage';
 
 import VendorDashboard from './pages/vendor/VendorDashboard';
 import BuyProduct from './pages/vendor/BuyProduct';
@@ -252,6 +254,22 @@ function App() {
                 element={
                   <ProtectedRoute role="coordinator">
                     <CoordinatorAllVendorsPage url={url} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/coordinator/vendors-last8days"
+                element={
+                  <ProtectedRoute role="coordinator">
+                    <CoordinatorVendorsLast8DaysPage url={url} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/coordinator/vendors-today"
+                element={
+                  <ProtectedRoute role="coordinator">
+                    <CoordinatorVendorsTodayPage url={url} />
                   </ProtectedRoute>
                 }
               />
