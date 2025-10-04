@@ -1,182 +1,89 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Box,
-  VStack,
-  HStack,
-  Heading,
-  Text,
-  useColorModeValue,
-  Container,
-  Grid,
-  GridItem,
-  Card,
-  CardBody,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
-  StatArrow,
-  Button,
-  useToast,
-  Spinner,
-  Center,
-  Badge,
-  Divider,
-  Flex,
-  IconButton,
-  Drawer,
-  DrawerContent,
-  DrawerOverlay,
-  useDisclosure,
+  Box, Flex, VStack, SimpleGrid, useColorModeValue, useDisclosure,
+  Drawer, DrawerContent, DrawerOverlay, Heading, IconButton,
+  Text, Button
 } from '@chakra-ui/react';
-import {
-  FaUsers,
-  FaChartLine,
-  FaTasks,
-  FaBell,
-  FaUserCheck,
-  FaUserTimes,
-} from 'react-icons/fa';
 import { HamburgerIcon } from '@chakra-ui/icons';
+import { FaUsers, FaChartBar, FaCog, FaWallet, FaMoneyBillWave, FaArrowUp, FaArrowDown, FaHandshake, FaFileArchive, FaFileInvoice } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../AppContext';
 import CoordinatorNavBar, { NAV_WIDTH } from '../../components/layout/CoordinatorNavBar';
+import CoordinatorDashboardHeader from '../../components/dashboard/CoordinatorDashboardHeader';
+import Transactions from '../admin/Transactions';
 
 const CoordinatorDashboard = ({ url }) => {
-  const { user, token } = useAuth();
-  const toast = useToast();
+  const { token } = useAuth();
+  const navigate = useNavigate();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const [dashboardData, setDashboardData] = useState({
-    totalTasks: 0,
-    completedTasks: 0,
-    pendingTasks: 0,
-    assignedVendors: 0,
-    activeVendors: 0,
-    recentActivities: []
+  const [stats, setStats] = useState(() => {
+    const cached = localStorage.getItem('coordinatorDashboardStats');
+    return cached ? JSON.parse(cached) : {
+      pendingVendorApprovals: 0,
+      pendingTradeApprovals: 0,
+      availableProducts: 0,
+      pendingWalletApprovals: 0,
+      totalVendors: 0,
+      vendorsLast8Days: 0,
+      todayVendors: 0,
+      totalWalletAmount: 0,
+      totalWithdrawnAmount: 0,
+      totalDepositedAmount: 0,
+      availableWildProducts: 0,
+      totalInvestors: 0,
+      quickRegStats: {
+        total_registrations: 0,
+        today_registrations: 0,
+        week_registrations: 0,
+        month_registrations: 0
+      },
+    };
   });
-  const [isLoading, setIsLoading] = useState(true);
+
+  // Dummy data function - replaces real API calls
+  const fetchAllStats = useCallback(async () => {
+    if (!token) return;
+
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    try {
+      // Generate dummy data instead of making real API calls
+      const dummyStats = {
+        pendingVendorApprovals: Math.floor(Math.random() * 20) + 5,
+        pendingTradeApprovals: Math.floor(Math.random() * 15) + 3,
+        availableProducts: Math.floor(Math.random() * 50) + 25,
+        pendingWalletApprovals: Math.floor(Math.random() * 10) + 2,
+        totalVendors: Math.floor(Math.random() * 200) + 150,
+        vendorsLast8Days: Math.floor(Math.random() * 30) + 15,
+        todayVendors: Math.floor(Math.random() * 15) + 5,
+        totalWalletAmount: Math.floor(Math.random() * 500000) + 100000,
+        totalWithdrawnAmount: Math.floor(Math.random() * 200000) + 50000,
+        totalDepositedAmount: Math.floor(Math.random() * 300000) + 150000,
+        availableWildProducts: Math.floor(Math.random() * 20) + 10,
+        totalInvestors: Math.floor(Math.random() * 100) + 50,
+        quickRegStats: {
+          total_registrations: Math.floor(Math.random() * 500) + 200,
+          today_registrations: Math.floor(Math.random() * 20) + 5,
+          week_registrations: Math.floor(Math.random() * 100) + 30,
+          month_registrations: Math.floor(Math.random() * 300) + 100
+        },
+      };
+
+      setStats(prev => ({ ...prev, ...dummyStats }));
+      localStorage.setItem('coordinatorDashboardStats', JSON.stringify(dummyStats));
+    } catch (error) {
+      console.error('Failed to fetch dummy dashboard stats:', error);
+    }
+  }, [token]);
+
+  useEffect(() => { if (token) fetchAllStats(); }, [token, fetchAllStats]);
 
   const pageBg = useColorModeValue('gray.50', 'gray.900');
-  const cardBg = useColorModeValue('white', 'gray.700');
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
-  const textColor = useColorModeValue('gray.800', 'white');
-  const grayBg = useColorModeValue('gray.50', 'gray.600');
   const headingColor = useColorModeValue('gray.800', 'gray.200');
-
-  // Mock data for now - replace with actual API calls
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Mock data - replace with actual API calls
-        setDashboardData({
-          totalTasks: 25,
-          completedTasks: 18,
-          pendingTasks: 7,
-          assignedVendors: 45,
-          activeVendors: 38,
-          recentActivities: [
-            { id: 1, action: 'Vendor approval completed', timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), type: 'success' },
-            { id: 2, action: 'New vendor registration', timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000), type: 'info' },
-            { id: 3, action: 'Task assigned to vendor', timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000), type: 'info' },
-            { id: 4, action: 'Vendor profile updated', timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), type: 'info' },
-            { id: 5, action: 'Monthly report generated', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), type: 'success' },
-          ]
-        });
-      } catch (error) {
-        toast({
-          title: 'Error',
-          description: 'Failed to load dashboard data',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, [toast]);
-
-  const getActivityIcon = (type) => {
-    switch (type) {
-      case 'success':
-        return <FaUserCheck color="green" />;
-      case 'warning':
-        return <FaBell color="orange" />;
-      case 'error':
-        return <FaUserTimes color="red" />;
-      default:
-        return <FaTasks color="blue" />;
-    }
-  };
-
-  const getActivityColor = (type) => {
-    switch (type) {
-      case 'success':
-        return 'green.500';
-      case 'warning':
-        return 'orange.500';
-      case 'error':
-        return 'red.500';
-      default:
-        return 'blue.500';
-    }
-  };
-
-  const formatRelativeTime = (timestamp) => {
-    if (!timestamp) return 'Unknown';
-
-    const now = new Date();
-    const diffInMs = now - new Date(timestamp);
-    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
-    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-
-    if (diffInMinutes < 60) {
-      return diffInMinutes <= 1 ? 'Just now' : `${diffInMinutes} minutes ago`;
-    } else if (diffInHours < 24) {
-      return diffInHours === 1 ? '1 hour ago' : `${diffInHours} hours ago`;
-    } else if (diffInDays < 7) {
-      return diffInDays === 1 ? '1 day ago' : `${diffInDays} days ago`;
-    } else {
-      return new Date(timestamp).toLocaleDateString('en-IN', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <Flex minH="100vh" bg={pageBg}>
-        {/* Desktop sidebar */}
-        <CoordinatorNavBar variant="static" onOpen={onOpen} />
-
-        {/* Mobile drawer */}
-        <Drawer isOpen={isOpen} placement="left" onClose={onClose}>
-          <DrawerOverlay />
-          <DrawerContent>
-            <CoordinatorNavBar variant="drawer" onClose={onClose} />
-          </DrawerContent>
-        </Drawer>
-
-        {/* Main content */}
-        <Box flex="1" ml={{ base: 0, md: NAV_WIDTH }} p={{ base: 4, sm: 6, md: 8 }}>
-          <Center h="400px">
-            <VStack spacing={4}>
-              <Spinner size="xl" color="blue.500" />
-              <Text>Loading dashboard...</Text>
-            </VStack>
-          </Center>
-        </Box>
-      </Flex>
-    );
-  }
+  const cardBg = useColorModeValue('white', 'gray.800');
+  const cardBorder = useColorModeValue('gray.200', 'gray.700');
 
   return (
     <Flex minH="100vh" bg={pageBg}>
@@ -207,223 +114,871 @@ const CoordinatorDashboard = ({ url }) => {
           </Heading>
         </Flex>
 
+        <VStack spacing={{ base: 4, md: 8 }} align="stretch">
+          <CoordinatorDashboardHeader stats={stats} url={url} />
+
+          {/* First Section - Main Dashboard Boxes */}
         <VStack spacing={6} align="stretch">
-          {/* Header */}
-          <Box>
-            <Heading size="lg" color={textColor}>
-              Welcome back, {user?.name || 'Coordinator'}! 👋
+            <Heading as="h2" fontSize="xl" color={headingColor} textAlign="center">
+              Dashboard Overview
             </Heading>
-            <Text color="gray.500" mt={1}>
-              Here's what's happening with your coordinations today
+            <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} spacing={6}>
+             {/* First Box - All Vendors */}
+             <Box
+               bg={cardBg}
+               p={6}
+               borderRadius="xl"
+               borderWidth="1px"
+               borderColor={cardBorder}
+               boxShadow="lg"
+               cursor="pointer"
+               onClick={() => {
+                 // Navigate to coordinator vendors page
+                 navigate('/coordinator/all-vendors');
+               }}
+               _hover={{
+                 boxShadow: "xl",
+                 transform: "translateY(-4px)",
+                 transition: "all 0.3s ease",
+                 _before: {
+                   transform: "scaleX(1)"
+                 }
+               }}
+               transition="all 0.3s ease"
+               position="relative"
+               overflow="hidden"
+               _before={{
+                 content: '""',
+                 position: "absolute",
+                 top: 0,
+                 left: 0,
+                 right: 0,
+                 height: "4px",
+                 bg: "blue.500",
+                 transform: "scaleX(0)",
+                 transition: "transform 0.3s ease",
+                 transformOrigin: "left"
+               }}
+             >
+               <VStack spacing={5} align="center">
+                 <Box
+                   p={4}
+                   borderRadius="full"
+                   bg="blue.50"
+                   color="blue.600"
+                   _dark={{ bg: "blue.900", color: "blue.200" }}
+                   boxShadow="md"
+                 >
+                   <FaUsers size={28} />
+                 </Box>
+                 <VStack spacing={2} align="center">
+                   <Text fontSize="4xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                     {stats.totalVendors || 0}
+                   </Text>
+                   <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                     All Vendors
             </Text>
+                 </VStack>
+                 <Button
+                   colorScheme="blue"
+                   size="md"
+                   w="full"
+                   borderRadius="lg"
+                   fontWeight="semibold"
+                   _hover={{
+                     transform: "translateY(-2px)",
+                     boxShadow: "lg"
+                   }}
+                   transition="all 0.2s ease"
+                 >
+                   View All Vendors
+                 </Button>
+               </VStack>
           </Box>
 
-        {/* Stats Grid */}
-        <Grid templateColumns={{ base: '1fr', md: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }} gap={6}>
-          {/* Total Tasks */}
-          <GridItem>
-            <Card bg={cardBg} border="1px solid" borderColor={borderColor}>
-              <CardBody>
-                <Stat>
-                  <StatLabel>Total Tasks</StatLabel>
-                  <StatNumber color="blue.500">{dashboardData.totalTasks}</StatNumber>
-                  <StatHelpText>
-                    <StatArrow type="increase" />
-                    +3 from last week
-                  </StatHelpText>
-                </Stat>
-              </CardBody>
-            </Card>
-          </GridItem>
-
-          {/* Completed Tasks */}
-          <GridItem>
-            <Card bg={cardBg} border="1px solid" borderColor={borderColor}>
-              <CardBody>
-                <Stat>
-                  <StatLabel>Completed Tasks</StatLabel>
-                  <StatNumber color="green.500">{dashboardData.completedTasks}</StatNumber>
-                  <StatHelpText>
-                    <StatArrow type="increase" />
-                    {Math.round((dashboardData.completedTasks / dashboardData.totalTasks) * 100)}% completion rate
-                  </StatHelpText>
-                </Stat>
-              </CardBody>
-            </Card>
-          </GridItem>
-
-          {/* Pending Tasks */}
-          <GridItem>
-            <Card bg={cardBg} border="1px solid" borderColor={borderColor}>
-              <CardBody>
-                <Stat>
-                  <StatLabel>Pending Tasks</StatLabel>
-                  <StatNumber color="orange.500">{dashboardData.pendingTasks}</StatNumber>
-                  <StatHelpText>
-                    <StatArrow type="decrease" />
-                    -2 from yesterday
-                  </StatHelpText>
-                </Stat>
-              </CardBody>
-            </Card>
-          </GridItem>
-
-          {/* Assigned Vendors */}
-          <GridItem>
-            <Card bg={cardBg} border="1px solid" borderColor={borderColor}>
-              <CardBody>
-                <Stat>
-                  <StatLabel>Assigned Vendors</StatLabel>
-                  <StatNumber color="purple.500">{dashboardData.assignedVendors}</StatNumber>
-                  <StatHelpText>
-                    <StatArrow type="increase" />
-                    {dashboardData.activeVendors} active
-                  </StatHelpText>
-                </Stat>
-              </CardBody>
-            </Card>
-          </GridItem>
-        </Grid>
-
-        {/* Main Content Grid */}
-        <Grid templateColumns={{ base: '1fr', lg: '2fr 1fr' }} gap={6}>
-          {/* Recent Activities */}
-          <GridItem>
-            <Card bg={cardBg} border="1px solid" borderColor={borderColor}>
-              <CardBody>
-                <VStack spacing={4} align="stretch">
-                  <HStack justify="space-between">
-                    <Heading size="md" color={textColor}>
-                      Recent Activities
-                    </Heading>
-                    <Button size="sm" variant="ghost" colorScheme="blue">
-                      View All
+             {/* Second Box - Vendors from Last 8 Days */}
+             <Box
+               bg={cardBg}
+               p={6}
+               borderRadius="xl"
+               borderWidth="1px"
+               borderColor={cardBorder}
+               boxShadow="lg"
+               cursor="pointer"
+               onClick={() => {
+                 // Dummy function - no real navigation
+                 alert('Recent Vendors functionality - Coming Soon!');
+               }}
+               _hover={{
+                 boxShadow: "xl",
+                 transform: "translateY(-4px)",
+                 transition: "all 0.3s ease",
+                 _before: {
+                   transform: "scaleX(1)"
+                 }
+               }}
+               transition="all 0.3s ease"
+               position="relative"
+               overflow="hidden"
+               _before={{
+                 content: '""',
+                 position: "absolute",
+                 top: 0,
+                 left: 0,
+                 right: 0,
+                 height: "4px",
+                 bg: "teal.500",
+                 transform: "scaleX(0)",
+                 transition: "transform 0.3s ease",
+                 transformOrigin: "left"
+               }}
+             >
+               <VStack spacing={5} align="center">
+                 <Box
+                   p={4}
+                   borderRadius="full"
+                   bg="teal.50"
+                   color="teal.600"
+                   _dark={{ bg: "teal.900", color: "teal.200" }}
+                   boxShadow="md"
+                 >
+                   <FaUsers size={28} />
+                 </Box>
+                 <VStack spacing={2} align="center">
+                   <Text fontSize="4xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                     {stats.vendorsLast8Days || 0}
+                   </Text>
+                   <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                     Vendors (Last 8 Days)
+                   </Text>
+                 </VStack>
+                 <Button
+                   colorScheme="teal"
+                   size="md"
+                   w="full"
+                   borderRadius="lg"
+                   fontWeight="semibold"
+                   _hover={{
+                     transform: "translateY(-2px)",
+                     boxShadow: "lg"
+                   }}
+                   transition="all 0.2s ease"
+                 >
+                   View Recent
                     </Button>
-                  </HStack>
-                  
-                  <Divider />
-                  
-                  <VStack spacing={3} align="stretch">
-                    {dashboardData.recentActivities.map((activity) => (
-                      <HStack key={activity.id} spacing={3} p={3} bg={grayBg} borderRadius="md">
-                        <Box color={getActivityColor(activity.type)}>
-                          {getActivityIcon(activity.type)}
+               </VStack>
+             </Box>
+
+             {/* Third Box - Today's Vendors */}
+             <Box
+               bg={cardBg}
+               p={6}
+               borderRadius="xl"
+               borderWidth="1px"
+               borderColor={cardBorder}
+               boxShadow="lg"
+               cursor="pointer"
+               onClick={() => {
+                 // Dummy function - no real navigation
+                 alert('Today\'s Vendors functionality - Coming Soon!');
+               }}
+               _hover={{
+                 boxShadow: "xl",
+                 transform: "translateY(-4px)",
+                 transition: "all 0.3s ease",
+                 _before: {
+                   transform: "scaleX(1)"
+                 }
+               }}
+               transition="all 0.3s ease"
+               position="relative"
+               overflow="hidden"
+               _before={{
+                 content: '""',
+                 position: "absolute",
+                 top: 0,
+                 left: 0,
+                 right: 0,
+                 height: "4px",
+                 bg: "pink.500",
+                 transform: "scaleX(0)",
+                 transition: "transform 0.3s ease",
+                 transformOrigin: "left"
+               }}
+             >
+               <VStack spacing={5} align="center">
+                 <Box
+                   p={4}
+                   borderRadius="full"
+                   bg="pink.50"
+                   color="pink.600"
+                   _dark={{ bg: "pink.900", color: "pink.200" }}
+                   boxShadow="md"
+                 >
+                   <FaUsers size={28} />
                         </Box>
-                        <VStack align="start" spacing={1} flex="1">
-                          <Text fontSize="sm" fontWeight="medium">
-                            {activity.action}
+                 <VStack spacing={2} align="center">
+                   <Text fontSize="4xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                     {stats.todayVendors || 0}
                           </Text>
-                          <Text fontSize="xs" color="gray.500">
-                            {formatRelativeTime(activity.timestamp)}
+                   <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                     Today's Vendors
                           </Text>
                         </VStack>
-                        <Badge
-                          colorScheme={activity.type === 'success' ? 'green' : activity.type === 'warning' ? 'orange' : 'blue'}
-                          variant="subtle"
-                          size="sm"
-                        >
-                          {activity.type}
-                        </Badge>
-                      </HStack>
-                    ))}
+                 <Button
+                   colorScheme="pink"
+                   size="md"
+                   w="full"
+                   borderRadius="lg"
+                   fontWeight="semibold"
+                   _hover={{
+                     transform: "translateY(-2px)",
+                     boxShadow: "lg"
+                   }}
+                   transition="all 0.2s ease"
+                 >
+                   View Today
+                 </Button>
                   </VStack>
+             </Box>
+
+             {/* Fourth Box - Pending Vendor Approvals */}
+             <Box
+               bg={cardBg}
+               p={6}
+               borderRadius="xl"
+               borderWidth="1px"
+               borderColor={cardBorder}
+               boxShadow="lg"
+               cursor="pointer"
+               onClick={() => {
+                 // Dummy function - no real navigation
+                 alert('Pending Approvals functionality - Coming Soon!');
+               }}
+               _hover={{
+                 boxShadow: "xl",
+                 transform: "translateY(-4px)",
+                 transition: "all 0.3s ease",
+                 _before: {
+                   transform: "scaleX(1)"
+                 }
+               }}
+               transition="all 0.3s ease"
+               position="relative"
+               overflow="hidden"
+               _before={{
+                 content: '""',
+                 position: "absolute",
+                 top: 0,
+                 left: 0,
+                 right: 0,
+                 height: "4px",
+                 bg: "orange.500",
+                 transform: "scaleX(0)",
+                 transition: "transform 0.3s ease",
+                 transformOrigin: "left"
+               }}
+             >
+               <VStack spacing={5} align="center">
+                 <Box
+                   p={4}
+                   borderRadius="full"
+                   bg="orange.50"
+                   color="orange.600"
+                   _dark={{ bg: "orange.900", color: "orange.200" }}
+                   boxShadow="md"
+                 >
+                   <FaUsers size={28} />
+                 </Box>
+                 <VStack spacing={2} align="center">
+                   <Text fontSize="4xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                     {stats.pendingVendorApprovals || 0}
+                   </Text>
+                   <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                     Pending Approvals
+                   </Text>
                 </VStack>
-              </CardBody>
-            </Card>
-          </GridItem>
-
-          {/* Quick Actions */}
-          <GridItem>
-            <VStack spacing={6} align="stretch">
-              {/* Quick Actions Card */}
-              <Card bg={cardBg} border="1px solid" borderColor={borderColor}>
-                <CardBody>
-                  <VStack spacing={4} align="stretch">
-                    <Heading size="md" color={textColor}>
-                      Quick Actions
-                    </Heading>
-                    
-                    <VStack spacing={3} align="stretch">
                       <Button
-                        leftIcon={<FaUsers />}
-                        colorScheme="blue"
-                        variant="outline"
-                        size="lg"
-                        justifyContent="flex-start"
-                      >
-                        Manage Vendors
+                   colorScheme="orange"
+                   size="md"
+                   w="full"
+                   borderRadius="lg"
+                   fontWeight="semibold"
+                   _hover={{
+                     transform: "translateY(-2px)",
+                     boxShadow: "lg"
+                   }}
+                   transition="all 0.2s ease"
+                 >
+                   Manage Approvals
                       </Button>
-                      
+               </VStack>
+             </Box>
+
+             {/* Fifth Box - Available Products */}
+             <Box
+               bg={cardBg}
+               p={6}
+               borderRadius="xl"
+               borderWidth="1px"
+               borderColor={cardBorder}
+               boxShadow="lg"
+               cursor="pointer"
+               onClick={() => {
+                 // Dummy function - no real navigation
+                 alert('Products Management functionality - Coming Soon!');
+               }}
+               _hover={{
+                 boxShadow: "xl",
+                 transform: "translateY(-4px)",
+                 transition: "all 0.3s ease",
+                 _before: {
+                   transform: "scaleX(1)"
+                 }
+               }}
+               transition="all 0.3s ease"
+               position="relative"
+               overflow="hidden"
+               _before={{
+                 content: '""',
+                 position: "absolute",
+                 top: 0,
+                 left: 0,
+                 right: 0,
+                 height: "4px",
+                 bg: "green.500",
+                 transform: "scaleX(0)",
+                 transition: "transform 0.3s ease",
+                 transformOrigin: "left"
+               }}
+             >
+               <VStack spacing={5} align="center">
+                 <Box
+                   p={4}
+                   borderRadius="full"
+                   bg="green.50"
+                   color="green.600"
+                   _dark={{ bg: "green.900", color: "green.200" }}
+                   boxShadow="md"
+                 >
+                   <FaChartBar size={28} />
+                 </Box>
+                 <VStack spacing={2} align="center">
+                   <Text fontSize="4xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                     {stats.availableProducts || 0}
+                   </Text>
+                   <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                     Available Products
+                   </Text>
+                 </VStack>
                       <Button
-                        leftIcon={<FaTasks />}
                         colorScheme="green"
-                        variant="outline"
-                        size="lg"
-                        justifyContent="flex-start"
-                      >
-                        View Tasks
+                   size="md"
+                   w="full"
+                   borderRadius="lg"
+                   fontWeight="semibold"
+                   _hover={{
+                     transform: "translateY(-2px)",
+                     boxShadow: "lg"
+                   }}
+                   transition="all 0.2s ease"
+                 >
+                   Manage Products
                       </Button>
-                      
-                      <Button
-                        leftIcon={<FaChartLine />}
-                        colorScheme="purple"
-                        variant="outline"
-                        size="lg"
-                        justifyContent="flex-start"
-                      >
-                        Generate Report
-                      </Button>
-                      
-                      <Button
-                        leftIcon={<FaBell />}
-                        colorScheme="orange"
-                        variant="outline"
-                        size="lg"
-                        justifyContent="flex-start"
-                      >
-                        Notifications
-                      </Button>
-                    </VStack>
-                  </VStack>
-                </CardBody>
-              </Card>
+               </VStack>
+             </Box>
 
-              {/* Performance Summary */}
-              <Card bg={cardBg} border="1px solid" borderColor={borderColor}>
-                <CardBody>
-                  <VStack spacing={4} align="stretch">
-                    <Heading size="md" color={textColor}>
-                      Performance Summary
-                    </Heading>
-                    
-                    <VStack spacing={3} align="stretch">
-                      <HStack justify="space-between">
-                        <Text fontSize="sm" color="gray.600">Task Completion Rate</Text>
-                        <Text fontSize="sm" fontWeight="bold" color="green.500">
-                          {Math.round((dashboardData.completedTasks / dashboardData.totalTasks) * 100)}%
-                        </Text>
-                      </HStack>
-                      
-                      <HStack justify="space-between">
-                        <Text fontSize="sm" color="gray.600">Active Vendors</Text>
-                        <Text fontSize="sm" fontWeight="bold" color="blue.500">
-                          {dashboardData.activeVendors}/{dashboardData.assignedVendors}
-                        </Text>
-                      </HStack>
-                      
-                      <HStack justify="space-between">
-                        <Text fontSize="sm" color="gray.600">Pending Tasks</Text>
-                        <Text fontSize="sm" fontWeight="bold" color="orange.500">
-                          {dashboardData.pendingTasks}
-                        </Text>
-                      </HStack>
+             {/* Sixth Box - Wild Products */}
+             <Box
+               bg={cardBg}
+               p={6}
+               borderRadius="xl"
+               borderWidth="1px"
+               borderColor={cardBorder}
+               boxShadow="lg"
+               cursor="pointer"
+               onClick={() => {
+                 // Dummy function - no real navigation
+                 alert('Wild Products functionality - Coming Soon!');
+               }}
+               _hover={{
+                 boxShadow: "xl",
+                 transform: "translateY(-4px)",
+                 transition: "all 0.3s ease",
+                 _before: {
+                   transform: "scaleX(1)"
+                 }
+               }}
+               transition="all 0.3s ease"
+               position="relative"
+               overflow="hidden"
+               _before={{
+                 content: '""',
+                 position: 'absolute',
+                 top: 0,
+                 left: 0,
+                 right: 0,
+                 height: '4px',
+                 bg: 'linear-gradient(90deg, #4299E1, #63B3ED)',
+                 transform: 'scaleX(0)',
+                 transition: 'transform 0.3s ease'
+               }}
+             >
+               <VStack spacing={4} align="center">
+                 <Box
+                   p={4}
+                   borderRadius="full"
+                   bg="linear-gradient(135deg, #4299E1, #63B3ED)"
+                   color="white"
+                   boxShadow="lg"
+                 >
+                   <FaChartBar size={28} />
+                 </Box>
+                 <VStack spacing={2} align="center">
+                   <Text fontSize="4xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                     {stats.availableWildProducts || 0}
+                   </Text>
+                   <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                     Wild Products
+                   </Text>
+                 </VStack>
+                      <Button
+                   colorScheme="blue"
+                   size="md"
+                   w="full"
+                   borderRadius="lg"
+                   fontWeight="semibold"
+                   _hover={{
+                     transform: "translateY(-2px)",
+                     boxShadow: "lg"
+                   }}
+                   transition="all 0.2s ease"
+                 >
+                   Manage Wild Products
+                      </Button>
+               </VStack>
+             </Box>
+
+             {/* Seventh Box - Manage Referral % */}
+             <Box
+               bg={cardBg}
+               p={6}
+               borderRadius="xl"
+               borderWidth="1px"
+               borderColor={cardBorder}
+               boxShadow="lg"
+               cursor="pointer"
+               onClick={() => {
+                 // Dummy function - no real navigation
+                 alert('Commission Management functionality - Coming Soon!');
+               }}
+               _hover={{
+                 boxShadow: "xl",
+                 transform: "translateY(-4px)",
+                 transition: "all 0.3s ease",
+                 _before: {
+                   transform: "scaleX(1)"
+                 }
+               }}
+               transition="all 0.3s ease"
+               position="relative"
+               overflow="hidden"
+               _before={{
+                 content: '""',
+                 position: "absolute",
+                 top: 0,
+                 left: 0,
+                 right: 0,
+                 height: "4px",
+                 bg: "purple.500",
+                 transform: "scaleX(0)",
+                 transition: "transform 0.3s ease",
+                 transformOrigin: "left"
+               }}
+             >
+               <VStack spacing={5} align="center">
+                 <Box
+                   p={4}
+                   borderRadius="full"
+                   bg="purple.50"
+                   color="purple.600"
+                   _dark={{ bg: "purple.900", color: "purple.200" }}
+                   boxShadow="md"
+                 >
+                   <FaCog size={28} />
+                 </Box>
+                 <VStack spacing={2} align="center">
+                   <Text fontSize="2xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                     Referral %
+                   </Text>
+                   <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                     Manage Commission
+                   </Text>
+                 </VStack>
+                      <Button
+                   colorScheme="purple"
+                   size="md"
+                   w="full"
+                   borderRadius="lg"
+                   fontWeight="semibold"
+                   _hover={{
+                     transform: "translateY(-2px)",
+                     boxShadow: "lg"
+                   }}
+                   transition="all 0.2s ease"
+                 >
+                   Open Manager
+                      </Button>
                     </VStack>
+             </Box>
+
+            </SimpleGrid>
+          </VStack>
+
+          {/* Wallet Statistics Section */}
+          <VStack spacing={6} align="stretch">
+            <Heading size="lg" color={headingColor} mb={4}>
+              Wallet Statistics
+            </Heading>
+            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
+               {/* Total Wallet Amount Box */}
+               <Box
+                 bg={cardBg}
+                 p={6}
+                 borderRadius="xl"
+                 borderWidth="1px"
+                 borderColor={cardBorder}
+                 boxShadow="lg"
+                 transition="all 0.3s ease"
+                 _hover={{
+                   boxShadow: "xl",
+                   transform: "translateY(-4px)"
+                 }}
+               >
+                 <VStack spacing={5} align="center">
+                   <Box
+                     p={4}
+                     borderRadius="full"
+                     bg="blue.50"
+                     color="blue.600"
+                     _dark={{ bg: "blue.900", color: "blue.200" }}
+                     boxShadow="md"
+                   >
+                     <FaWallet size={28} />
+                   </Box>
+                   <VStack spacing={2} align="center">
+                     <Text fontSize="4xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                       ₹{stats.totalWalletAmount?.toLocaleString() || '0'}
+                     </Text>
+                     <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                       Total Wallet Amount
+                     </Text>
+                   </VStack>
+                 </VStack>
+               </Box>
+
+               {/* Total Withdrawn Amount Box */}
+               <Box
+                 bg={cardBg}
+                 p={6}
+                 borderRadius="xl"
+                 borderWidth="1px"
+                 borderColor={cardBorder}
+                 boxShadow="lg"
+                 transition="all 0.3s ease"
+                 _hover={{
+                   boxShadow: "xl",
+                   transform: "translateY(-4px)"
+                 }}
+               >
+                 <VStack spacing={5} align="center">
+                   <Box
+                     p={4}
+                     borderRadius="full"
+                     bg="red.50"
+                     color="red.600"
+                     _dark={{ bg: "red.900", color: "red.200" }}
+                     boxShadow="md"
+                   >
+                     <FaArrowUp size={28} />
+                   </Box>
+                   <VStack spacing={2} align="center">
+                     <Text fontSize="4xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                       ₹{stats.totalWithdrawnAmount?.toLocaleString() || '0'}
+                     </Text>
+                     <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                       Total Withdrawn
+                     </Text>
+                   </VStack>
+                 </VStack>
+               </Box>
+
+               {/* Total Deposited Amount Box */}
+               <Box
+                 bg={cardBg}
+                 p={6}
+                 borderRadius="xl"
+                 borderWidth="1px"
+                 borderColor={cardBorder}
+                 boxShadow="lg"
+                 transition="all 0.3s ease"
+                 _hover={{
+                   boxShadow: "xl",
+                   transform: "translateY(-4px)"
+                 }}
+               >
+                 <VStack spacing={5} align="center">
+                   <Box
+                     p={4}
+                     borderRadius="full"
+                     bg="green.50"
+                     color="green.600"
+                     _dark={{ bg: "green.900", color: "green.200" }}
+                     boxShadow="md"
+                   >
+                     <FaArrowDown size={28} />
+                   </Box>
+                   <VStack spacing={2} align="center">
+                     <Text fontSize="4xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                       ₹{stats.totalDepositedAmount?.toLocaleString() || '0'}
+                     </Text>
+                     <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                       Total Deposited
+                     </Text>
+                   </VStack>
+                 </VStack>
+               </Box>
+            </SimpleGrid>
+          </VStack>
+
+          {/* Second Section - Tools & Management */}
+          <VStack spacing={6} align="stretch">
+            <Heading as="h2" fontSize="xl" color={headingColor} textAlign="center">
+              Tools & Management
+            </Heading>
+            <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} spacing={6}>
+              {/* Investors Box */}
+              <Box
+                bg={cardBg}
+                p={6}
+                borderRadius="xl"
+                borderWidth="1px"
+                borderColor={cardBorder}
+                boxShadow="lg"
+                cursor="pointer"
+                onClick={() => {
+                  // Dummy function - no real navigation
+                  alert('Investors Management functionality - Coming Soon!');
+                }}
+                _hover={{
+                  boxShadow: "xl",
+                  transform: "translateY(-4px)",
+                  transition: "all 0.3s ease",
+                  _before: {
+                    transform: "scaleX(1)"
+                  }
+                }}
+                transition="all 0.3s ease"
+                position="relative"
+                overflow="hidden"
+                _before={{
+                  content: '""',
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: "4px",
+                  bg: "cyan.500",
+                  transform: "scaleX(0)",
+                  transition: "transform 0.3s ease",
+                  transformOrigin: "left"
+                }}
+              >
+                <VStack spacing={5} align="center">
+                  <Box
+                    p={4}
+                    borderRadius="full"
+                    bg="cyan.50"
+                    color="cyan.600"
+                    _dark={{ bg: "cyan.900", color: "cyan.200" }}
+                    boxShadow="md"
+                  >
+                    <FaHandshake size={28} />
+                  </Box>
+                  <VStack spacing={2} align="center">
+                    <Text fontSize="4xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                      {stats.total_investors || 0}
+                    </Text>
+                    <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                      Investors
+                    </Text>
                   </VStack>
-                </CardBody>
-              </Card>
+                  <Button
+                    colorScheme="cyan"
+                    size="md"
+                    w="full"
+                    borderRadius="lg"
+                    fontWeight="semibold"
+                    _hover={{
+                      transform: "translateY(-2px)",
+                      boxShadow: "lg"
+                    }}
+                    transition="all 0.2s ease"
+                  >
+                    Manage Investors
+                  </Button>
+                </VStack>
+              </Box>
+
+              {/* PDF Compressor Box */}
+              <Box
+                bg={cardBg}
+                p={6}
+                borderRadius="xl"
+                borderWidth="1px"
+                borderColor={cardBorder}
+                boxShadow="lg"
+                cursor="pointer"
+                onClick={() => window.open('https://compressor-ljk9.onrender.com/', '_blank')}
+                _hover={{
+                  boxShadow: "xl",
+                  transform: "translateY(-4px)",
+                  transition: "all 0.3s ease",
+                  _before: {
+                    transform: "scaleX(1)"
+                  }
+                }}
+                transition="all 0.3s ease"
+                position="relative"
+                overflow="hidden"
+                _before={{
+                  content: '""',
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: "4px",
+                  bg: "red.500",
+                  transform: "scaleX(0)",
+                  transition: "transform 0.3s ease",
+                  transformOrigin: "left"
+                }}
+              >
+                <VStack spacing={5} align="center">
+                  <Box
+                    p={4}
+                    borderRadius="full"
+                    bg="red.50"
+                    color="red.600"
+                    _dark={{ bg: "red.900", color: "red.200" }}
+                    boxShadow="md"
+                  >
+                    <FaFileArchive size={28} />
+                  </Box>
+                  <VStack spacing={2} align="center">
+                    <Text fontSize="2xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                      PDF
+                    </Text>
+                    <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                      Compressor
+                        </Text>
+                  </VStack>
+                  <Button
+                    colorScheme="red"
+                    size="md"
+                    w="full"
+                    borderRadius="lg"
+                    fontWeight="semibold"
+                    _hover={{
+                      transform: "translateY(-2px)",
+                      boxShadow: "lg"
+                    }}
+                    transition="all 0.2s ease"
+                  >
+                    Open Compressor
+                  </Button>
+                </VStack>
+              </Box>
+
+              {/* Payslip Management Box */}
+              <Box
+                bg={cardBg}
+                p={6}
+                borderRadius="xl"
+                borderWidth="1px"
+                borderColor={cardBorder}
+                boxShadow="lg"
+                cursor="pointer"
+                onClick={() => {
+                  // Dummy function - no real navigation
+                  alert('Payslip Management functionality - Coming Soon!');
+                }}
+                _hover={{
+                  boxShadow: "xl",
+                  transform: "translateY(-4px)",
+                  transition: "all 0.3s ease",
+                  _before: {
+                    transform: "scaleX(1)"
+                  }
+                }}
+                transition="all 0.3s ease"
+                position="relative"
+                overflow="hidden"
+                _before={{
+                  content: '""',
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: "4px",
+                  bg: "purple.500",
+                  transform: "scaleX(0)",
+                  transition: "transform 0.3s ease",
+                  transformOrigin: "left"
+                }}
+              >
+                <VStack spacing={5} align="center">
+                  <Box
+                    p={4}
+                    borderRadius="full"
+                    bg="purple.50"
+                    color="purple.600"
+                    _dark={{ bg: "purple.900", color: "purple.200" }}
+                    boxShadow="md"
+                  >
+                    <FaFileInvoice size={28} />
+                  </Box>
+                  <VStack spacing={2} align="center">
+                    <Text fontSize="2xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                      Payslip
+                        </Text>
+                    <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                      Management
+                        </Text>
+                  </VStack>
+                  <Button
+                    colorScheme="purple"
+                    size="md"
+                    w="full"
+                    borderRadius="lg"
+                    fontWeight="semibold"
+                    _hover={{
+                      transform: "translateY(-2px)",
+                      boxShadow: "lg"
+                    }}
+                    transition="all 0.2s ease"
+                  >
+                    Manage Payslips
+                  </Button>
+                </VStack>
+              </Box>
+            </SimpleGrid>
+          </VStack>
+
+          <VStack spacing={8} align="stretch">
+            <Transactions url={url} />
             </VStack>
-          </GridItem>
-        </Grid>
+
         </VStack>
       </Box>
     </Flex>

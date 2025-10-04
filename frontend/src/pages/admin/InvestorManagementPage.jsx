@@ -783,7 +783,7 @@ const InvestorModal = ({
     const fetchCoordinators = useCallback(async () => {
       if (!token) return;
       try {
-        const response = await fetch(`${url}/api/coordinators`, {
+        const response = await fetch(`${url}/api/coordinator`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

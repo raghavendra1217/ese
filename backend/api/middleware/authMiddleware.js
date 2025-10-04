@@ -16,6 +16,11 @@ const protect = async (req, res, next) => {
 
             const { rows } = await db.query('SELECT user_id, email, role FROM login WHERE user_id = $1', [decoded.userId]);
 
+            console.log('🔍 Auth middleware - User lookup:', {
+                decodedUserId: decoded.userId,
+                found: rows.length > 0,
+                userData: rows[0] || 'Not found'
+            });
 
             if (rows.length === 0) {
                 console.log("❌ User not found in DB");
@@ -24,6 +29,7 @@ const protect = async (req, res, next) => {
             
 
             req.user = rows[0];
+            console.log('🔍 Auth middleware - Setting req.user:', req.user);
             next();
         } catch (error) {
             console.log("❌ JWT Verification Failed:", error.message);

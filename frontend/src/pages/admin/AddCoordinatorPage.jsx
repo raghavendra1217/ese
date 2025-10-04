@@ -110,7 +110,7 @@ const AddCoordinatorPage = ({ url }) => {
     setError('');
 
     try {
-      const response = await fetch(`${url}/api/coordinators`, {
+      const response = await fetch(`${url}/api/coordinator`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

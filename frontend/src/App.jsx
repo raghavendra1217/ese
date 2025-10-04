@@ -37,6 +37,7 @@ import ManageCoordinatorsPage from './pages/admin/ManageCoordinatorsPage';
 import EditCoordinatorPage from './pages/admin/EditCoordinatorPage';
 
 import CoordinatorDashboard from './pages/coordinator/CoordinatorDashboard';
+import CoordinatorAllVendorsPage from './pages/coordinator/CoordinatorAllVendorsPage';
 
 import VendorDashboard from './pages/vendor/VendorDashboard';
 import BuyProduct from './pages/vendor/BuyProduct';
@@ -243,6 +244,14 @@ function App() {
                 element={
                   <ProtectedRoute role="coordinator">
                     <CoordinatorDashboard url={url} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/coordinator/all-vendors"
+                element={
+                  <ProtectedRoute role="coordinator">
+                    <CoordinatorAllVendorsPage url={url} />
                   </ProtectedRoute>
                 }
               />

@@ -486,7 +486,7 @@ const AllVendorsTable = ({ url }) => {
   // Fetch coordinators for dropdown
   const fetchCoordinators = useCallback(async () => {
     try {
-      const response = await fetch(`${url}/api/coordinators`, {
+      const response = await fetch(`${url}/api/coordinator`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {

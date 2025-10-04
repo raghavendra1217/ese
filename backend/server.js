@@ -85,7 +85,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/status', statusRoutes);
 app.use('/api/quick-reg', quickRegRoutes);
 app.use('/api/payslip', payslipRoutes);
-app.use('/api/coordinators', coordinatorRoutes);
+app.use('/api/coordinator', coordinatorRoutes);
 
  
 
@@ -133,6 +133,7 @@ app.use(express.static(buildPath));
 // --- Serve Admin and Vendor Routes ---
 app.use('/admin', express.static(buildPath));
 app.use('/vendor', express.static(buildPath));
+app.use('/coordinator', express.static(buildPath));
 
 app.use('/admin/manage-profile', express.static(buildPath));
 // --- 404 Handler for API routes only ---

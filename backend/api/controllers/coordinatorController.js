@@ -378,6 +378,38 @@ exports.updateCoordinator = async (req, res) => {
 };
 
 /**
+ * READ: Get coordinator profile (for logged-in coordinator)
+ */
+exports.getCoordinatorProfile = async (req, res) => {
+    try {
+        const coordinatorId = req.user.user_id; // From JWT token - FIXED: use user_id not userId
+
+        const query = `
+            SELECT c.coordinator_id, c.name, c.email, c.phone_number,
+                   c.created_at,
+                   c.last_updated,
+                   l.joining_date as last_login
+            FROM coordinator c
+            LEFT JOIN login l ON c.coordinator_id::text = l.user_id
+            WHERE c.coordinator_id = $1
+        `;
+        const { rows } = await db.query(query, [coordinatorId]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Coordinator profile not found.' });
+        }
+
+        res.status(200).json({
+            success: true,
+            coordinator: rows[0]
+        });
+    } catch (error) {
+        console.error('Error fetching coordinator profile:', error);
+        res.status(500).json({ message: 'Server error while fetching coordinator profile.' });
+    }
+};
+
+/**
  * DELETE: Delete coordinator and their login credentials
  */
 exports.deleteCoordinator = async (req, res) => {
@@ -416,6 +448,332 @@ exports.deleteCoordinator = async (req, res) => {
         res.status(500).json({ message: 'Server error while deleting coordinator.' });
     } finally {
         client.release();
+    }
+};
+
+/**
+ * @desc    Assign vendor to current coordinator
+ * @route   PUT /api/coordinator/assign-vendor/:vendorId
+ * @access  Private (Coordinator)
+ */
+exports.assignVendor = async (req, res) => {
+    const { vendorId } = req.params;
+    const coordinatorId = req.user.user_id; // From JWT token - FIXED: use user_id not userId
+
+    console.log('🔍 Assign vendor request:', {
+        vendorId,
+        coordinatorId,
+        userId: req.user.user_id, // FIXED: use user_id not userId
+        userRole: req.user.role,
+        userEmail: req.user.email,
+        fullUserObject: req.user
+    });
+
+    // Validate that the coordinator exists and is active
+    console.log('🔍 Checking coordinator existence with ID:', coordinatorId);
+    const coordinatorCheck = await db.query(
+        'SELECT coordinator_id, name FROM coordinator WHERE coordinator_id::text = $1',
+        [coordinatorId]
+    );
+
+    console.log('🔍 Coordinator check result:', {
+        found: coordinatorCheck.rows.length > 0,
+        coordinatorData: coordinatorCheck.rows[0] || 'Not found'
+    });
+
+    if (coordinatorCheck.rows.length === 0) {
+        console.log('❌ Coordinator not found in database:', coordinatorId);
+        return res.status(404).json({ message: 'Coordinator not found.' });
+    }
+
+    try {
+        // Check if vendor exists and is approved
+        console.log('🔍 Checking vendor existence with ID:', vendorId);
+        const vendorCheck = await db.query(
+            'SELECT v.id, v.vendor_name, v.coordinator_id, l.status FROM vendors v JOIN login l ON v.id = l.user_id WHERE v.id = $1 AND l.role = \'vendor\' AND l.status = \'approved\'',
+            [vendorId]
+        );
+
+        console.log('🔍 Vendor check result:', {
+            found: vendorCheck.rows.length > 0,
+            vendorData: vendorCheck.rows[0] || 'Not found'
+        });
+
+        if (vendorCheck.rows.length === 0) {
+            console.log('❌ Vendor not found or not approved:', vendorId);
+            return res.status(404).json({ message: 'Vendor not found or not approved.' });
+        }
+
+        const vendor = vendorCheck.rows[0];
+
+        // Check if vendor is already assigned to this coordinator
+        console.log('🔍 Checking vendor assignment:', {
+            vendorCoordinatorId: vendor.coordinator_id,
+            currentCoordinatorId: coordinatorId,
+            alreadyAssigned: vendor.coordinator_id === coordinatorId
+        });
+
+        if (vendor.coordinator_id === coordinatorId) {
+            console.log('⚠️ Vendor already assigned to this coordinator');
+            return res.status(400).json({ message: 'Vendor is already assigned to you.' });
+        }
+
+        // Update vendor coordinator assignment
+        console.log('🔄 Updating vendor assignment:', {
+            vendorId,
+            coordinatorId,
+            vendorName: vendor.vendor_name
+        });
+
+        const query = `
+            UPDATE vendors
+            SET coordinator_id = $1, updated_at = NOW()
+            WHERE id = $2
+            RETURNING *;
+        `;
+
+        const { rows } = await db.query(query, [coordinatorId, vendorId]);
+
+        console.log('🔄 Assignment update result:', {
+            rowsAffected: rows.length,
+            updatedVendor: rows[0] || 'No rows updated'
+        });
+
+        if (rows.length === 0) {
+            console.log('❌ Failed to update vendor assignment - no rows affected');
+            return res.status(404).json({ message: 'Failed to update vendor assignment.' });
+        }
+
+        console.log('✅ Vendor assigned to coordinator successfully:', {
+            vendorId,
+            vendorName: vendor.vendor_name,
+            coordinatorId,
+            coordinatorName: coordinatorCheck.rows[0].name,
+            updatedVendor: rows[0]
+        });
+
+        res.status(200).json({
+            success: true,
+            vendor: rows[0],
+            message: `Vendor ${vendor.vendor_name} has been assigned to you successfully.`
+        });
+    } catch (error) {
+        console.error('❌ Error assigning vendor to coordinator:', error);
+        res.status(500).json({ message: 'Failed to assign vendor.' });
+    }
+};
+
+/**
+ * @desc    Remove vendor from current coordinator (unassign)
+ * @route   DELETE /api/coordinator/remove-vendor/:vendorId
+ * @access  Private (Coordinator)
+ */
+exports.removeVendor = async (req, res) => {
+    const { vendorId } = req.params;
+    const coordinatorId = req.user.user_id; // From JWT token
+
+    console.log('🗑️ Remove vendor request:', {
+        vendorId,
+        coordinatorId,
+        userId: req.user.user_id,
+        userRole: req.user.role,
+        userEmail: req.user.email,
+        fullUserObject: req.user
+    });
+
+    // Validate that the coordinator exists and is active
+    console.log('🔍 Checking coordinator existence with ID:', coordinatorId);
+    const coordinatorCheck = await db.query(
+        'SELECT coordinator_id, name FROM coordinator WHERE coordinator_id::text = $1',
+        [coordinatorId]
+    );
+
+    console.log('🔍 Coordinator check result:', {
+        found: coordinatorCheck.rows.length > 0,
+        coordinatorData: coordinatorCheck.rows[0] || 'Not found'
+    });
+
+    if (coordinatorCheck.rows.length === 0) {
+        console.log('❌ Coordinator not found in database:', coordinatorId);
+        return res.status(404).json({ message: 'Coordinator not found.' });
+    }
+
+    try {
+        // Check if vendor exists and is assigned to this coordinator
+        console.log('🔍 Checking vendor assignment with ID:', vendorId);
+        const vendorCheck = await db.query(
+            'SELECT v.id, v.vendor_name, v.coordinator_id, l.status FROM vendors v JOIN login l ON v.id = l.user_id WHERE v.id = $1 AND l.role = \'vendor\' AND l.status = \'approved\'',
+            [vendorId]
+        );
+
+        console.log('🔍 Vendor check result:', {
+            found: vendorCheck.rows.length > 0,
+            vendorData: vendorCheck.rows[0] || 'Not found'
+        });
+
+        if (vendorCheck.rows.length === 0) {
+            console.log('❌ Vendor not found or not approved:', vendorId);
+            return res.status(404).json({ message: 'Vendor not found or not approved.' });
+        }
+
+        const vendor = vendorCheck.rows[0];
+
+        // Check if vendor is actually assigned to this coordinator
+        console.log('🔍 Checking vendor assignment:', {
+            vendorCoordinatorId: vendor.coordinator_id,
+            currentCoordinatorId: coordinatorId,
+            isAssignedToMe: vendor.coordinator_id === coordinatorId
+        });
+
+        if (vendor.coordinator_id !== coordinatorId) {
+            console.log('⚠️ Vendor is not assigned to this coordinator');
+            return res.status(400).json({ message: 'Vendor is not assigned to you.' });
+        }
+
+        // Remove vendor from coordinator assignment (set coordinator_id to NULL)
+        console.log('🔄 Removing vendor from coordinator:', {
+            vendorId,
+            coordinatorId,
+            vendorName: vendor.vendor_name
+        });
+
+        const query = `
+            UPDATE vendors
+            SET coordinator_id = NULL, updated_at = NOW()
+            WHERE id = $1
+            RETURNING *;
+        `;
+
+        const { rows } = await db.query(query, [vendorId]);
+
+        console.log('🔄 Removal update result:', {
+            rowsAffected: rows.length,
+            updatedVendor: rows[0] || 'No rows updated'
+        });
+
+        if (rows.length === 0) {
+            console.log('❌ Failed to remove vendor assignment - no rows affected');
+            return res.status(404).json({ message: 'Failed to remove vendor assignment.' });
+        }
+
+        console.log('✅ Vendor removed from coordinator successfully:', {
+            vendorId,
+            vendorName: vendor.vendor_name,
+            coordinatorId,
+            coordinatorName: coordinatorCheck.rows[0].name,
+            updatedVendor: rows[0]
+        });
+
+        res.status(200).json({
+            success: true,
+            vendor: rows[0],
+            message: `Vendor ${vendor.vendor_name} has been removed from your coordination successfully.`
+        });
+    } catch (error) {
+        console.error('❌ Error removing vendor from coordinator:', error);
+        res.status(500).json({ message: 'Failed to remove vendor.' });
+    }
+};
+
+/**
+ * @desc    Get a paginated, searchable, and sortable list of ALL vendors for coordinators
+ * @route   GET /api/coordinator/vendors/paginated
+ * @access  Private (Coordinator)
+ */
+exports.getVendorsPaginated = async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 10,
+            sortBy = 'created_at',
+            sortOrder = 'desc',
+            search = ''
+        } = req.query;
+
+        // ✅ Define allowed columns for sorting
+        const allowedSortBy = [
+            'vendor_name', 'id', 'email', 'phone_number', 
+            'created_at', 'wallet_balance', 'percentage', 'status'
+        ];
+        if (!allowedSortBy.includes(sortBy)) {
+            return res.status(400).json({ message: 'Invalid sort column.' });
+        }
+        
+        // ✅ Map sortBy to the correct table and column name
+        let sortColumn;
+        switch (sortBy) {
+            case 'wallet_balance': sortColumn = 'w.digital_money'; break;
+            case 'percentage':     sortColumn = 'w.percentage'; break;
+            case 'created_at':     sortColumn = 'v.created_at'; break;
+            case 'status':         sortColumn = 'l.status'; break;
+            default:               sortColumn = `v.${sortBy}`;
+        }
+        
+        const sanitizedSortOrder = sortOrder.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+        const queryParams = [];
+        // ✅ Base query to fetch all vendors with coordinator information
+        let baseQuery = `
+            FROM vendors v
+            JOIN login l ON v.id = l.user_id
+            LEFT JOIN wallet w ON v.id = w.id
+            LEFT JOIN coordinator c ON v.coordinator_id = c.coordinator_id
+            WHERE l.role = 'vendor'
+        `;
+
+        // ✅ Robust search across multiple relevant columns
+        if (search) {
+            queryParams.push(`%${search}%`);
+            const searchIndex = queryParams.length;
+            baseQuery += ` AND (v.vendor_name ILIKE $${searchIndex} OR v.id ILIKE $${searchIndex} OR v.email ILIKE $${searchIndex} OR v.phone_number ILIKE $${searchIndex} OR l.status ILIKE $${searchIndex} OR c.name ILIKE $${searchIndex})`;
+        }
+        
+        // --- Get Total Count for Pagination ---
+        const countQuery = `SELECT COUNT(*) ${baseQuery}`;
+        const totalResult = await db.query(countQuery, queryParams);
+        const totalCount = parseInt(totalResult.rows[0].count, 10);
+
+        // --- Get Paginated Data ---
+        const offset = (page - 1) * limit;
+        const dataQuery = `
+            SELECT 
+                v.id,
+                v.vendor_name,
+                v.email,
+                v.phone_number,
+                v.created_at AS joining_date,
+                v.passport_photo_url,
+                v.coordinator_id,
+                c.name AS coordinator_name,
+                l.status,
+                COALESCE(w.digital_money, 0) AS wallet_balance,
+                w.percentage
+            ${baseQuery}
+            ORDER BY ${sortColumn} ${sanitizedSortOrder} NULLS LAST
+            LIMIT $${queryParams.length + 1} 
+            OFFSET $${queryParams.length + 2}
+        `;
+        
+        const dataResult = await db.query(dataQuery, [...queryParams, limit, offset]);
+
+        console.log('✅ Coordinator vendors data fetched successfully:', {
+            count: dataResult.rows.length,
+            totalCount,
+            page: parseInt(page, 10),
+            limit: parseInt(limit, 10)
+        });
+
+        res.status(200).json({
+            data: dataResult.rows,
+            totalCount,
+            page: parseInt(page, 10),
+            limit: parseInt(limit, 10),
+            totalPages: Math.ceil(totalCount / limit)
+        });
+
+    } catch (error) {
+        console.error('❌ Error fetching coordinator vendors:', error);
+        res.status(500).json({ message: 'Failed to fetch vendors.' });
     }
 };
 

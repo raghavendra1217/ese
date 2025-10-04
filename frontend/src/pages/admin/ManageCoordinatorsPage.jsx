@@ -75,7 +75,7 @@ const ManageCoordinatorsPage = ({ url }) => {
   // Fetch coordinators
   const fetchCoordinators = async () => {
     try {
-      const response = await fetch(`${url}/api/coordinators`, {
+      const response = await fetch(`${url}/api/coordinator`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -124,7 +124,7 @@ const ManageCoordinatorsPage = ({ url }) => {
     if (!selectedCoordinator) return;
 
     try {
-      const response = await fetch(`${url}/api/coordinators/${selectedCoordinator.coordinator_id}`, {
+      const response = await fetch(`${url}/api/coordinator/${selectedCoordinator.coordinator_id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
