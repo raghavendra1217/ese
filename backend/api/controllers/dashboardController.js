@@ -578,13 +578,15 @@ exports.getUpcomingDisbursements = async (req, res) => {
                 i.mobile_number,
                 i.coordinator,
                 i.plan_type,
-                i.select_plan
+                i.select_plan,
+                i.approval_status
             FROM disbursement_detail dd
             JOIN disbursement_schedules ds ON dd.schedule_id = ds.id
             JOIN investordetails i ON ds.investor_id = i.id
             WHERE dd.status = 'pending' 
             AND dd.disbursement_date >= $1 
             AND dd.disbursement_date <= $2
+            AND i.approval_status = 'approved'
             ORDER BY dd.disbursement_date ASC, dd.disbursement_number ASC
         `;
 
@@ -627,12 +629,14 @@ exports.getOverdueDisbursements = async (req, res) => {
                 i.coordinator,
                 i.plan_type,
                 i.select_plan,
+                i.approval_status,
                 CURRENT_DATE - dd.disbursement_date as days_overdue
             FROM disbursement_detail dd
             JOIN disbursement_schedules ds ON dd.schedule_id = ds.id
             JOIN investordetails i ON ds.investor_id = i.id
             WHERE dd.status = 'pending' 
             AND dd.disbursement_date < CURRENT_DATE
+            AND i.approval_status = 'approved'
             ORDER BY dd.disbursement_date ASC, dd.disbursement_number ASC
         `;
 

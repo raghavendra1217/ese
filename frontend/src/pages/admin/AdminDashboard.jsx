@@ -25,6 +25,7 @@ const AdminDashboard = ({ url }) => {
     return cached ? JSON.parse(cached) : {
       pendingVendorApprovals: 0,
       pendingTradeApprovals: 0,
+      pendingInvestorApprovals: 0,
       availableProducts: 0,
       pendingWalletApprovals: 0,
       totalVendors: 0,
@@ -145,7 +146,19 @@ const AdminDashboard = ({ url }) => {
         };
       }
 
-      const mergedStats = { ...adminStats, ...productStats, ...vendorStats, ...additionalStats, ...walletStats, ...wildProductStats, ...investorStats, ...quickRegStats };
+      // Get pending investor approvals
+      let pendingInvestorApprovals = 0;
+      try {
+        const pendingInvestorsResponse = await fetch(`${url}/api/admin/pending-investors`, { headers });
+        if (pendingInvestorsResponse.ok) {
+          const pendingInvestorsData = await pendingInvestorsResponse.json();
+          pendingInvestorApprovals = pendingInvestorsData.count || 0;
+        }
+      } catch (error) {
+        console.error('Failed to fetch pending investor approvals:', error);
+      }
+
+      const mergedStats = { ...adminStats, ...productStats, ...vendorStats, ...additionalStats, ...walletStats, ...wildProductStats, ...investorStats, ...quickRegStats, pendingInvestorApprovals };
       setStats(prev => ({ ...prev, ...mergedStats }));
       localStorage.setItem('adminDashboardStats', JSON.stringify(mergedStats));
     } catch (error) {
@@ -883,7 +896,7 @@ const AdminDashboard = ({ url }) => {
                 </VStack>
               </Box>
 
-              {/* PDF Compressor Box */}
+              {/* Approve Investment Box */}
               <Box
                 bg={cardBg}
                 p={6}
@@ -892,7 +905,7 @@ const AdminDashboard = ({ url }) => {
                 borderColor={cardBorder}
                 boxShadow="lg"
                 cursor="pointer"
-                onClick={() => window.open('https://compressor-ljk9.onrender.com/', '_blank')}
+                onClick={() => navigate('/admin/approve-investments')}
                 _hover={{ 
                   boxShadow: "xl",
                   transform: "translateY(-4px)",
@@ -911,7 +924,7 @@ const AdminDashboard = ({ url }) => {
                   left: 0,
                   right: 0,
                   height: "4px",
-                  bg: "red.500",
+                  bg: "green.500",
                   transform: "scaleX(0)",
                   transition: "transform 0.3s ease",
                   transformOrigin: "left"
@@ -921,23 +934,23 @@ const AdminDashboard = ({ url }) => {
                   <Box
                     p={4}
                     borderRadius="full"
-                    bg="red.50"
-                    color="red.600"
-                    _dark={{ bg: "red.900", color: "red.200" }}
+                    bg="green.50"
+                    color="green.600"
+                    _dark={{ bg: "green.900", color: "green.200" }}
                     boxShadow="md"
                   >
-                    <FaFileArchive size={28} />
+                    <FaHandshake size={28} />
                   </Box>
                   <VStack spacing={2} align="center">
                     <Text fontSize="2xl" fontWeight="bold" color={headingColor} lineHeight="1">
-                      PDF
+                      {stats.pendingInvestorApprovals || 0}
                     </Text>
                     <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
-                      Compressor
+                      Pending Investments
                     </Text>
                   </VStack>
                   <Button 
-                    colorScheme="red" 
+                    colorScheme="green" 
                     size="md" 
                     w="full" 
                     borderRadius="lg"
@@ -948,7 +961,7 @@ const AdminDashboard = ({ url }) => {
                     }}
                     transition="all 0.2s ease"
                   >
-                    Open Compressor
+                    Approve Investments
                   </Button>
                 </VStack>
               </Box>

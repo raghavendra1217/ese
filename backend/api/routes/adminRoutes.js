@@ -68,4 +68,11 @@ router.get('/referral-tree/:vendorId', protect, authorize('admin', 'coordinator'
 // GET /api/admin/test-referral-tree/:vendorId - Test endpoint for referral tree
 router.get('/test-referral-tree/:vendorId', protect, authorize('admin', 'coordinator'), adminController.getAdminReferralTree);
 
+// =======================================================
+// --- INVESTOR APPROVAL ROUTES ---
+// =======================================================
+router.get('/pending-investors', protect, authorize('admin'), adminController.getPendingInvestors);
+router.put('/approve-investor/:investorId', protect, authorize('admin'), adminController.approveInvestor);
+router.put('/reject-investor/:investorId', protect, authorize('admin'), adminController.rejectInvestor);
+
 module.exports = router;

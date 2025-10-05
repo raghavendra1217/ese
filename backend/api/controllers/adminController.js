@@ -1656,3 +1656,308 @@ module.exports = {
     getTodaysVendorsPaginated,
     getWalletStats,
 };
+
+// =================================================================
+// --- INVESTOR APPROVAL FUNCTIONS ---
+// =================================================================
+
+/**
+ * GET: Get all pending investors for approval
+ */
+const getPendingInvestors = async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                i.id,
+                i.first_name,
+                i.mobile_number,
+                i.pan_card,
+                i.coordinator_id,
+                i.co_name,
+                i.bank_account_number,
+                i.bank_name,
+                i.branch_name,
+                i.ifsc_code,
+                i.mode_of_payment,
+                i.plan_type,
+                i.select_plan,
+                i.transaction_id,
+                i.address,
+                i.investment_date,
+                i.created_at,
+                c.name as coordinator
+            FROM investordetails i
+            LEFT JOIN coordinator c ON i.coordinator_id = c.coordinator_id
+            WHERE i.approval_status = 'pending'
+            ORDER BY i.created_at DESC
+        `;
+        
+        const result = await db.query(query);
+        
+        res.status(200).json({
+            success: true,
+            count: result.rows.length,
+            investors: result.rows
+        });
+    } catch (error) {
+        console.error('❌ Error fetching pending investors:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Failed to fetch pending investors.' 
+        });
+    }
+};
+
+/**
+ * PUT: Approve an investor - ONLY creates disbursement records
+ */
+const approveInvestor = async (req, res) => {
+    const { investorId } = req.params;
+    
+    if (!investorId) {
+        return res.status(400).json({ 
+            success: false,
+            message: 'Investor ID is required.' 
+        });
+    }
+
+    const client = await db.connect();
+    try {
+        await client.query('BEGIN');
+        
+        // First, check if investor exists and is pending approval
+        const investorResult = await client.query(
+            'SELECT * FROM investordetails WHERE id = $1 AND approval_status = $2',
+            [investorId, 'pending']
+        );
+        
+        if (investorResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ 
+                success: false,
+                message: 'Investor not found or already processed.' 
+            });
+        }
+        
+        const investor = investorResult.rows[0];
+        
+        // Check if disbursement schedule already exists for this investor
+        const existingSchedule = await client.query(
+            'SELECT id FROM disbursement_schedules WHERE investor_id = $1',
+            [investorId]
+        );
+        
+        if (existingSchedule.rows.length > 0) {
+            console.log(`✅ Disbursement schedule already exists for investor ${investorId}, skipping creation`);
+        } else {
+            // Debug logging
+            console.log('🔍 Investor data for disbursement calculation:', {
+                id: investor.id,
+                select_plan: investor.select_plan,
+                plan_type: investor.plan_type,
+                investment_date: investor.investment_date
+            });
+            
+            // Generate disbursement schedule using existing logic
+            const disbursementCalculator = require('../utils/disbursementCalculator');
+            
+            // Get investment amount from select_plan
+            const getInvestmentAmount = (selectPlan) => {
+                switch (selectPlan) {
+                    case '5k': return 5000;
+                    case '10k': return 10000;
+                    case '50k': return 50000;
+                    case '1 lakh': return 100000;
+                    case '5 lakh': return 500000;
+                    default: return 0;
+                }
+            };
+            
+            // Validate required fields before calculating disbursement
+            if (!investor.select_plan || !investor.plan_type || !investor.investment_date) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({
+                    success: false,
+                    message: 'Missing required investor data for disbursement calculation.',
+                    details: {
+                        select_plan: investor.select_plan,
+                        plan_type: investor.plan_type,
+                        investment_date: investor.investment_date
+                    }
+                });
+            }
+            
+            const disbursementSchedule = disbursementCalculator.calculateDisbursementSchedule({
+                investmentAmount: getInvestmentAmount(investor.select_plan),
+                selectPlan: investor.select_plan,
+                planType: investor.plan_type,
+                investmentDate: investor.investment_date
+            });
+            
+            // Insert disbursement schedule
+            const scheduleResult = await client.query(
+                `INSERT INTO disbursement_schedules (investor_id, investment_amount, plan_type, select_plan, investment_date, total_disbursements)
+                 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+                [
+                    investorId,
+                    disbursementSchedule.investmentAmount,
+                    investor.plan_type,
+                    investor.select_plan,
+                    investor.investment_date,
+                    disbursementSchedule.disbursementDates.length
+                ]
+            );
+            
+            const scheduleId = scheduleResult.rows[0].id;
+            
+            // Insert individual disbursement details
+            for (const disbursement of disbursementSchedule.disbursementDates) {
+                await client.query(
+                    `INSERT INTO disbursement_detail (schedule_id, disbursement_date, disbursement_amount, status)
+                     VALUES ($1, $2, $3, 'pending')`,
+                    [scheduleId, disbursement.disbursementDate, disbursement.disbursementAmount]
+                );
+            }
+            
+            console.log(`✅ Created disbursement schedule for investor ${investorId}`);
+        }
+        
+        // Update investor approval status AFTER creating disbursement records
+        await client.query(
+            'UPDATE investordetails SET approval_status = $1, approved_by = $2, approved_at = NOW() WHERE id = $3',
+            ['approved', req.user.user_id, investorId]
+        );
+        
+        await client.query('COMMIT');
+        
+        res.status(200).json({
+            success: true,
+            message: 'Investor approved successfully.',
+            investorId: investorId
+        });
+        
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('❌ Error approving investor:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Failed to approve investor.' 
+        });
+    } finally {
+        client.release();
+    }
+};
+
+/**
+ * PUT: Reject an investor
+ */
+const rejectInvestor = async (req, res) => {
+    const { investorId } = req.params;
+    const { reason } = req.body;
+    
+    if (!investorId) {
+        return res.status(400).json({ 
+            success: false,
+            message: 'Investor ID is required.' 
+        });
+    }
+
+    const client = await db.connect();
+    try {
+        await client.query('BEGIN');
+        
+        // First, check if investor exists and is pending approval
+        const investorResult = await client.query(
+            'SELECT * FROM investordetails WHERE id = $1 AND approval_status = $2',
+            [investorId, 'pending']
+        );
+        
+        if (investorResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ 
+                success: false,
+                message: 'Investor not found or already processed.' 
+            });
+        }
+        
+        // Update investor approval status to rejected
+        await client.query(
+            'UPDATE investordetails SET approval_status = $1, approved_by = $2, approved_at = NOW() WHERE id = $3',
+            ['rejected', req.user.user_id, investorId]
+        );
+        
+        // Delete any existing disbursement schedule for rejected investor
+        const existingSchedule = await client.query(
+            'SELECT id FROM disbursement_schedules WHERE investor_id = $1',
+            [investorId]
+        );
+        
+        if (existingSchedule.rows.length > 0) {
+            // Delete disbursement details first (foreign key constraint)
+            await client.query(
+                'DELETE FROM disbursement_detail WHERE schedule_id IN (SELECT id FROM disbursement_schedules WHERE investor_id = $1)',
+                [investorId]
+            );
+            
+            // Delete disbursement schedule
+            await client.query(
+                'DELETE FROM disbursement_schedules WHERE investor_id = $1',
+                [investorId]
+            );
+            
+            console.log(`🗑️ Deleted disbursement schedule for rejected investor ${investorId}`);
+        }
+        
+        await client.query('COMMIT');
+        
+        console.log(`❌ Investor ${investorId} rejected by ${req.user.user_id}. Reason: ${reason || 'No reason provided'}`);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Investor rejected successfully.',
+            investorId: investorId,
+            reason: reason || 'Rejected by admin'
+        });
+        
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('❌ Error rejecting investor:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Failed to reject investor.' 
+        });
+    } finally {
+        client.release();
+    }
+};
+
+// Update the exports to include the new functions
+module.exports = {
+    getPendingVendors,
+    approveVendor,
+    rejectVendor,
+    getPendingTrades,
+    reviewTrade,
+    getAdminDashboardStats,
+    getAllVendors,
+    getRecentVendors,
+    updateVendorCoordinator,
+    getPendingWalletTransactions,
+    reviewWalletTransaction,
+    getWalletsWithPercentages,
+    updateUserPercentage,
+    getVendorFullProfile,
+    getAdminReferralTree,
+
+    getAllVendorsPaginated,
+    getAllVendorsFull,
+    getVendorCount,
+    getVendorsLast8Days,
+    getTodayVendors,
+    getVendorsLast8DaysPaginated,
+    getTodaysVendorsPaginated,
+    getWalletStats,
+    getPendingInvestors,
+    approveInvestor,
+    rejectInvestor,
+};

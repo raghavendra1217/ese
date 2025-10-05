@@ -354,9 +354,9 @@ exports.addInvestor = async (req, res) => {
                 first_name, mobile_number, pan_card, coordinator, coordinator_id, co_name,
                 bank_account_number, bank_name, branch_name, ifsc_code, mode_of_payment,
                 plan_type, select_plan, transaction_id,
-                address, investment_date, created_at
+                address, investment_date, approval_status, created_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, 'pending', NOW())
             RETURNING *;
         `;
 
@@ -413,12 +413,12 @@ exports.addInvestor = async (req, res) => {
             const pdfUrl = `${req.protocol}://${req.get('host')}/uploads/${path.basename(pdfPath)}`;
             console.log(`🔗 PDF URL generated: ${pdfUrl}`);
             
-            res.status(201).json({
-                message: 'Investor added successfully',
-                investor,
-                pdfPath: pdfPath,
-                pdfUrl: pdfUrl
-            });
+             res.status(201).json({
+                 message: 'Investor added successfully. Pending admin approval.',
+                 investor,
+                 pdfPath: pdfPath,
+                 pdfUrl: pdfUrl
+             });
         } catch (pdfError) {
             console.error(`❌ PDF generation failed for investor ${investor.id}:`, {
                 message: pdfError.message,
@@ -427,12 +427,12 @@ exports.addInvestor = async (req, res) => {
                 investorData: investor
             });
             
-            res.status(201).json({
-                message: 'Investor added successfully',
-                investor,
-                note: 'PDF generation failed',
-                pdfError: pdfError.message
-            });
+             res.status(201).json({
+                 message: 'Investor added successfully. Pending admin approval.',
+                 investor,
+                 note: 'PDF generation failed',
+                 pdfError: pdfError.message
+             });
         }
 
     } catch (error) {
@@ -474,7 +474,7 @@ exports.addInvestor = async (req, res) => {
 };
 
 /**
- * READ: Get all investors
+ * READ: Get all investors - shows all investors regardless of approval status
  */
 exports.getAllInvestors = async (req, res) => {
     try {
@@ -483,12 +483,12 @@ exports.getAllInvestors = async (req, res) => {
                 id, first_name, mobile_number, pan_card, coordinator, co_name,
                 bank_account_number, bank_name, branch_name, ifsc_code, mode_of_payment,
                 plan_type, select_plan, transaction_id, address, investment_date,
-                created_at
+                approval_status, approved_by, approved_at, created_at
             FROM investordetails
             ORDER BY investment_date DESC NULLS LAST
         `;
         const { rows } = await db.query(query);
-        console.log('🔍 Investors fetched:', rows.length, 'investors');
+        console.log('🔍 Investors fetched:', rows.length, 'investors (all statuses)');
         res.status(200).json(rows);
     } catch (error) {
         console.error('❌ Error fetching investors:', error);
@@ -743,7 +743,7 @@ exports.getDisbursementSchedule = async (req, res) => {
 };
 
 /**
- * GET: Get all disbursement schedules
+ * GET: Get all disbursement schedules - only for approved investors
  */
 exports.getAllDisbursementSchedules = async (req, res) => {
     try {
@@ -752,6 +752,7 @@ exports.getAllDisbursementSchedules = async (req, res) => {
                 ds.*,
                 i.first_name,
                 i.mobile_number,
+                i.approval_status,
                 COUNT(dd.id) as total_disbursements,
                 COUNT(CASE WHEN dd.status = 'paid' THEN 1 END) as paid_disbursements,
                 COUNT(CASE WHEN dd.status = 'pending' THEN 1 END) as pending_disbursements,
@@ -759,6 +760,7 @@ exports.getAllDisbursementSchedules = async (req, res) => {
             FROM disbursement_schedules ds
             JOIN investordetails i ON ds.investor_id = i.id
             LEFT JOIN disbursement_detail dd ON ds.id = dd.schedule_id
+            WHERE i.approval_status = 'approved'
             GROUP BY ds.id, i.id
             ORDER BY ds.created_at DESC
         `;

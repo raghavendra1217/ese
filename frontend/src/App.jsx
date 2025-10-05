@@ -22,6 +22,7 @@ import ForgotPassword from './pages/ForgotPassword';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageApprovalsPage from './pages/admin/ManageApprovalsPage';
+import ManageInvestorApprovalsPage from './pages/admin/ManageInvestorApprovalsPage';
 import ManageProductsPage from './pages/admin/ManageProductsPage';
 import WildProductManagementPage from './pages/admin/WildProductManagementPage';
 import ManageTradingApprovalsPage from './pages/admin/ManageTradingApprovalsPage';
@@ -113,6 +114,14 @@ function App() {
                 element={
                   <ProtectedRoute role="admin">
                     <ManageApprovalsPage url={url} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/approve-investments"
+                element={
+                  <ProtectedRoute role="admin">
+                    <ManageInvestorApprovalsPage url={url} />
                   </ProtectedRoute>
                 }
               />

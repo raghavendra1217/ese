@@ -308,13 +308,13 @@ exports.getMyInvestors = async (req, res) => {
         
         const whereClause = whereConditions.join(' AND ');
         
-        // Get investors with pagination
+        // Get investors with pagination - shows all investors regardless of approval status
         const query = `
             SELECT
                 id, first_name, mobile_number, pan_card, coordinator, co_name,
                 bank_account_number, bank_name, branch_name, ifsc_code, mode_of_payment,
                 plan_type, select_plan, transaction_id, address, investment_date,
-                created_at
+                approval_status, approved_by, approved_at, created_at
             FROM investordetails
             WHERE ${whereClause}
             ORDER BY investment_date DESC NULLS LAST
@@ -379,13 +379,13 @@ exports.getUnassignedInvestors = async (req, res) => {
         
         const whereClause = whereConditions.join(' AND ');
         
-        // Get unassigned investors with pagination
+        // Get unassigned investors with pagination - shows all investors regardless of approval status
         const query = `
             SELECT
                 id, first_name, mobile_number, pan_card, coordinator, co_name,
                 bank_account_number, bank_name, branch_name, ifsc_code, mode_of_payment,
                 plan_type, select_plan, transaction_id, address, investment_date,
-                created_at
+                approval_status, approved_by, approved_at, created_at
             FROM investordetails
             WHERE ${whereClause}
             ORDER BY investment_date DESC NULLS LAST
@@ -580,9 +580,9 @@ exports.getCoordinatorDisbursements = async (req, res) => {
         } = req.query;
         
         const offset = (page - 1) * limit;
-        let whereConditions = ['i.coordinator_id = $1'];
-        let queryParams = [coordinatorId];
-        let paramCount = 1;
+        let whereConditions = ['i.coordinator_id = $1', 'i.approval_status = $2'];
+        let queryParams = [coordinatorId, 'approved'];
+        let paramCount = 2;
         
         // Build dynamic WHERE clause
         if (status) {
@@ -1887,7 +1887,7 @@ exports.getCoordinatorDisbursementStats = async (req, res) => {
         const endOf15Days = new Date();
         endOf15Days.setDate(startOf15Days.getDate() + 15);
 
-        // Pending disbursements (due today) for coordinator's investors
+        // Pending disbursements (due today) for coordinator's approved investors
         const pendingTodayQuery = `
             SELECT 
                 COALESCE(SUM(dd.disbursement_amount), 0) as total_amount,
@@ -1898,9 +1898,10 @@ exports.getCoordinatorDisbursementStats = async (req, res) => {
             WHERE dd.status = 'pending'
             AND DATE(dd.disbursement_date) = CURRENT_DATE
             AND i.coordinator_id = $1
+            AND i.approval_status = 'approved'
         `;
 
-        // Total disbursed (all time) for coordinator's investors
+        // Total disbursed (all time) for coordinator's approved investors
         const totalDisbursedQuery = `
             SELECT 
                 COALESCE(SUM(dd.disbursement_amount), 0) as total_amount,
@@ -1910,9 +1911,10 @@ exports.getCoordinatorDisbursementStats = async (req, res) => {
             JOIN investordetails i ON ds.investor_id = i.id
             WHERE dd.status = 'paid'
             AND i.coordinator_id = $1
+            AND i.approval_status = 'approved'
         `;
 
-        // Total invested (all time) for coordinator's investors
+        // Total invested (all time) for coordinator's approved investors
         const totalInvestedQuery = `
             SELECT 
                 COALESCE(SUM(ds.investment_amount), 0) as total_amount,
@@ -1920,9 +1922,10 @@ exports.getCoordinatorDisbursementStats = async (req, res) => {
             FROM disbursement_schedules ds
             JOIN investordetails i ON ds.investor_id = i.id
             WHERE i.coordinator_id = $1
+            AND i.approval_status = 'approved'
         `;
 
-        // Pending disbursements (due tomorrow) for coordinator's investors
+        // Pending disbursements (due tomorrow) for coordinator's approved investors
         const pendingTomorrowQuery = `
             SELECT 
                 COALESCE(SUM(dd.disbursement_amount), 0) as total_amount,
@@ -1933,9 +1936,10 @@ exports.getCoordinatorDisbursementStats = async (req, res) => {
             WHERE dd.status = 'pending'
             AND DATE(dd.disbursement_date) = CURRENT_DATE + INTERVAL '1 day'
             AND i.coordinator_id = $1
+            AND i.approval_status = 'approved'
         `;
 
-        // Upcoming disbursements (future) for coordinator's investors
+        // Upcoming disbursements (future) for coordinator's approved investors
         const upcomingQuery = `
             SELECT 
                 COALESCE(SUM(dd.disbursement_amount), 0) as total_amount,
@@ -1946,9 +1950,10 @@ exports.getCoordinatorDisbursementStats = async (req, res) => {
             WHERE dd.status = 'pending'
             AND DATE(dd.disbursement_date) > CURRENT_DATE + INTERVAL '1 day'
             AND i.coordinator_id = $1
+            AND i.approval_status = 'approved'
         `;
 
-        // Overdue disbursements (past) for coordinator's investors
+        // Overdue disbursements (past) for coordinator's approved investors
         const overdueQuery = `
             SELECT 
                 COALESCE(SUM(dd.disbursement_amount), 0) as total_amount,
@@ -1959,9 +1964,10 @@ exports.getCoordinatorDisbursementStats = async (req, res) => {
             WHERE dd.status = 'pending'
             AND DATE(dd.disbursement_date) < CURRENT_DATE
             AND i.coordinator_id = $1
+            AND i.approval_status = 'approved'
         `;
 
-        // Future 15 days disbursements for coordinator's investors
+        // Future 15 days disbursements for coordinator's approved investors
         const future15DaysQuery = `
             SELECT
                 COALESCE(SUM(dd.disbursement_amount), 0) as total_amount,
@@ -1973,6 +1979,7 @@ exports.getCoordinatorDisbursementStats = async (req, res) => {
             AND DATE(dd.disbursement_date) >= CURRENT_DATE
             AND DATE(dd.disbursement_date) <= DATE($2)
             AND i.coordinator_id = $1
+            AND i.approval_status = 'approved'
         `;
 
         // Execute all queries

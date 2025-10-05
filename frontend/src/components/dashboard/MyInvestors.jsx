@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Flex, Heading, Button, useToast, Spinner, Center, Table, Thead, Tbody, Tr, Th, Td,
-  useDisclosure, useColorModeValue, Text, Badge, HStack
+  useDisclosure, useColorModeValue, Text, Badge, HStack, InputGroup, InputLeftElement, Input
 } from '@chakra-ui/react';
-import { AddIcon } from '@chakra-ui/icons';
+import { AddIcon, SearchIcon } from '@chakra-ui/icons';
 import { useAuth } from '../../AppContext';
 
 // Import the InvestorModal component (exact copy from admin page)
@@ -15,8 +15,10 @@ const MyInvestors = ({ url }) => {
   const { isOpen, onOpen, onClose } = useDisclosure(); // For Add Investor Modal
 
   const [investors, setInvestors] = useState([]);
+  const [filteredInvestors, setFilteredInvestors] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [coordinators, setCoordinators] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Color mode values
   const tableBg = useColorModeValue('white', 'gray.800');
@@ -66,6 +68,7 @@ const MyInvestors = ({ url }) => {
       const result = await response.json();
       if (result.success) {
         setInvestors(result.data.investors || []);
+        setFilteredInvestors(result.data.investors || []);
       }
     } catch (error) {
       console.error('Error loading investors:', error);
@@ -86,6 +89,23 @@ const MyInvestors = ({ url }) => {
     loadInvestors();
     fetchCoordinators();
   }, [loadInvestors, fetchCoordinators]);
+
+  // Search filtering effect
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredInvestors(investors);
+    } else {
+      const filtered = investors.filter(investor => 
+        investor.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        investor.mobile_number?.includes(searchTerm) ||
+        investor.id?.toString().includes(searchTerm) ||
+        investor.coordinator?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        investor.plan_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        investor.approval_status?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredInvestors(filtered);
+    }
+  }, [searchTerm, investors]);
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -126,33 +146,13 @@ const MyInvestors = ({ url }) => {
 
       toast({
         title: 'Investor Added',
-        description: 'Investor has been added successfully',
+        description: 'Investor has been added successfully and is pending admin approval',
         status: 'success',
         isClosable: true,
       });
 
-      // Auto-open HTML report for new investors
-      if (data.investor?.id) {
-        console.log('🌐 Opening HTML report for investor:', {
-          investorId: data.investor.id,
-          investorName: `${data.investor.first_name}`
-        });
-
-        const htmlUrl = `${url}/api/html/investor/${data.investor.id}`;
-        console.log('🌐 Opening HTML URL:', htmlUrl);
-
-        // Open HTML report in new window with print parameter
-        const printUrl = `${htmlUrl}?print=true`;
-        window.open(printUrl, '_blank');
-
-        toast({
-          title: 'HTML Report Opened',
-          description: 'Investor report has been opened and print dialog triggered',
-          status: 'success',
-          isClosable: true,
-          duration: 3000,
-        });
-      }
+      // DON'T auto-open HTML report for new investors
+      // The HTML will only be accessible after admin approval
 
       loadInvestors();
     } catch (error) {
@@ -168,6 +168,18 @@ const MyInvestors = ({ url }) => {
 
 
   const handleViewHTML = (investor) => {
+    // Check if investor is approved
+    if (investor.approval_status !== 'approved') {
+      toast({
+        title: 'Access Denied',
+        description: 'This investment has not been approved yet. Please wait for admin approval.',
+        status: 'warning',
+        isClosable: true,
+        duration: 5000,
+      });
+      return;
+    }
+
     console.log('🌐 Opening HTML report for investor:', {
       investorId: investor.id,
       investorName: `${investor.first_name}`
@@ -191,13 +203,29 @@ const MyInvestors = ({ url }) => {
 
   return (
     <>
-      {/* Action buttons */}
-      <Flex justify="space-between" align="center" mb={6}>
+      {/* Action buttons and search */}
+      <Flex justify="space-between" align="center" mb={6} direction={{ base: 'column', md: 'row' }} gap={4}>
         <HStack spacing={4}>
           <Button leftIcon={<AddIcon />} colorScheme="blue" onClick={handleAdd}>
             Add Investor
           </Button>
         </HStack>
+        
+        {/* Search bar */}
+        <Box minW={{ base: 'full', md: '300px' }}>
+          <InputGroup>
+            <InputLeftElement pointerEvents="none">
+              <SearchIcon color="gray.300" />
+            </InputLeftElement>
+            <Input
+              placeholder="Search investors..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              bg={useColorModeValue('white', 'gray.700')}
+              borderColor={useColorModeValue('gray.300', 'gray.600')}
+            />
+          </InputGroup>
+        </Box>
       </Flex>
 
       {/* Investors Table */}
@@ -216,12 +244,13 @@ const MyInvestors = ({ url }) => {
                 <Th>Coordinator</Th>
                 <Th>Plan Type</Th>
                 <Th>Investment Date</Th>
+                <Th>Status</Th>
                 <Th>Created</Th>
                 <Th>Actions</Th>
               </Tr>
             </Thead>
             <Tbody>
-              {investors.map((investor) => (
+              {filteredInvestors.map((investor) => (
                 <Tr key={investor.id}>
                   <Td fontFamily="monospace" fontSize="sm">
                     {investor.id}
@@ -237,6 +266,17 @@ const MyInvestors = ({ url }) => {
                     </Badge>
                   </Td>
                   <Td>{formatDate(investor.investment_date)}</Td>
+                  <Td>
+                    <Badge 
+                      colorScheme={
+                        investor.approval_status === 'approved' ? 'green' :
+                        investor.approval_status === 'rejected' ? 'red' : 'yellow'
+                      }
+                      variant="solid"
+                    >
+                      {investor.approval_status || 'pending'}
+                    </Badge>
+                  </Td>
                   <Td>{formatDate(investor.created_at)}</Td>
                   <Td>
                     <Button
@@ -244,6 +284,8 @@ const MyInvestors = ({ url }) => {
                       colorScheme="green"
                       variant="outline"
                       onClick={() => handleViewHTML(investor)}
+                      isDisabled={investor.approval_status !== 'approved'}
+                      title={investor.approval_status !== 'approved' ? 'Investment not approved yet' : 'View HTML Report'}
                     >
                       View HTML
                     </Button>

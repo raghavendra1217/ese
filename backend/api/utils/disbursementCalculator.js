@@ -385,7 +385,7 @@ async function createDisbursementSchedule(dbOrClient, scheduleData, investorId) 
 }
 
 /**
- * Get disbursement schedule for an investor
+ * Get disbursement schedule for an investor - only for approved investors
  * @param {Object} db - Database connection
  * @param {number} investorId - Investor ID
  * @returns {Object} Complete disbursement schedule with details
@@ -394,11 +394,13 @@ async function getDisbursementSchedule(db, investorId) {
     try {
         console.log(`🔍 getDisbursementSchedule: Looking for schedule for investor ${investorId}`);
         
-        // Get schedule
+        // Get schedule with approval status check
         const scheduleQuery = `
-            SELECT * FROM disbursement_schedules 
-            WHERE investor_id = $1
-            ORDER BY created_at DESC
+            SELECT ds.*, i.approval_status
+            FROM disbursement_schedules ds
+            JOIN investordetails i ON ds.investor_id = i.id
+            WHERE ds.investor_id = $1 AND i.approval_status = 'approved'
+            ORDER BY ds.created_at DESC
             LIMIT 1;
         `;
         const { rows: scheduleRows } = await db.query(scheduleQuery, [investorId]);
@@ -409,7 +411,7 @@ async function getDisbursementSchedule(db, investorId) {
         }
 
         if (scheduleRows.length === 0) {
-            console.log(`⚠️ getDisbursementSchedule: No schedule found for investor ${investorId}`);
+            console.log(`⚠️ getDisbursementSchedule: No approved schedule found for investor ${investorId}`);
             return null;
         }
 

@@ -89,6 +89,9 @@ const CoordinatorInvestorDashboard = ({ url }) => {
   
   // Color mode values
   const headingColor = useColorModeValue('gray.800', 'gray.200');
+  const noticeBg = useColorModeValue('yellow.50', 'yellow.900');
+  const noticeBorder = useColorModeValue('yellow.200', 'yellow.700');
+  const noticeText = useColorModeValue('yellow.800', 'yellow.200');
 
   // Load real data from API
   useEffect(() => {
@@ -231,6 +234,20 @@ const CoordinatorInvestorDashboard = ({ url }) => {
           Recent Disbursements
         </Heading>
         <Divider mb={6} />
+        <Box 
+          bg={noticeBg} 
+          border="1px solid" 
+          borderColor={noticeBorder} 
+          borderRadius="md" 
+          p={4} 
+          mb={6}
+        >
+          <Text fontSize="sm" color={noticeText}>
+            <Icon as={FaExclamationTriangle} mr={2} />
+            <strong>Note:</strong> Disbursements are only shown for approved investments. 
+            Pending investments will appear here once they are approved by an administrator.
+          </Text>
+        </Box>
         <CoordinatorDisbursementTable url={url} />
       </Box>
     </Box>

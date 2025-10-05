@@ -4,9 +4,9 @@ import {
   useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton,
   FormControl, FormLabel, Input, NumberInput, NumberInputField, AlertDialog, AlertDialogBody, AlertDialogFooter,
   AlertDialogHeader, AlertDialogContent, AlertDialogOverlay, useColorModeValue, Text, Badge, HStack,
-  Select, Textarea, Grid, GridItem, Tabs, TabList, TabPanels, Tab, TabPanel, VStack
+  Select, Textarea, Grid, GridItem, Tabs, TabList, TabPanels, Tab, TabPanel, VStack, InputGroup, InputLeftElement
 } from '@chakra-ui/react';
-import { EditIcon, DeleteIcon, AddIcon, HamburgerIcon, ExternalLinkIcon } from '@chakra-ui/icons';
+import { EditIcon, DeleteIcon, AddIcon, HamburgerIcon, ExternalLinkIcon, SearchIcon } from '@chakra-ui/icons';
 import { useAuth } from '../../AppContext';
 import AdminNavBar from '../../components/layout/AdminNavBar';
 import InvestorDashboard from '../../components/admin/InvestorDashboard';
@@ -762,6 +762,7 @@ const InvestorModal = ({
     const { isOpen: isCoordEditOpen, onOpen: onCoordEditOpen, onClose: onCoordEditClose } = useDisclosure(); // For Coordinator Edit Modal
   
     const [investors, setInvestors] = useState([]);
+    const [filteredInvestors, setFilteredInvestors] = useState([]);
     const [isLoading, setIsLoading] = useState(true); // For main table loading
     const [coordinators, setCoordinators] = useState([]);
     const [isEditing, setIsEditing] = useState(false);
@@ -769,6 +770,7 @@ const InvestorModal = ({
     const [investorToDelete, setInvestorToDelete] = useState(null);
     const [editingCoordinator, setEditingCoordinator] = useState(null); // State for the investor being assigned a coordinator
     const [selectedCoordinator, setSelectedCoordinator] = useState(''); // State for the selected coordinator in the dropdown
+    const [searchTerm, setSearchTerm] = useState('');
     const cancelRef = React.useRef();
   
     // Color mode values
@@ -817,6 +819,7 @@ const InvestorModal = ({
         if (!response.ok) throw new Error(data.message || 'Failed to fetch investors');
         console.log('🔍 Fetched investors:', data);
         setInvestors(data);
+        setFilteredInvestors(data);
       } catch (error) {
         toast({
           title: 'Error fetching investors',
@@ -833,6 +836,23 @@ const InvestorModal = ({
       fetchInvestors();
       fetchCoordinators();
     }, [fetchInvestors, fetchCoordinators]);
+
+    // Search filtering effect
+    useEffect(() => {
+      if (!searchTerm.trim()) {
+        setFilteredInvestors(investors);
+      } else {
+        const filtered = investors.filter(investor => 
+          investor.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          investor.mobile_number?.includes(searchTerm) ||
+          investor.id?.toString().includes(searchTerm) ||
+          investor.coordinator?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          investor.plan_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          investor.approval_status?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        setFilteredInvestors(filtered);
+      }
+    }, [searchTerm, investors]);
   
     const handleSave = async (formData) => {
       const apiUrl = isEditing ? `${url}/api/investors/${currentInvestor.id}` : `${url}/api/investors`;
@@ -1081,13 +1101,29 @@ const InvestorModal = ({
   
               {/* Investors Tab */}
               <TabPanel px={0}>
-                {/* Action buttons */}
-                <Flex justify="space-between" align="center" mb={6}>
+                {/* Action buttons and search */}
+                <Flex justify="space-between" align="center" mb={6} direction={{ base: 'column', md: 'row' }} gap={4}>
                   <HStack spacing={4}>
                     <Button leftIcon={<AddIcon />} colorScheme="blue" onClick={handleAdd}>
                       Add Investor
                     </Button>
                   </HStack>
+                  
+                  {/* Search bar */}
+                  <Box minW={{ base: 'full', md: '300px' }}>
+                    <InputGroup>
+                      <InputLeftElement pointerEvents="none">
+                        <SearchIcon color="gray.300" />
+                      </InputLeftElement>
+                      <Input
+                        placeholder="Search investors..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        bg={useColorModeValue('white', 'gray.700')}
+                        borderColor={useColorModeValue('gray.300', 'gray.600')}
+                      />
+                    </InputGroup>
+                  </Box>
                 </Flex>
   
                 {/* Investors Table */}
@@ -1106,12 +1142,13 @@ const InvestorModal = ({
                           <Th>Coordinator</Th>
                           <Th>Plan Type</Th>
                           <Th>Investment Date</Th>
+                          <Th>Status</Th>
                           <Th>Created</Th>
                           <Th>Actions</Th>
                         </Tr>
                       </Thead>
                       <Tbody>
-                        {investors.map((investor) => (
+                        {filteredInvestors.map((investor) => (
                           <Tr key={investor.id}>
                             <Td fontFamily="monospace" fontSize="sm">
                               {investor.id}
@@ -1127,6 +1164,17 @@ const InvestorModal = ({
                               </Badge>
                             </Td>
                             <Td>{formatDate(investor.investment_date)}</Td>
+                            <Td>
+                              <Badge 
+                                colorScheme={
+                                  investor.approval_status === 'approved' ? 'green' :
+                                  investor.approval_status === 'rejected' ? 'red' : 'yellow'
+                                }
+                                variant="solid"
+                              >
+                                {investor.approval_status || 'pending'}
+                              </Badge>
+                            </Td>
                             <Td>{formatDate(investor.created_at)}</Td>
                             <Td>
                               <HStack spacing={2}>
