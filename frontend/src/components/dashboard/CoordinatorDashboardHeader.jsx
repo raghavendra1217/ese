@@ -103,7 +103,7 @@ const CoordinatorDashboardHeader = ({ stats, url }) => {
           <Tooltip label="Quick Registration" hasArrow>
             <IconButton
               as={RouterLink}
-              to="/admin/quick-registration-management"
+              to="/coordinator/quick-registration"
               variant="ghost"
               aria-label="Quick Registration"
               color={textAndIconColor}

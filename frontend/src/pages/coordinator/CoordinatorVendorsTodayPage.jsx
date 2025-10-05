@@ -4,8 +4,7 @@ import {
   Drawer, DrawerContent, DrawerOverlay, Heading, IconButton,
   Button, HStack, Tabs, TabList, TabPanel, TabPanels, Tab
 } from '@chakra-ui/react';
-import { HamburgerIcon, ArrowBackIcon } from '@chakra-ui/icons';
-import { useNavigate } from 'react-router-dom';
+import { HamburgerIcon } from '@chakra-ui/icons';
 import { useAuth } from '../../AppContext';
 
 import CoordinatorNavBar from '../../components/layout/CoordinatorNavBar';
@@ -15,7 +14,6 @@ const NAV_SIDEBAR_WIDTH = '80px';
 
 const CoordinatorVendorsTodayPage = ({ url }) => {
   const { token } = useAuth();
-  const navigate = useNavigate();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const [activeTab, setActiveTab] = useState(0);
@@ -23,12 +21,8 @@ const CoordinatorVendorsTodayPage = ({ url }) => {
   const pageBg = useColorModeValue('gray.50', 'gray.900');
   const headingColor = useColorModeValue('gray.800', 'gray.200');
 
-  const handleBackToDashboard = () => {
-    navigate('/coordinator/dashboard');
-  };
-
   return (
-    <Flex minH="100vh" bg={pageBg}>
+    <Flex minH="100vh" maxH="100vh" bg={pageBg} overflow="hidden">
       {/* Desktop sidebar */}
       <CoordinatorNavBar variant="static" onOpen={onOpen} />
 
@@ -41,7 +35,7 @@ const CoordinatorVendorsTodayPage = ({ url }) => {
       </Drawer>
 
       {/* Main content */}
-      <Box flex="1" ml={{ base: 0, md: NAV_SIDEBAR_WIDTH }} p={{ base: 4, sm: 6, md: 8 }}>
+      <Box flex="1" ml={{ base: 0, md: NAV_SIDEBAR_WIDTH }} p={{ base: 4, sm: 6, md: 8 }} overflow="hidden" maxH="100vh">
         {/* Mobile header */}
         <Flex align="center" gap={2} mb={4} display={{ base: 'flex', md: 'none' }}>
           <IconButton
@@ -56,28 +50,18 @@ const CoordinatorVendorsTodayPage = ({ url }) => {
           </Heading>
         </Flex>
 
-        <VStack spacing={{ base: 4, md: 8 }} align="stretch">
+        <VStack spacing={{ base: 4, md: 8 }} align="stretch" h="100%" overflow="hidden">
           {/* Page Header */}
           <Box>
             <HStack justify="space-between" align="center" mb={4}>
-              <HStack spacing={4}>
-                <Button
-                  leftIcon={<ArrowBackIcon />}
-                  variant="ghost"
-                  onClick={handleBackToDashboard}
-                  size="sm"
-                >
-                  Back to Dashboard
-                </Button>
-                <Heading size="lg" color={headingColor}>
-                  Today's Vendors
-                </Heading>
-              </HStack>
+              <Heading size="lg" color={headingColor}>
+                Today's Vendors
+              </Heading>
             </HStack>
           </Box>
 
           {/* Tabs for different vendor segments from today */}
-          <Box>
+          <Box flex="1" overflow="hidden">
             <Tabs
               index={activeTab}
               onChange={setActiveTab}
@@ -86,28 +70,21 @@ const CoordinatorVendorsTodayPage = ({ url }) => {
               size="lg"
             >
               <TabList>
-                <Tab>All Today's Vendors</Tab>
                 <Tab>My Today's Vendors</Tab>
-                <Tab>Today's Unassigned Vendors</Tab>
+                <Tab>All Today's Vendors</Tab>
               </TabList>
 
-              <TabPanels>
-                <TabPanel p={0} pt={6}>
-                  <CoordinatorVendorsTable
-                    url={url}
-                    viewType="today_all"
-                  />
-                </TabPanel>
-                <TabPanel p={0} pt={6}>
+              <TabPanels h="100%">
+                <TabPanel p={0} pt={6} h="100%" overflow="hidden">
                   <CoordinatorVendorsTable
                     url={url}
                     viewType="today_my"
                   />
                 </TabPanel>
-                <TabPanel p={0} pt={6}>
+                <TabPanel p={0} pt={6} h="100%" overflow="hidden">
                   <CoordinatorVendorsTable
                     url={url}
-                    viewType="today_unassigned"
+                    viewType="today_all"
                   />
                 </TabPanel>
               </TabPanels>

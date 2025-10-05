@@ -13,4 +13,11 @@ router.get('/admin/:id', protect, quickRegController.getQuickRegistrationById);
 router.put('/admin/:id', protect, quickRegController.updateQuickRegistration);
 router.delete('/admin/:id', protect, quickRegController.deleteQuickRegistration);
 
+// Coordinator routes (protected)
+router.get('/coordinator/all', protect, quickRegController.getAllQuickRegistrations);
+router.get('/coordinator/stats', protect, quickRegController.getQuickRegistrationStats);
+router.get('/coordinator/:id', protect, quickRegController.getQuickRegistrationById);
+router.put('/coordinator/:id', protect, quickRegController.updateQuickRegistration);
+router.delete('/coordinator/:id', protect, quickRegController.deleteQuickRegistration);
+
 module.exports = router;

@@ -397,8 +397,19 @@ const CoordinatorDisbursementTable = ({ url }) => {
           borderRadius: 'xl'
         }}
       >
-        <Box overflowX="auto" display={{ base: 'none', md: 'block' }}>
-          <Table variant="simple" position="relative" zIndex={1} minW="1000px">
+        <Box display={{ base: 'none', md: 'block' }}>
+          <Table variant="simple" position="relative" zIndex={1} w="100%" sx={{ 
+            'table-layout': 'fixed',
+            'th:nth-of-type(1), td:nth-of-type(1)': { width: '8%' },  // ID
+            'th:nth-of-type(2), td:nth-of-type(2)': { width: '15%' }, // Investor
+            'th:nth-of-type(3), td:nth-of-type(3)': { width: '12%' }, // Mobile
+            'th:nth-of-type(4), td:nth-of-type(4)': { width: '15%' }, // Coordinator
+            'th:nth-of-type(5), td:nth-of-type(5)': { width: '15%' }, // Plan
+            'th:nth-of-type(6), td:nth-of-type(6)': { width: '12%' }, // Amount
+            'th:nth-of-type(7), td:nth-of-type(7)': { width: '10%' }, // Date
+            'th:nth-of-type(8), td:nth-of-type(8)': { width: '8%' },  // Status
+            'th:nth-of-type(9), td:nth-of-type(9)': { width: '5%' }   // Actions
+          }}>
             <Thead bg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)" position="sticky" top={0} zIndex={2}>
               <Tr>
                 <Th color="white" fontWeight="bold" fontSize="sm" py={4} textAlign="center">ID</Th>

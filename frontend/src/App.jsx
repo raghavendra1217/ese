@@ -43,6 +43,8 @@ import CoordinatorVendorsTodayPage from './pages/coordinator/CoordinatorVendorsT
 import CoordinatorInvestorPage from './pages/coordinator/CoordinatorInvestorPage';
 import CoordinatorProductsPage from './pages/coordinator/CoordinatorProductsPage';
 import CoordinatorWildProductsPage from './pages/coordinator/CoordinatorWildProductsPage';
+import CoordinatorQuickRegistrationPage from './pages/coordinator/CoordinatorQuickRegistrationPage';
+import CoordinatorVendorProfile from './pages/coordinator/CoordinatorVendorProfile';
 
 import VendorDashboard from './pages/vendor/VendorDashboard';
 import BuyProduct from './pages/vendor/BuyProduct';
@@ -277,6 +279,14 @@ function App() {
                 }
               />
               <Route
+                path="/coordinator/vendors/:id"
+                element={
+                  <ProtectedRoute role="coordinator">
+                    <CoordinatorVendorProfile url={url} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/coordinator/investors"
                 element={
                   <ProtectedRoute role="coordinator">
@@ -297,6 +307,14 @@ function App() {
                 element={
                   <ProtectedRoute role="coordinator">
                     <CoordinatorWildProductsPage url={url} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/coordinator/quick-registration"
+                element={
+                  <ProtectedRoute role="coordinator">
+                    <CoordinatorQuickRegistrationPage url={url} />
                   </ProtectedRoute>
                 }
               />

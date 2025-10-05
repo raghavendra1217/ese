@@ -361,8 +361,16 @@ const CoordinatorTransactions = ({ url }) => {
       {!loading && !error && (
         <>
           {/* Transactions Table */}
-          <TableContainer display={{ base: 'none', md: 'block' }} overflowX="auto">
-            <Table variant="simple" size="md" minW="980px">
+          <TableContainer display={{ base: 'none', md: 'block' }}>
+            <Table variant="simple" size="md" w="100%" sx={{ 
+              'table-layout': 'fixed',
+              'th:nth-of-type(1), td:nth-of-type(1)': { width: '20%' }, // Vendor
+              'th:nth-of-type(2), td:nth-of-type(2)': { width: '15%' }, // Date
+              'th:nth-of-type(3), td:nth-of-type(3)': { width: '15%' }, // Type
+              'th:nth-of-type(4), td:nth-of-type(4)': { width: '15%' }, // Amount
+              'th:nth-of-type(5), td:nth-of-type(5)': { width: '15%' }, // Status
+              'th:nth-of-type(6), td:nth-of-type(6)': { width: '20%' }  // Description
+            }}>
               <Thead>
                 <Tr>
                   <Th>

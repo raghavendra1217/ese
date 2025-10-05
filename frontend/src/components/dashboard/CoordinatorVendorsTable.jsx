@@ -340,7 +340,7 @@ const CoordinatorVendorsTable = ({ url, viewType = 'all' }) => {
       { key: 'percentage', label: 'Commission %' },
       { key: 'wallet_balance', label: 'Wallet' },
       { key: 'created_at', label: 'Joined' },
-      ...((viewType === 'unassigned' || viewType === 'my' || viewType === 'last8days_unassigned' || viewType === 'last8days_my' || viewType === 'today_unassigned' || viewType === 'today_my') ? [{ key: 'actions', label: 'Actions' }] : []),
+      ...((viewType === 'unassigned' || viewType === 'last8days_unassigned' || viewType === 'today_unassigned') ? [{ key: 'actions', label: 'Actions' }] : []),
     ], [viewType]
   );
 
@@ -409,9 +409,9 @@ const CoordinatorVendorsTable = ({ url, viewType = 'all' }) => {
       borderRadius="lg"
       p={{ base: 3, md: 4 }}
       boxShadow="sm"
-      maxW="1180px"
       w="100%"
-      mx="auto"
+      overflow="hidden"
+      maxW="100%"
     >
       {(dateFilters.length > 0 || dateRanges.length > 0) && (
         <Box mb={3}>
@@ -460,12 +460,23 @@ const CoordinatorVendorsTable = ({ url, viewType = 'all' }) => {
       ) : (
         <>
           {/* DESKTOP TABLE VIEW */}
-          <Box display={{ base: 'none', md: 'block' }} overflowX="auto">
+          <Box display={{ base: 'none', md: 'block' }} overflowX="auto" maxW="100%" maxH="calc(100vh - 300px)">
             <Table
               variant="simple"
               size="sm"
               w="100%"
-              sx={{ tableLayout: 'fixed', 'th, td': { py: 2, px: 3 } }}
+              sx={{ 
+                'th, td': { py: 2, px: 3 },
+                'table-layout': 'fixed',
+                'th:nth-of-type(1), td:nth-of-type(1)': { width: '25%' }, // Vendor
+                'th:nth-of-type(2), td:nth-of-type(2)': { width: '10%' }, // ID
+                'th:nth-of-type(3), td:nth-of-type(3)': { width: '15%' }, // Coordinator
+                'th:nth-of-type(4), td:nth-of-type(4)': { width: '12%' }, // Status
+                'th:nth-of-type(5), td:nth-of-type(5)': { width: '10%' }, // Commission
+                'th:nth-of-type(6), td:nth-of-type(6)': { width: '12%' }, // Wallet
+                'th:nth-of-type(7), td:nth-of-type(7)': { width: '11%' }, // Joined
+                'th:nth-of-type(8), td:nth-of-type(8)': { width: '5%' }   // Actions
+              }}
             >
               <Thead>
                 <Tr>
@@ -573,8 +584,7 @@ const CoordinatorVendorsTable = ({ url, viewType = 'all' }) => {
                     <Tr
                       key={vendor.id}
                       onClick={() => {
-                        // Dummy function - no real navigation
-                        alert(`View details for ${vendor.vendor_name}`);
+                        navigate(`/coordinator/vendors/${vendor.id}`);
                       }}
                       _hover={{ bg: rowHoverBg, cursor: 'pointer' }}
                     >
@@ -629,25 +639,6 @@ const CoordinatorVendorsTable = ({ url, viewType = 'all' }) => {
                           </HStack>
                         </Td>
                       )}
-                      {viewType === 'my' && (
-                        <Td>
-                          <HStack spacing={2}>
-                            <Button
-                              size="sm"
-                              colorScheme="red"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeVendor(vendor.id, vendor.vendor_name);
-                              }}
-                              isLoading={removingVendors.has(vendor.id)}
-                              loadingText="Removing..."
-                            >
-                              Remove
-                            </Button>
-                          </HStack>
-                        </Td>
-                      )}
                       {(viewType === 'last8days_unassigned') && (
                         <Td>
                           <HStack spacing={2}>
@@ -663,25 +654,6 @@ const CoordinatorVendorsTable = ({ url, viewType = 'all' }) => {
                               loadingText="Assigning..."
                             >
                               Assign
-                            </Button>
-                          </HStack>
-                        </Td>
-                      )}
-                      {(viewType === 'last8days_my') && (
-                        <Td>
-                          <HStack spacing={2}>
-                            <Button
-                              size="sm"
-                              colorScheme="red"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeVendor(vendor.id, vendor.vendor_name);
-                              }}
-                              isLoading={removingVendors.has(vendor.id)}
-                              loadingText="Removing..."
-                            >
-                              Remove
                             </Button>
                           </HStack>
                         </Td>
@@ -705,25 +677,6 @@ const CoordinatorVendorsTable = ({ url, viewType = 'all' }) => {
                           </HStack>
                         </Td>
                       )}
-                      {(viewType === 'today_my') && (
-                        <Td>
-                          <HStack spacing={2}>
-                            <Button
-                              size="sm"
-                              colorScheme="red"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeVendor(vendor.id, vendor.vendor_name);
-                              }}
-                              isLoading={removingVendors.has(vendor.id)}
-                              loadingText="Removing..."
-                            >
-                              Remove
-                            </Button>
-                          </HStack>
-                        </Td>
-                      )}
                     </Tr>
                   );
                 })}
@@ -732,7 +685,7 @@ const CoordinatorVendorsTable = ({ url, viewType = 'all' }) => {
           </Box>
 
           {/* MOBILE CARD VIEW */}
-          <VStack spacing={4} display={{ base: 'flex', md: 'none' }}>
+          <VStack spacing={4} display={{ base: 'flex', md: 'none' }} maxH="calc(100vh - 300px)" overflowY="auto">
             {pageData.map(vendor => {
               const joinDate = vendor.joining_date || vendor.created_at;
               return (
@@ -807,25 +760,6 @@ const CoordinatorVendorsTable = ({ url, viewType = 'all' }) => {
                       </Flex>
                     )}
 
-                    {/* Action Button for My Vendors view */}
-                    {viewType === 'my' && (
-                      <Flex justify="center" pt={2}>
-                        <Button
-                          size="sm"
-                          colorScheme="red"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeVendor(vendor.id, vendor.vendor_name);
-                          }}
-                          isLoading={removingVendors.has(vendor.id)}
-                          loadingText="Removing..."
-                          w="100%"
-                        >
-                          Remove from My Coordination
-                        </Button>
-                      </Flex>
-                    )}
 
                     {/* Action Button for Last 8 Days Unassigned view */}
                     {viewType === 'last8days_unassigned' && (
@@ -847,25 +781,6 @@ const CoordinatorVendorsTable = ({ url, viewType = 'all' }) => {
                       </Flex>
                     )}
 
-                    {/* Action Button for Last 8 Days My Vendors view */}
-                    {viewType === 'last8days_my' && (
-                      <Flex justify="center" pt={2}>
-                        <Button
-                          size="sm"
-                          colorScheme="red"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeVendor(vendor.id, vendor.vendor_name);
-                          }}
-                          isLoading={removingVendors.has(vendor.id)}
-                          loadingText="Removing..."
-                          w="100%"
-                        >
-                          Remove from My Coordination
-                        </Button>
-                      </Flex>
-                    )}
 
                     {/* Action Button for Today's Unassigned view */}
                     {viewType === 'today_unassigned' && (
@@ -887,25 +802,6 @@ const CoordinatorVendorsTable = ({ url, viewType = 'all' }) => {
                       </Flex>
                     )}
 
-                    {/* Action Button for Today's My Vendors view */}
-                    {viewType === 'today_my' && (
-                      <Flex justify="center" pt={2}>
-                        <Button
-                          size="sm"
-                          colorScheme="red"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeVendor(vendor.id, vendor.vendor_name);
-                          }}
-                          isLoading={removingVendors.has(vendor.id)}
-                          loadingText="Removing..."
-                          w="100%"
-                        >
-                          Remove from My Coordination
-                        </Button>
-                      </Flex>
-                    )}
                   </VStack>
                 </Box>
               );

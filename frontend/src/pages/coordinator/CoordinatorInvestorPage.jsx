@@ -8,7 +8,6 @@ import { useAuth } from '../../AppContext';
 import CoordinatorNavBar, { NAV_WIDTH } from '../../components/layout/CoordinatorNavBar';
 import CoordinatorInvestorDashboard from '../../components/dashboard/CoordinatorInvestorDashboard';
 import MyInvestors from '../../components/dashboard/MyInvestors';
-import UnassignedInvestors from '../../components/dashboard/UnassignedInvestors';
 
 const CoordinatorInvestorPage = ({ url }) => {
   const { token } = useAuth();
@@ -65,7 +64,6 @@ const CoordinatorInvestorPage = ({ url }) => {
           <TabList>
             <Tab>Dashboard</Tab>
             <Tab>My Investors</Tab>
-            <Tab>Unassigned Investors</Tab>
           </TabList>
 
           <TabPanels>
@@ -77,11 +75,6 @@ const CoordinatorInvestorPage = ({ url }) => {
             {/* My Investors Tab */}
             <TabPanel px={0}>
               <MyInvestors url={url} />
-            </TabPanel>
-
-            {/* Unassigned Investors Tab */}
-            <TabPanel px={0}>
-              <UnassignedInvestors url={url} />
             </TabPanel>
           </TabPanels>
         </Tabs>

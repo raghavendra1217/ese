@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Box, Flex, Heading, Button, IconButton, useToast, Spinner, Center, Table, Thead, Tbody, Tr, Th, Td,
-  useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton,
-  FormControl, FormLabel, Input, useColorModeValue, Text, Badge, HStack, AlertDialog, AlertDialogBody,
-  AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay, Select, Textarea, VStack, Grid, GridItem
+  Box, Flex, Heading, Button, useToast, Spinner, Center, Table, Thead, Tbody, Tr, Th, Td,
+  useDisclosure, useColorModeValue, Text, Badge, HStack
 } from '@chakra-ui/react';
-import { EditIcon, DeleteIcon, AddIcon } from '@chakra-ui/icons';
+import { AddIcon } from '@chakra-ui/icons';
 import { useAuth } from '../../AppContext';
 
 // Import the InvestorModal component (exact copy from admin page)
@@ -14,14 +12,10 @@ import InvestorModal from './InvestorModal';
 const MyInvestors = ({ url }) => {
   const { token } = useAuth();
   const toast = useToast();
-  const { isOpen, onOpen, onClose } = useDisclosure(); // For Add/Edit Investor Modal
-  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure(); // For Delete Confirmation
+  const { isOpen, onOpen, onClose } = useDisclosure(); // For Add Investor Modal
 
   const [investors, setInvestors] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [currentInvestor, setCurrentInvestor] = useState(null);
-  const [investorToDelete, setInvestorToDelete] = useState(null);
   const [coordinators, setCoordinators] = useState([]);
 
   // Color mode values
@@ -103,32 +97,23 @@ const MyInvestors = ({ url }) => {
   };
 
   const handleAdd = () => {
-    setCurrentInvestor(null);
-    setIsEditing(false);
-    onOpen();
-  };
-
-  const handleEdit = (investor) => {
-    setCurrentInvestor(investor);
-    setIsEditing(true);
     onOpen();
   };
 
   const handleSave = async (formData) => {
     try {
-      const apiUrl = isEditing ? `${url}/api/investors/${currentInvestor.id}` : `${url}/api/investors`;
-      const method = isEditing ? 'PUT' : 'POST';
-
+      const apiUrl = `${url}/api/investors`;
+      
       // For coordinators creating new investors, don't send coordinator_id
       // The backend will automatically assign the investor to the current coordinator
       const requestData = { ...formData };
-      if (!isEditing && !formData.coordinator_id) {
+      if (!formData.coordinator_id) {
         // Remove coordinator_id from request if not provided (coordinator will be auto-assigned)
         delete requestData.coordinator_id;
       }
 
       const response = await fetch(apiUrl, {
-        method,
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -140,14 +125,14 @@ const MyInvestors = ({ url }) => {
       if (!response.ok) throw new Error(data.message || 'Failed to save investor');
 
       toast({
-        title: isEditing ? 'Investor Updated' : 'Investor Added',
-        description: isEditing ? 'Investor has been updated successfully' : 'Investor has been added successfully',
+        title: 'Investor Added',
+        description: 'Investor has been added successfully',
         status: 'success',
         isClosable: true,
       });
 
       // Auto-open HTML report for new investors
-      if (!isEditing && data.investor?.id) {
+      if (data.investor?.id) {
         console.log('🌐 Opening HTML report for investor:', {
           investorId: data.investor.id,
           investorName: `${data.investor.first_name}`
@@ -181,49 +166,27 @@ const MyInvestors = ({ url }) => {
     }
   };
 
-  const handleRemoveInvestor = async () => {
-    if (!investorToDelete) return;
 
-    try {
-      const response = await fetch(`${url}/api/coordinator/investors/remove/${investorToDelete.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+  const handleViewHTML = (investor) => {
+    console.log('🌐 Opening HTML report for investor:', {
+      investorId: investor.id,
+      investorName: `${investor.first_name}`
+    });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to remove investor');
-      }
+    const htmlUrl = `${url}/api/html/investor/${investor.id}`;
+    console.log('🌐 Opening HTML URL:', htmlUrl);
 
-      const result = await response.json();
-      
-      toast({
-        title: 'Investor Removed',
-        description: `${investorToDelete.first_name} has been removed from your coordination`,
-        status: 'success',
-        isClosable: true,
-      });
+    // Open HTML report in new window with print parameter
+    const printUrl = `${htmlUrl}?print=true`;
+    window.open(printUrl, '_blank');
 
-      onDeleteClose();
-      loadInvestors(); // Reload the list
-    } catch (error) {
-      console.error('Error removing investor:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to remove investor',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    }
-  };
-
-  const handleDeleteClick = (investor) => {
-    setInvestorToDelete(investor);
-    onDeleteOpen();
+    toast({
+      title: 'HTML Report Opened',
+      description: `Investor report for ${investor.first_name} has been opened`,
+      status: 'success',
+      isClosable: true,
+      duration: 3000,
+    });
   };
 
   return (
@@ -276,24 +239,14 @@ const MyInvestors = ({ url }) => {
                   <Td>{formatDate(investor.investment_date)}</Td>
                   <Td>{formatDate(investor.created_at)}</Td>
                   <Td>
-                    <HStack spacing={2}>
-                      <IconButton
-                        aria-label="Edit investor"
-                        icon={<EditIcon />}
-                        size="sm"
-                        colorScheme="blue"
-                        variant="ghost"
-                        onClick={() => handleEdit(investor)}
-                      />
-                      <IconButton
-                        aria-label="Remove investor"
-                        icon={<DeleteIcon />}
-                        size="sm"
-                        colorScheme="red"
-                        variant="ghost"
-                        onClick={() => handleDeleteClick(investor)}
-                      />
-                    </HStack>
+                    <Button
+                      size="sm"
+                      colorScheme="green"
+                      variant="outline"
+                      onClick={() => handleViewHTML(investor)}
+                    >
+                      View HTML
+                    </Button>
                   </Td>
                 </Tr>
               ))}
@@ -302,43 +255,18 @@ const MyInvestors = ({ url }) => {
         </Box>
       )}
 
-      {/* Add/Edit Investor Modal - Using the exact same component from admin page */}
+      {/* Add Investor Modal */}
       <InvestorModal
         isOpen={isOpen}
         onClose={onClose}
         onSave={handleSave}
-        investor={currentInvestor}
-        isEditing={isEditing}
+        investor={null}
+        isEditing={false}
         coordinators={coordinators}
         url={url}
         token={token}
       />
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog
-        isOpen={isDeleteOpen}
-        onClose={onDeleteClose}
-      >
-        <AlertDialogOverlay>
-          <AlertDialogContent>
-            <AlertDialogHeader fontSize="lg" fontWeight="bold">
-              Remove Investor
-            </AlertDialogHeader>
-            <AlertDialogBody>
-              Are you sure you want to remove {investorToDelete?.first_name} from your coordination?
-              This will unassign them from you but they will remain in the system.
-            </AlertDialogBody>
-            <AlertDialogFooter>
-              <Button onClick={onDeleteClose}>
-                Cancel
-              </Button>
-              <Button colorScheme="red" onClick={handleRemoveInvestor} ml={3}>
-                Remove
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialogOverlay>
-      </AlertDialog>
     </>
   );
 };
