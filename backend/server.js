@@ -7,6 +7,7 @@ const path = require('path');
 const morgan = require('morgan');
 
 const db = require('./api/config/database');
+const { testSupabaseConnection } = require('./api/config/supabase');
 const authRoutes = require('./api/routes/authRoutes');
 const adminRoutes = require('./api/routes/adminRoutes');
 const vendorRoutes = require('./api/routes/vendorRoutes');
@@ -23,6 +24,7 @@ const statusRoutes = require('./api/routes/statusRoutes');
 const quickRegRoutes = require('./api/routes/quickRegRoutes');
 const payslipRoutes = require('./api/routes/payslipRoutes');
 const coordinatorRoutes = require('./api/routes/coordinatorRoutes');
+const resumeRoutes = require('./api/routes/resumeRoutes');
 const { startCompressorMonitoring } = require('./api/utils/statusMonitor');
 
 const PORT = process.env.PORT || 10000;
@@ -105,6 +107,7 @@ app.use('/api/status', statusRoutes);
 app.use('/api/quick-reg', quickRegRoutes);
 app.use('/api/payslip', payslipRoutes);
 app.use('/api/coordinator', coordinatorRoutes);
+app.use('/api/resumes', resumeRoutes);
 
  
 
@@ -195,6 +198,14 @@ const startServer = async () => {
     console.log('🟡 Attempting to connect to the database...');
     const result = await db.query('SELECT NOW()');
     console.log(`✅ Database connection successful. DB time: ${result.rows[0].now}`);
+
+    // Test Supabase bucket storage connection (non-blocking)
+    try {
+      await testSupabaseConnection();
+    } catch (error) {
+      console.log('⚠️  Supabase connection test failed, but continuing server startup...');
+      console.log('   This may affect file upload functionality.');
+    }
 
     app.listen(PORT, '0.0.0.0', () => {
       console.log('----------------------------------------------------');

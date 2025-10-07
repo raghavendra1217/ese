@@ -14,23 +14,20 @@ const protect = async (req, res, next) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
 
-            const { rows } = await db.query('SELECT user_id, email, role FROM login WHERE user_id = $1', [decoded.userId]);
-
-            console.log('🔍 Auth middleware - User lookup:', {
-                decodedUserId: decoded.userId,
-                found: rows.length > 0,
-                userData: rows[0] || 'Not found'
-            });
-
-            if (rows.length === 0) {
-                console.log("❌ User not found in DB");
-                return res.status(401).json({ message: 'Not authorized, user not found' });
+            const client = await db.connect();
+            try {
+                const { rows } = await client.query('SELECT user_id, email, role FROM login WHERE user_id = $1', [decoded.userId]);
+                if (rows.length === 0) {
+                    console.log("❌ User not found in DB");
+                    return res.status(401).json({ message: 'Not authorized, user not found' });
+                }
+                
+                req.user = rows[0];
+                console.log('🔍 Auth middleware - Setting req.user:', req.user);
+                next();
+            } finally {
+                client.release();
             }
-            
-
-            req.user = rows[0];
-            console.log('🔍 Auth middleware - Setting req.user:', req.user);
-            next();
         } catch (error) {
             console.log("❌ JWT Verification Failed:", error.message);
             return res.status(401).json({ message: 'Not authorized, token failed' });
