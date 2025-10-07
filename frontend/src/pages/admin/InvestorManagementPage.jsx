@@ -4,7 +4,8 @@ import {
   useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton,
   FormControl, FormLabel, Input, NumberInput, NumberInputField, AlertDialog, AlertDialogBody, AlertDialogFooter,
   AlertDialogHeader, AlertDialogContent, AlertDialogOverlay, useColorModeValue, Text, Badge, HStack,
-  Select, Textarea, Grid, GridItem, Tabs, TabList, TabPanels, Tab, TabPanel, VStack, InputGroup, InputLeftElement
+  Select, Textarea, Grid, GridItem, Tabs, TabList, TabPanels, Tab, TabPanel, VStack, InputGroup, InputLeftElement,
+  Tooltip
 } from '@chakra-ui/react';
 import { EditIcon, DeleteIcon, AddIcon, HamburgerIcon, ExternalLinkIcon, SearchIcon } from '@chakra-ui/icons';
 import { useAuth } from '../../AppContext';
@@ -1012,8 +1013,8 @@ const InvestorModal = ({
         const data = await response.json();
         if (response.ok) {
           toast({
-            title: 'Coordinator Updated',
-            description: 'Investor coordinator has been updated successfully',
+            title: 'Coordinator Assigned',
+            description: 'The coordinator has been successfully assigned to this investor!',
             status: 'success',
             isClosable: true
           });
@@ -1186,14 +1187,18 @@ const InvestorModal = ({
                                   variant="ghost"
                                   onClick={() => handleOpenHTML(investor)}
                                 />
-                                <IconButton
-                                  aria-label="Edit coordinator"
-                                  icon={<EditIcon />}
-                                  size="sm"
-                                  colorScheme="purple"
-                                  variant="ghost"
-                                  onClick={() => handleEditCoordinator(investor)}
-                                />
+                                <Tooltip label="Edit coordinator" hasArrow>
+                                  <IconButton
+                                    aria-label="Edit coordinator"
+                                    icon={<EditIcon />}
+                                    size="sm"
+                                    colorScheme="green"
+                                    variant="solid"
+                                    bg="green.500"
+                                    _hover={{ bg: "green.600" }}
+                                    onClick={() => handleEditCoordinator(investor)}
+                                  />
+                                </Tooltip>
                                 <IconButton
                                   aria-label="Edit investor"
                                   icon={<EditIcon />}

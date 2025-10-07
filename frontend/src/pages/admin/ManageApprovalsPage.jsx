@@ -210,7 +210,7 @@ const VendorApprovalCard = ({ vendor, onApprove, onReject }) => {
 
   const employeeCount = parseInt(vendor.employee_count, 10) || 0;
   const perEmployeeFee = 5000;
-  const oneTimeFee = 9999;
+  const oneTimeFee = 4999;
   const totalAmount = (employeeCount * perEmployeeFee) + oneTimeFee;
 
   const viewImage = (imageUrl) => { setCurrentImage(imageUrl); onOpen(); };
@@ -224,7 +224,6 @@ const VendorApprovalCard = ({ vendor, onApprove, onReject }) => {
         <Divider />
         <Box>
           <Text fontWeight="bold">Payment Details:</Text>
-          <Text pl={4}><strong>Employees:</strong> {employeeCount}</Text>
           <Text pl={4}><strong>Calculated Amount:</strong> ₹{totalAmount.toLocaleString('en-IN')}</Text>
           <Text pl={4}><strong>Transaction ID:</strong> {vendor.transaction_id}</Text>
         </Box>

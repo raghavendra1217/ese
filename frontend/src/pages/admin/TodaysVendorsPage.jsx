@@ -3,9 +3,12 @@ import {
   Box, Flex, VStack, Heading, Text, Table, Thead, Tbody, Tr, Th, Td,
   Button, HStack, Spinner, useColorModeValue, IconButton, useDisclosure,
   Drawer, DrawerContent, DrawerOverlay, Avatar, Badge, Input,
-  InputGroup, InputLeftElement, Select, useToast
+  InputGroup, InputLeftElement, Select, useToast, Modal, ModalOverlay,
+  ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter,
+  FormControl, FormLabel, Tooltip
 } from '@chakra-ui/react';
 import { FaUsers, FaSearch, FaArrowLeft, FaEye } from 'react-icons/fa';
+import { EditIcon, AddIcon } from '@chakra-ui/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../AppContext';
 
@@ -24,6 +27,12 @@ const TodaysVendorsPage = ({ url }) => {
   const [sortOrder] = useState('DESC'); // Fixed to descending order
   const [selectedVendor, setSelectedVendor] = useState(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
+  
+  // Coordinator management state
+  const [coordinators, setCoordinators] = useState([]);
+  const [editingVendor, setEditingVendor] = useState(null);
+  const [selectedCoordinator, setSelectedCoordinator] = useState('');
+  const { isOpen: isCoordEditOpen, onOpen: onCoordEditOpen, onClose: onCoordEditClose } = useDisclosure();
 
   const pageBg = useColorModeValue('gray.50', 'gray.900');
   const cardBg = useColorModeValue('white', 'gray.800');
@@ -91,9 +100,80 @@ const TodaysVendorsPage = ({ url }) => {
     }
   }, [token, url]);
 
+  // Fetch coordinators for dropdown
+  const fetchCoordinators = useCallback(async () => {
+    if (!token) return;
+    
+    try {
+      const response = await fetch(`${url}/api/coordinator`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCoordinators(data.coordinators || []);
+      }
+    } catch (error) {
+      console.error('Error fetching coordinators:', error);
+    }
+  }, [token, url]);
+
+  // Update vendor coordinator
+  const updateVendorCoordinator = async () => {
+    if (!editingVendor || selectedCoordinator === undefined) {
+      return;
+    }
+
+    try {
+      const requestBody = { coordinator_id: selectedCoordinator };
+      
+      const response = await fetch(`${url}/api/admin/update-vendor-coordinator/${editingVendor.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Coordinator Assigned',
+          description: 'The coordinator has been successfully assigned to this vendor!',
+          status: 'success',
+          isClosable: true
+        });
+        
+        // Refresh vendors data
+        await fetchTodaysVendors(currentPage, searchTerm, sortBy, sortOrder);
+        
+        onCoordEditClose();
+        setSelectedCoordinator('');
+        setEditingVendor(null);
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: 'Error',
+          description: errorData.message || 'Failed to update vendor coordinator',
+          status: 'error',
+          isClosable: true
+        });
+      }
+    } catch (error) {
+      console.error('Error updating vendor coordinator:', error);
+      toast({
+        title: 'Error',
+        description: 'Network error occurred while updating coordinator',
+        status: 'error',
+        isClosable: true
+      });
+    }
+  };
+
   useEffect(() => {
     fetchTotalCount();
-  }, [fetchTotalCount]);
+    fetchCoordinators();
+  }, [fetchTotalCount, fetchCoordinators]);
 
   useEffect(() => {
     fetchTodaysVendors(currentPage, searchTerm, sortBy, sortOrder);
@@ -210,6 +290,7 @@ const TodaysVendorsPage = ({ url }) => {
                   <Th>
                     <Text>Registration Date</Text>
                   </Th>
+                  <Th>Coordinator</Th>
                   <Th>Status</Th>
                   <Th>Actions</Th>
                 </Tr>
@@ -217,7 +298,7 @@ const TodaysVendorsPage = ({ url }) => {
               <Tbody>
                 {vendors.length === 0 ? (
                   <Tr>
-                    <Td colSpan={6} textAlign="center" py={8}>
+                    <Td colSpan={7} textAlign="center" py={8}>
                       <VStack spacing={3}>
                         <FaUsers size={48} color="gray.300" />
                         <Text color="gray.500" fontSize="lg">
@@ -261,6 +342,11 @@ const TodaysVendorsPage = ({ url }) => {
                         </Text>
                       </Td>
                       <Td>
+                        <Text fontSize="sm" color={vendor.coordinator_name ? 'inherit' : 'gray.500'}>
+                          {vendor.coordinator_name || 'No Coordinator'}
+                        </Text>
+                      </Td>
+                      <Td>
                         <Badge
                           colorScheme={getStatusColor(vendor.status)}
                           variant="subtle"
@@ -271,15 +357,52 @@ const TodaysVendorsPage = ({ url }) => {
                           {vendor.status || 'Unknown'}
                         </Badge>
                       </Td>
-                      <Td>
-                        <IconButton
-                          icon={<FaEye />}
-                          size="sm"
-                          variant="ghost"
-                          colorScheme="teal"
-                          onClick={() => handleViewVendor(vendor)}
-                          aria-label="View vendor details"
-                        />
+                      <Td textAlign="center">
+                        <HStack spacing={2} justify="center">
+                          {vendor.coordinator_id && vendor.coordinator_id !== '' ? (
+                            <Tooltip label="Edit coordinator" hasArrow>
+                              <IconButton
+                                aria-label="Edit coordinator"
+                                icon={<EditIcon />}
+                                size="sm"
+                                colorScheme="green"
+                                variant="solid"
+                                bg="green.500"
+                                _hover={{ bg: "green.600" }}
+                                onClick={() => {
+                                  setEditingVendor(vendor);
+                                  setSelectedCoordinator(vendor.coordinator_id || '');
+                                  onCoordEditOpen();
+                                }}
+                              />
+                            </Tooltip>
+                          ) : (
+                            <Tooltip label="Add coordinator" hasArrow>
+                              <IconButton
+                                aria-label="Add coordinator"
+                                icon={<AddIcon />}
+                                size="sm"
+                                colorScheme="blue"
+                                variant="solid"
+                                bg="blue.500"
+                                _hover={{ bg: "blue.600" }}
+                                onClick={() => {
+                                  setEditingVendor(vendor);
+                                  setSelectedCoordinator('');
+                                  onCoordEditOpen();
+                                }}
+                              />
+                            </Tooltip>
+                          )}
+                          <IconButton
+                            icon={<FaEye />}
+                            size="sm"
+                            variant="ghost"
+                            colorScheme="teal"
+                            onClick={() => handleViewVendor(vendor)}
+                            aria-label="View vendor details"
+                          />
+                        </HStack>
                       </Td>
                     </Tr>
                   ))
@@ -384,6 +507,91 @@ const TodaysVendorsPage = ({ url }) => {
           </Box>
         </DrawerContent>
       </Drawer>
+
+      {/* Coordinator Edit Modal */}
+      <Modal isOpen={isCoordEditOpen} onClose={onCoordEditClose} size="lg">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader
+            bg="purple.50"
+            borderBottom="1px"
+            borderColor="purple.100"
+            borderTopRadius="lg"
+            py={6}
+            fontSize="lg"
+            fontWeight="bold"
+          >
+            {editingVendor?.coordinator_name ? 'Edit Vendor Coordinator' : 'Add Vendor Coordinator'}
+          </ModalHeader>
+          <ModalCloseButton top={4} right={4} />
+          <ModalBody py={6}>
+            {editingVendor && (
+              <VStack spacing={6} align="stretch">
+                <Box
+                  p={4}
+                  bg="gray.50"
+                  borderRadius="md"
+                  border="1px"
+                  borderColor="gray.200"
+                >
+                  <VStack spacing={2} align="stretch">
+                    <Text fontWeight="semibold" color="gray.700">
+                      Vendor Details:
+                    </Text>
+                    <Text><strong>Name:</strong> {editingVendor.name}</Text>
+                    <Text><strong>ID:</strong> {editingVendor.id}</Text>
+                    <Text><strong>Current Coordinator:</strong>
+                      <Badge colorScheme={editingVendor.coordinator_name ? "blue" : "gray"} ml={2}>
+                        {editingVendor.coordinator_name || 'No Coordinator'}
+                      </Badge>
+                    </Text>
+                  </VStack>
+                </Box>
+
+                <FormControl>
+                  <FormLabel fontWeight="medium" color="gray.700">Select Coordinator</FormLabel>
+                  <Select
+                    value={selectedCoordinator}
+                    onChange={(e) => setSelectedCoordinator(e.target.value)}
+                    placeholder="Choose a coordinator..."
+                    size="lg"
+                    borderRadius="md"
+                    _focus={{
+                      borderColor: "#3182ce",
+                      boxShadow: "0 0 0 1px #3182ce"
+                    }}
+                  >
+                    <option value="">No Coordinator</option>
+                    {coordinators.map((coord) => (
+                      <option key={coord.coordinator_id} value={coord.coordinator_id}>
+                        {coord.name} ({coord.coordinator_id})
+                      </option>
+                    ))}
+                  </Select>
+                </FormControl>
+              </VStack>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="ghost"
+              mr={3}
+              onClick={onCoordEditClose}
+            >
+              Cancel
+            </Button>
+            <Button
+              colorScheme="blue"
+              onClick={updateVendorCoordinator}
+              isDisabled={selectedCoordinator === undefined}
+              borderRadius="md"
+              px={6}
+            >
+              {selectedCoordinator ? 'Update Coordinator' : 'Remove Coordinator'}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Box>
   );
 };

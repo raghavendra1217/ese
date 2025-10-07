@@ -462,9 +462,11 @@ import {
   PopoverBody, PopoverArrow, PopoverHeader, PopoverCloseButton,
   useDisclosure, Divider, VStack, Modal, ModalOverlay, ModalContent,
   ModalHeader, ModalCloseButton, ModalBody, ModalFooter, FormControl, FormLabel,
+  Tooltip
 } from '@chakra-ui/react';
 import { FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { EditIcon, AddIcon } from '@chakra-ui/icons';
 import { useAuth } from '../../AppContext';
 import { useDebounce } from '../../hooks/useDebounce';
 import { CSVLink } from 'react-csv';
@@ -975,25 +977,52 @@ const AllVendorsTable = ({ url }) => {
                         })}
                       </Td>
                       <Td>{joinDate ? new Date(joinDate).toLocaleDateString() : '—'}</Td>
-                      <Td>
-                        <HStack spacing={2}>
-                          <Button
-                            size="sm"
-                            colorScheme="blue"
-                            variant="outline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              console.log('🔄 Edit Coordinator Button: Clicked for vendor:', vendor);
-                              console.log('📋 Edit Coordinator Button: Current coordinator_id:', vendor.coordinator_id);
-                              setEditingVendor(vendor);
-                              setSelectedCoordinator(vendor.coordinator_id || '');
-                              console.log('📋 Edit Coordinator Button: Selected coordinator set to:', vendor.coordinator_id || '');
-                              onEditOpen();
-                              console.log('✅ Edit Coordinator Button: Modal opened');
-                            }}
-                          >
-                            Edit Coordinator
-                          </Button>
+                      <Td textAlign="center">
+                        <HStack spacing={2} justify="center">
+                          {vendor.coordinator_id && vendor.coordinator_id !== '' ? (
+                            <Tooltip label="Edit coordinator" hasArrow>
+                              <IconButton
+                                aria-label="Edit coordinator"
+                                icon={<EditIcon />}
+                                size="sm"
+                                colorScheme="green"
+                                variant="solid"
+                                bg="green.500"
+                                _hover={{ bg: "green.600" }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  console.log('🔄 Edit Coordinator Button: Clicked for vendor:', vendor);
+                                  console.log('📋 Edit Coordinator Button: Current coordinator_id:', vendor.coordinator_id);
+                                  setEditingVendor(vendor);
+                                  setSelectedCoordinator(vendor.coordinator_id || '');
+                                  console.log('📋 Edit Coordinator Button: Selected coordinator set to:', vendor.coordinator_id || '');
+                                  onEditOpen();
+                                  console.log('✅ Edit Coordinator Button: Modal opened');
+                                }}
+                              />
+                            </Tooltip>
+                          ) : (
+                            <Tooltip label="Add coordinator" hasArrow>
+                              <IconButton
+                                aria-label="Add coordinator"
+                                icon={<AddIcon />}
+                                size="sm"
+                                colorScheme="blue"
+                                variant="solid"
+                                bg="blue.500"
+                                _hover={{ bg: "blue.600" }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  console.log('🔄 Add Coordinator Button: Clicked for vendor:', vendor);
+                                  setEditingVendor(vendor);
+                                  setSelectedCoordinator('');
+                                  console.log('📋 Add Coordinator Button: Selected coordinator set to empty');
+                                  onEditOpen();
+                                  console.log('✅ Add Coordinator Button: Modal opened');
+                                }}
+                              />
+                            </Tooltip>
+                          )}
                         </HStack>
                       </Td>
                     </Tr>

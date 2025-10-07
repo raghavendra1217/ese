@@ -5,7 +5,7 @@ import {
   Text, Button
 } from '@chakra-ui/react';
 import { HamburgerIcon } from '@chakra-ui/icons';
-import { FaUsers, FaChartBar, FaCog, FaWallet, FaMoneyBillWave, FaArrowUp, FaArrowDown, FaHandshake, FaFileArchive, FaFileInvoice } from 'react-icons/fa';
+import { FaUsers, FaChartBar, FaCog, FaWallet, FaMoneyBillWave, FaArrowUp, FaArrowDown, FaHandshake, FaFileArchive, FaFileInvoice, FaFileAlt } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../AppContext';
 
@@ -825,7 +825,7 @@ const AdminDashboard = ({ url }) => {
             <Heading as="h2" fontSize="xl" color={headingColor} textAlign="center">
               Tools & Management
             </Heading>
-            <SimpleGrid columns={{ base: 1, sm: 2, lg: 3 }} spacing={6}>
+            <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing={6}>
               {/* Investors Box */}
               <Box
                 bg={cardBg}
@@ -1032,6 +1032,76 @@ const AdminDashboard = ({ url }) => {
                     transition="all 0.2s ease"
                   >
                     Manage Payslips
+                  </Button>
+                </VStack>
+              </Box>
+
+              {/* Resumes Box */}
+              <Box
+                bg={cardBg}
+                p={6}
+                borderRadius="xl"
+                borderWidth="1px"
+                borderColor={cardBorder}
+                boxShadow="lg"
+                cursor="pointer"
+                onClick={() => navigate('/admin/resumes')}
+                _hover={{ 
+                  boxShadow: "xl",
+                  transform: "translateY(-4px)",
+                  transition: "all 0.3s ease",
+                  _before: {
+                    transform: "scaleX(1)"
+                  }
+                }}
+                transition="all 0.3s ease"
+                position="relative"
+                overflow="hidden"
+                _before={{
+                  content: '""',
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: "4px",
+                  bg: "indigo.500",
+                  transform: "scaleX(0)",
+                  transition: "transform 0.3s ease",
+                  transformOrigin: "left"
+                }}
+              >
+                <VStack spacing={5} align="center">
+                  <Box
+                    p={4}
+                    borderRadius="full"
+                    bg="indigo.50"
+                    color="indigo.600"
+                    _dark={{ bg: "indigo.900", color: "indigo.200" }}
+                    boxShadow="md"
+                  >
+                    <FaFileAlt size={28} />
+                  </Box>
+                  <VStack spacing={2} align="center">
+                    <Text fontSize="2xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                      Resumes
+                    </Text>
+                    <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                      Management
+                    </Text>
+                  </VStack>
+                  <Button 
+                    colorScheme="indigo" 
+                    size="md" 
+                    w="full" 
+                    borderRadius="lg"
+                    fontWeight="semibold"
+                    _hover={{
+                      transform: "translateY(-2px)",
+                      boxShadow: "lg"
+                    }}
+                    transition="all 0.2s ease"
+                  >
+                    Manage Resumes
                   </Button>
                 </VStack>
               </Box>

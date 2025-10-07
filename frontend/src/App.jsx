@@ -33,6 +33,7 @@ import InvestorManagementPage from './pages/admin/InvestorManagementPage';
 import AdminQuickRegistrationsPage from './pages/admin/AdminQuickRegistrationsPage';
 import QuickRegistrationManagementPage from './pages/admin/QuickRegistrationManagementPage';
 import PayslipManagementPage from './pages/admin/PayslipManagementPage';
+import Resumes from './pages/admin/Resumes';
 import AddCoordinatorPage from './pages/admin/AddCoordinatorPage';
 import ManageCoordinatorsPage from './pages/admin/ManageCoordinatorsPage';
 import EditCoordinatorPage from './pages/admin/EditCoordinatorPage';
@@ -226,6 +227,14 @@ function App() {
                 element={
                   <ProtectedRoute role="admin">
                     <PayslipManagementPage url={url} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/resumes"
+                element={
+                  <ProtectedRoute role="admin">
+                    <Resumes url={url} />
                   </ProtectedRoute>
                 }
               />
