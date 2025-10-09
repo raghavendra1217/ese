@@ -33,6 +33,12 @@ const WithdrawModal = ({ isOpen, onClose, url, currentBalance, onWithdrawalSucce
             return;
         }
 
+        // Maximum withdrawal limit validation
+        if (numericAmount > 50000) {
+            setError('Maximum withdrawal amount is ₹50,000. Please enter an amount of ₹50,000 or less.');
+            return;
+        }
+
         setIsLoading(true);
         setError('');
 
@@ -88,6 +94,7 @@ const WithdrawModal = ({ isOpen, onClose, url, currentBalance, onWithdrawalSucce
                             <VStack align="start" spacing={1} fontSize="sm">
                                 <Text fontWeight="bold">Withdrawal Guidelines:</Text>
                                 <Text>• Minimum withdrawal amount is ₹1,000</Text>
+                                <Text>• Maximum withdrawal amount is ₹50,000</Text>
                                 <Text>• Withdrawal requests must be submitted between 6:00 AM to 6:00 PM</Text>
                                 <Text>• All requests are subject to approval and processing time</Text>
                             </VStack>
@@ -96,13 +103,13 @@ const WithdrawModal = ({ isOpen, onClose, url, currentBalance, onWithdrawalSucce
                          <FormControl isRequired>
                             <FormLabel>Amount to Withdraw</FormLabel>
                             <NumberInput
-                                max={currentBalance}
+                                max={Math.min(currentBalance, 50000)}
                                 min={1}
                                 value={amount}
                                 onChange={(val) => setAmount(val)}
                                 precision={2}
                             >
-                                <NumberInputField placeholder={`Max: ₹${currentBalance.toFixed(2)}`} />
+                                <NumberInputField placeholder={`Max: ₹${Math.min(currentBalance, 50000).toFixed(2)}`} />
                             </NumberInput>
                         </FormControl>
 

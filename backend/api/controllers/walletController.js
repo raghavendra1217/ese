@@ -166,6 +166,13 @@ exports.requestWithdrawal = async (req, res) => {
         });
     }
 
+    // Validate withdrawal amount does not exceed ₹50,000
+    if (withdrawalAmount > 50000) {
+        return res.status(400).json({
+            message: 'Maximum withdrawal amount is ₹50,000. Please enter an amount of ₹50,000 or less.'
+        });
+    }
+
     const client = await db.connect();
     try {
         await client.query('BEGIN');

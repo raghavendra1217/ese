@@ -56,6 +56,8 @@ router.post('/trades/review', protect, authorize('admin', 'coordinator'), adminC
 // =======================================================
 router.get('/pending-wallet-transactions', protect, authorize('admin', 'coordinator'), adminController.getPendingWalletTransactions);
 router.post('/review-wallet-transaction', protect, authorize('admin', 'coordinator'), adminController.reviewWalletTransaction);
+router.get('/withdrawals', protect, authorize('admin', 'coordinator'), adminController.getAllWithdrawals);
+router.get('/withdrawal-stats', protect, authorize('admin', 'coordinator'), adminController.getWithdrawalStats);
 
 router.get('/wallets-with-percentages', protect, authorize('admin', 'coordinator'), adminController.getWalletsWithPercentages);
 

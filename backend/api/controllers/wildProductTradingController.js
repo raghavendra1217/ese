@@ -101,11 +101,21 @@ exports.purchaseWildProduct = async (req, res) => {
 
         // Create transaction record
         const description = `Purchase of ${quantityNum} units of ${product.product_name} (Wild Product Trade ID: ${tradeId})`;
-        await client.query(
+        console.log('💰 Creating transaction record:', {
+            vendorId,
+            amount: totalAmount,
+            description,
+            newBalance
+        });
+        
+        const transactionResult = await client.query(
             `INSERT INTO transaction (user_id, transaction_type, amount, status, description, balance_after_transaction)
-             VALUES ($1, 'wild_product_purchase', $2, 'approved', $3, $4)`,
+             VALUES ($1, 'wild_product_purchase', $2, 'approved', $3, $4)
+             RETURNING trans_id`,
             [vendorId, totalAmount, description, newBalance]
         );
+        
+        console.log('✅ Transaction record created:', transactionResult.rows[0]);
 
         await client.query('COMMIT');
         

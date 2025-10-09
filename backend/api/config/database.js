@@ -1,24 +1,24 @@
 // backend/api/config/database.js
 
 const { Pool } = require('pg');
-
-// This line loads the DATABASE_URL from your .env file.
-// It's good practice for a module to declare its own dependencies.
 require('dotenv').config();
 
-// Create a new connection pool. This is the modern way to handle db connections.
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  // The ssl object is required for connecting to cloud databases like Supabase/Render
-  ssl: {
-    rejectUnauthorized: false
-  },
-  // Set explicit timezone to UTC for consistent behavior across environments
-  options: '-c timezone=UTC'
+  ssl: { rejectUnauthorized: false },
+  options: '-c timezone=UTC',
+
+  // Recommended stability settings:
+  max: 10,                  // Limit to 10 connections total
+  idleTimeoutMillis: 30000, // Close idle connections after 30s
+  connectionTimeoutMillis: 5000, // Fail if not connected in 5s
 });
 
+// Debugging (optional, but great for monitoring)
+pool.on('connect', () => console.log('PostgreSQL connected'));
+pool.on('remove', () => console.log('PostgreSQL connection closed'));
+pool.on('error', (err) => console.error('PostgreSQL pool error', err));
 
-// We export a single, universal query function for the entire application.
 module.exports = {
   query: (text, params) => pool.query(text, params),
   connect: () => pool.connect(),

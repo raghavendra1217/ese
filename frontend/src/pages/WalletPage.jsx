@@ -965,8 +965,12 @@ const WalletPage = ({ url }) => {
         onClose={() => setAddMoneyOpen(false)}
         url={url}
         onTransactionComplete={() => {
+          // Always refresh wallet balance
           fetchWalletBalance();
-          if (activeView === 'deposits') { fetchDepositHistory(); }
+          // Always refresh deposit history (regardless of active tab)
+          fetchDepositHistory();
+          // Optionally switch to deposits tab to show the request
+          setActiveView('deposits');
         }}
       />
       <WithdrawModal
@@ -975,8 +979,12 @@ const WalletPage = ({ url }) => {
         url={url}
         currentBalance={digitalMoney || 0}
         onWithdrawalSuccess={() => {
+          // Always refresh wallet balance
           fetchWalletBalance();
-          if (activeView === 'withdrawals') { fetchWithdrawalHistory(); }
+          // Always refresh withdrawal history (regardless of active tab)
+          fetchWithdrawalHistory();
+          // Optionally switch to withdrawals tab to show the request
+          setActiveView('withdrawals');
           setWithdrawModalOpen(false);
         }}
       />

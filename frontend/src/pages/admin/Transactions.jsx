@@ -113,7 +113,7 @@ async function downloadAllTransactionsCSV(token, url) {
 
 // Constants for filters and colors
 const TYPES = [
-  'deposit', 'sale', 'purchase', 'withdrawal',
+  'deposit', 'sale', 'purchase', 'wild_product_purchase', 'withdrawal',
   'commission_claim', 'registration_fee', 'referral_bonus'
 ];
 
@@ -122,6 +122,7 @@ const typeColor = (type) => {
     case 'deposit': return 'green';
     case 'sale': return 'purple';
     case 'purchase': return 'blue';
+    case 'wild_product_purchase': return 'cyan';
     case 'withdrawal': return 'red';
     case 'commission_claim': return 'orange';
     case 'registration_fee': return 'yellow';
