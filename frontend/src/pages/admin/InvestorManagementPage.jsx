@@ -8,6 +8,7 @@ import {
   Tooltip
 } from '@chakra-ui/react';
 import { EditIcon, DeleteIcon, AddIcon, HamburgerIcon, ExternalLinkIcon, SearchIcon } from '@chakra-ui/icons';
+import { FaWhatsapp } from 'react-icons/fa';
 import { useAuth } from '../../AppContext';
 import AdminNavBar from '../../components/layout/AdminNavBar';
 import InvestorDashboard from '../../components/admin/InvestorDashboard';
@@ -968,34 +969,42 @@ const InvestorModal = ({
       onDeleteOpen();
     };
   
-    const handleOpenHTML = (investor) => {
-      console.log('🌐 Opening HTML report for investor:', {
-        id: investor.id,
-        name: `${investor.first_name}`,
-        selectPlan: investor.select_plan
-      });
-  
-      const htmlUrl = `${url}/api/html/investor/${investor.id}`;
-      console.log('🌐 Opening HTML URL:', htmlUrl);
-  
-      // Open HTML report in new window with print parameter
-      const printUrl = `${htmlUrl}?print=true`;
-      window.open(printUrl, '_blank');
-  
-      toast({
-        title: 'HTML Report Opened',
-        description: `Investment summary for ${investor.first_name} has been opened and print dialog triggered.`,
-        status: 'success',
-        isClosable: true,
-        duration: 3000,
-      });
-    };
-  
-    const handleEditCoordinator = (investor) => {
-      setEditingCoordinator(investor);
-      setSelectedCoordinator(investor.coordinator_id || ''); // Set current coordinator_id or empty string
-      onCoordEditOpen();
-    };
+  const handleOpenHTML = (investor) => {
+    console.log('🌐 Opening HTML report for investor:', {
+      id: investor.id,
+      name: `${investor.first_name}`,
+      selectPlan: investor.select_plan
+    });
+
+    const htmlUrl = `${url}/api/html/investor/${investor.id}`;
+    console.log('🌐 Opening HTML URL:', htmlUrl);
+
+    // Open HTML report in new window with print parameter
+    const printUrl = `${htmlUrl}?print=true`;
+    window.open(printUrl, '_blank');
+
+    toast({
+      title: 'HTML Report Opened',
+      description: `Investment summary for ${investor.first_name} has been opened and print dialog triggered.`,
+      status: 'success',
+      isClosable: true,
+      duration: 3000,
+    });
+  };
+
+  const handleWhatsAppClick = (investor) => {
+    const phoneNumber = investor.mobile_number?.replace(/\D/g, '') || '';
+    const fullPhoneNumber = `91${phoneNumber}`;
+    const whatsappUrl = `https://api.whatsapp.com/send/?phone=${fullPhoneNumber}&type=phone_number&app_absent=0`;
+    
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const handleEditCoordinator = (investor) => {
+    setEditingCoordinator(investor);
+    setSelectedCoordinator(investor.coordinator_id || ''); // Set current coordinator_id or empty string
+    onCoordEditOpen();
+  };
   
     const updateInvestorCoordinator = async () => {
       if (!editingCoordinator) return;
@@ -1177,46 +1186,56 @@ const InvestorModal = ({
                               </Badge>
                             </Td>
                             <Td>{formatDate(investor.created_at)}</Td>
-                            <Td>
-                              <HStack spacing={2}>
+                          <Td>
+                            <HStack spacing={2}>
+                              <Tooltip label="Contact on WhatsApp" hasArrow>
                                 <IconButton
-                                  aria-label="Open HTML Report"
-                                  icon={<ExternalLinkIcon />}
+                                  aria-label="Contact on WhatsApp"
+                                  icon={<FaWhatsapp />}
                                   size="sm"
-                                  colorScheme="green"
+                                  colorScheme="whatsapp"
                                   variant="ghost"
-                                  onClick={() => handleOpenHTML(investor)}
+                                  onClick={() => handleWhatsAppClick(investor)}
                                 />
-                                <Tooltip label="Edit coordinator" hasArrow>
-                                  <IconButton
-                                    aria-label="Edit coordinator"
-                                    icon={<EditIcon />}
-                                    size="sm"
-                                    colorScheme="green"
-                                    variant="solid"
-                                    bg="green.500"
-                                    _hover={{ bg: "green.600" }}
-                                    onClick={() => handleEditCoordinator(investor)}
-                                  />
-                                </Tooltip>
+                              </Tooltip>
+                              <IconButton
+                                aria-label="Open HTML Report"
+                                icon={<ExternalLinkIcon />}
+                                size="sm"
+                                colorScheme="green"
+                                variant="ghost"
+                                onClick={() => handleOpenHTML(investor)}
+                              />
+                              <Tooltip label="Edit coordinator" hasArrow>
                                 <IconButton
-                                  aria-label="Edit investor"
+                                  aria-label="Edit coordinator"
                                   icon={<EditIcon />}
                                   size="sm"
-                                  colorScheme="blue"
-                                  variant="ghost"
-                                  onClick={() => handleEdit(investor)}
+                                  colorScheme="green"
+                                  variant="solid"
+                                  bg="green.500"
+                                  _hover={{ bg: "green.600" }}
+                                  onClick={() => handleEditCoordinator(investor)}
                                 />
-                                <IconButton
-                                  aria-label="Delete investor"
-                                  icon={<DeleteIcon />}
-                                  size="sm"
-                                  colorScheme="red"
-                                  variant="ghost"
-                                  onClick={() => handleDeleteClick(investor)}
-                                />
-                              </HStack>
-                            </Td>
+                              </Tooltip>
+                              <IconButton
+                                aria-label="Edit investor"
+                                icon={<EditIcon />}
+                                size="sm"
+                                colorScheme="blue"
+                                variant="ghost"
+                                onClick={() => handleEdit(investor)}
+                              />
+                              <IconButton
+                                aria-label="Delete investor"
+                                icon={<DeleteIcon />}
+                                size="sm"
+                                colorScheme="red"
+                                variant="ghost"
+                                onClick={() => handleDeleteClick(investor)}
+                              />
+                            </HStack>
+                          </Td>
                           </Tr>
                         ))}
                       </Tbody>

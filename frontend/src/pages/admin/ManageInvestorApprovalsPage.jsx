@@ -7,7 +7,7 @@ import {
   FormControl, FormLabel, Textarea
 } from '@chakra-ui/react';
 import { HamburgerIcon, ExternalLinkIcon } from '@chakra-ui/icons';
-import { FaHandshake, FaMoneyBillWave, FaCalendarAlt, FaUser, FaBuilding } from 'react-icons/fa';
+import { FaHandshake, FaMoneyBillWave, FaCalendarAlt, FaUser, FaBuilding, FaWhatsapp } from 'react-icons/fa';
 import { useAuth } from '../../AppContext';
 import AdminNavBar from '../../components/layout/AdminNavBar';
 
@@ -57,6 +57,14 @@ const InvestorApprovalCard = ({ investor, onApprove, onReject, url }) => {
     onReject(investor.id, rejectionReason);
     setRejectionReason('');
     onClose();
+  };
+
+  const handleWhatsAppClick = () => {
+    const phoneNumber = investor.mobile_number?.replace(/\D/g, '') || '';
+    const fullPhoneNumber = `91${phoneNumber}`;
+    const whatsappUrl = `https://api.whatsapp.com/send/?phone=${fullPhoneNumber}&type=phone_number&app_absent=0`;
+    
+    window.open(whatsappUrl, '_blank');
   };
 
   const handleViewHTML = () => {
@@ -170,6 +178,14 @@ const InvestorApprovalCard = ({ investor, onApprove, onReject, url }) => {
 
         {/* Action Buttons */}
         <HStack spacing={3}>
+          <IconButton
+            aria-label="Contact on WhatsApp"
+            icon={<FaWhatsapp />}
+            size="sm"
+            colorScheme="whatsapp"
+            variant="outline"
+            onClick={handleWhatsAppClick}
+          />
           <Button
             size="sm"
             colorScheme="blue"

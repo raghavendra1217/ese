@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Flex, Heading, Button, useToast, Spinner, Center, Table, Thead, Tbody, Tr, Th, Td,
-  useDisclosure, useColorModeValue, Text, Badge, HStack, InputGroup, InputLeftElement, Input
+  useDisclosure, useColorModeValue, Text, Badge, HStack, InputGroup, InputLeftElement, Input, IconButton, Tooltip
 } from '@chakra-ui/react';
 import { AddIcon, SearchIcon } from '@chakra-ui/icons';
+import { FaWhatsapp } from 'react-icons/fa';
 import { useAuth } from '../../AppContext';
 
 // Import the InvestorModal component (exact copy from admin page)
@@ -201,6 +202,14 @@ const MyInvestors = ({ url }) => {
     });
   };
 
+  const handleWhatsAppClick = (investor) => {
+    const phoneNumber = investor.mobile_number?.replace(/\D/g, '') || '';
+    const fullPhoneNumber = `91${phoneNumber}`;
+    const whatsappUrl = `https://api.whatsapp.com/send/?phone=${fullPhoneNumber}&type=phone_number&app_absent=0`;
+    
+    window.open(whatsappUrl, '_blank');
+  };
+
   return (
     <>
       {/* Action buttons and search */}
@@ -279,16 +288,28 @@ const MyInvestors = ({ url }) => {
                   </Td>
                   <Td>{formatDate(investor.created_at)}</Td>
                   <Td>
-                    <Button
-                      size="sm"
-                      colorScheme="green"
-                      variant="outline"
-                      onClick={() => handleViewHTML(investor)}
-                      isDisabled={investor.approval_status !== 'approved'}
-                      title={investor.approval_status !== 'approved' ? 'Investment not approved yet' : 'View HTML Report'}
-                    >
-                      View HTML
-                    </Button>
+                    <HStack spacing={2}>
+                      <Tooltip label="Contact on WhatsApp" hasArrow>
+                        <IconButton
+                          aria-label="Contact on WhatsApp"
+                          icon={<FaWhatsapp />}
+                          size="sm"
+                          colorScheme="whatsapp"
+                          variant="ghost"
+                          onClick={() => handleWhatsAppClick(investor)}
+                        />
+                      </Tooltip>
+                      <Button
+                        size="sm"
+                        colorScheme="green"
+                        variant="outline"
+                        onClick={() => handleViewHTML(investor)}
+                        isDisabled={investor.approval_status !== 'approved'}
+                        title={investor.approval_status !== 'approved' ? 'Investment not approved yet' : 'View HTML Report'}
+                      >
+                        View HTML
+                      </Button>
+                    </HStack>
                   </Td>
                 </Tr>
               ))}
