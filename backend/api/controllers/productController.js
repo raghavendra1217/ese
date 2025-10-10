@@ -144,9 +144,44 @@ exports.getAllProducts = async (req, res) => {
 /**
  * READ: Get all products with available stock for vendors to purchase.
  * Products are only available during configured business hours (IST).
+ * Vendors with product_visibility = FALSE will not see any products.
  */
 exports.getAvailableProducts = async (req, res) => {
     try {
+        const userId = req.user.user_id;
+        const userRole = req.user.role;
+        
+        // Check vendor visibility (only for vendors, not for admins/coordinators)
+        if (userRole === 'vendor') {
+            const visibilityCheck = await db.query(
+                'SELECT product_visibility FROM vendors WHERE id = $1', 
+                [userId]
+            );
+            
+            if (visibilityCheck.rows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Vendor not found.',
+                    products: []
+                });
+            }
+            
+            const isVisible = visibilityCheck.rows[0].product_visibility;
+            
+            if (!isVisible) {
+                console.log(`🚫 Product visibility disabled for vendor ${userId}`);
+                return res.status(200).json({
+                    success: true,
+                    message: 'No products available at the moment.',
+                    products: [],
+                    timeInfo: {
+                        currentTime: getISTTimeInfo().currentTimeString,
+                        timezone: 'IST (UTC+05:30)'
+                    }
+                });
+            }
+        }
+        
         // Check if products should be displayed based on IST time
         const isAllowed = shouldDisplayProducts();
         const timeInfo = getISTTimeInfo();
@@ -154,7 +189,9 @@ exports.getAvailableProducts = async (req, res) => {
         console.log('🕐 Product access time check:', {
             currentIST: timeInfo.currentTimeString,
             allowedHours: `${timeInfo.startTime} - ${timeInfo.endTime}`,
-            isAllowed: timeInfo.isAllowed
+            isAllowed: timeInfo.isAllowed,
+            userId: userId,
+            role: userRole
         });
         
         if (!isAllowed) {
@@ -238,10 +275,30 @@ exports.getProductStats = async (req, res) => {
 
 /**
  * READ STATS: Fetches just the count of product types that have available stock.
+ * Respects vendor visibility settings.
  */
 
 exports.getAvailableProductCount = async (req, res) => {
     try {
+        const userId = req.user.user_id;
+        const userRole = req.user.role;
+        
+        // Check vendor visibility (only for vendors, not for admins/coordinators)
+        if (userRole === 'vendor') {
+            const visibilityCheck = await db.query(
+                'SELECT product_visibility FROM vendors WHERE id = $1', 
+                [userId]
+            );
+            
+            if (visibilityCheck.rows.length > 0 && !visibilityCheck.rows[0].product_visibility) {
+                // Return 0 count when visibility is disabled - appears as no stock
+                return res.status(200).json({ 
+                    availableProducts: 0,
+                    message: 'No products currently in stock.'
+                });
+            }
+        }
+        
         // Check if products should be displayed based on IST time
         const isAllowed = shouldDisplayProducts();
         const timeInfo = getISTTimeInfo();
@@ -249,7 +306,9 @@ exports.getAvailableProductCount = async (req, res) => {
         console.log('🕐 Product count time check:', {
             currentIST: timeInfo.currentTimeString,
             allowedHours: `${timeInfo.startTime} - ${timeInfo.endTime}`,
-            isAllowed: timeInfo.isAllowed
+            isAllowed: timeInfo.isAllowed,
+            userId: userId,
+            role: userRole
         });
         
         if (!isAllowed) {

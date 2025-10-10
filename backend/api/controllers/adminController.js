@@ -1130,7 +1130,8 @@ const getAllVendorsPaginated = async (req, res) => {
                 COALESCE(w.digital_money, 0) AS wallet_balance,
                 w.percentage,
                 v.coordinator_id,
-                c.name AS coordinator_name
+                c.name AS coordinator_name,
+                v.product_visibility
             ${baseQuery}
             ORDER BY ${sortColumn} ${sanitizedSortOrder} NULLS LAST
             LIMIT $${queryParams.length + 1} 
@@ -2025,6 +2026,174 @@ const rejectInvestor = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Toggle vendor product visibility (enable/disable product access for a specific vendor)
+ * @route   PUT /api/admin/vendors/:vendorId/product-visibility
+ * @access  Private (Admin/Coordinator)
+ */
+const toggleVendorProductVisibility = async (req, res) => {
+    const { vendorId } = req.params;
+    const { productVisibility } = req.body;
+
+    if (!vendorId) {
+        return res.status(400).json({ 
+            success: false,
+            message: 'Vendor ID is required.' 
+        });
+    }
+
+    if (typeof productVisibility !== 'boolean') {
+        return res.status(400).json({ 
+            success: false,
+            message: 'Product visibility must be a boolean value (true or false).' 
+        });
+    }
+
+    const client = await db.connect();
+    try {
+        await client.query('BEGIN');
+
+        // Check if vendor exists
+        const vendorCheck = await client.query(
+            'SELECT id, vendor_name, email, product_visibility FROM vendors WHERE id = $1',
+            [vendorId]
+        );
+
+        if (vendorCheck.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ 
+                success: false,
+                message: 'Vendor not found.' 
+            });
+        }
+
+        const vendor = vendorCheck.rows[0];
+        const oldVisibility = vendor.product_visibility;
+
+        // Update product visibility
+        const updateResult = await client.query(
+            'UPDATE vendors SET product_visibility = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+            [productVisibility, vendorId]
+        );
+
+        await client.query('COMMIT');
+
+        const statusText = productVisibility ? 'enabled' : 'disabled';
+        console.log(`✅ Product visibility ${statusText} for vendor ${vendorId} (${vendor.vendor_name}) by admin ${req.user.user_id}`);
+
+        res.status(200).json({
+            success: true,
+            message: `Product visibility has been ${statusText} for vendor ${vendor.vendor_name}.`,
+            vendor: {
+                id: updateResult.rows[0].id,
+                vendor_name: updateResult.rows[0].vendor_name,
+                email: updateResult.rows[0].email,
+                product_visibility: updateResult.rows[0].product_visibility,
+                previous_visibility: oldVisibility
+            }
+        });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('❌ Error toggling vendor product visibility:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Failed to update vendor product visibility.' 
+        });
+    } finally {
+        client.release();
+    }
+};
+
+/**
+ * @desc    Get vendor product visibility status
+ * @route   GET /api/admin/vendors/:vendorId/product-visibility
+ * @access  Private (Admin/Coordinator)
+ */
+const getVendorProductVisibility = async (req, res) => {
+    const { vendorId } = req.params;
+
+    if (!vendorId) {
+        return res.status(400).json({ 
+            success: false,
+            message: 'Vendor ID is required.' 
+        });
+    }
+
+    try {
+        const result = await db.query(
+            'SELECT id, vendor_name, email, product_visibility, created_at, updated_at FROM vendors WHERE id = $1',
+            [vendorId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ 
+                success: false,
+                message: 'Vendor not found.' 
+            });
+        }
+
+        const vendor = result.rows[0];
+        res.status(200).json({
+            success: true,
+            vendor: {
+                id: vendor.id,
+                vendor_name: vendor.vendor_name,
+                email: vendor.email,
+                product_visibility: vendor.product_visibility,
+                created_at: vendor.created_at,
+                updated_at: vendor.updated_at
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Error fetching vendor product visibility:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Failed to fetch vendor product visibility.' 
+        });
+    }
+};
+
+/**
+ * @desc    Get all vendors with their product visibility status
+ * @route   GET /api/admin/vendors-visibility
+ * @access  Private (Admin/Coordinator)
+ */
+const getAllVendorsVisibility = async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                v.id, 
+                v.vendor_name, 
+                v.email, 
+                v.product_visibility,
+                l.is_approved,
+                l.status,
+                v.created_at,
+                v.updated_at
+            FROM vendors v
+            JOIN login l ON v.id = l.user_id
+            ORDER BY v.created_at DESC
+        `;
+        
+        const result = await db.query(query);
+        
+        res.status(200).json({
+            success: true,
+            count: result.rows.length,
+            vendors: result.rows
+        });
+
+    } catch (error) {
+        console.error('❌ Error fetching all vendors visibility:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Failed to fetch vendors visibility data.' 
+        });
+    }
+};
+
 // Update the exports to include the new functions
 module.exports = {
     getPendingVendors,
@@ -2056,4 +2225,9 @@ module.exports = {
     getPendingInvestors,
     approveInvestor,
     rejectInvestor,
+    
+    // Vendor Product Visibility Management
+    toggleVendorProductVisibility,
+    getVendorProductVisibility,
+    getAllVendorsVisibility,
 };

@@ -24,6 +24,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageApprovalsPage from './pages/admin/ManageApprovalsPage';
 import ManageInvestorApprovalsPage from './pages/admin/ManageInvestorApprovalsPage';
 import ManageProductsPage from './pages/admin/ManageProductsPage';
+import ProductVisibilityPage from './pages/admin/ProductVisibilityPage';
 import WildProductManagementPage from './pages/admin/WildProductManagementPage';
 import ManageTradingApprovalsPage from './pages/admin/ManageTradingApprovalsPage';
 import ManageWalletApprovalsPage from './pages/admin/ManageWalletApprovalsPage';
@@ -131,6 +132,14 @@ function App() {
                 element={
                   <ProtectedRoute role="admin">
                     <ManageProductsPage url={url} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/product-visibility"
+                element={
+                  <ProtectedRoute role="admin">
+                    <ProductVisibilityPage url={url} />
                   </ProtectedRoute>
                 }
               />

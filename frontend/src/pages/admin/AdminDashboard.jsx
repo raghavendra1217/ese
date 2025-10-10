@@ -701,6 +701,76 @@ const AdminDashboard = ({ url }) => {
                </VStack>
              </Box>
 
+             {/* Product Visibility Box */}
+             <Box
+               bg={cardBg}
+               p={6}
+               borderRadius="xl"
+               borderWidth="1px"
+               borderColor={cardBorder}
+               boxShadow="lg"
+               cursor="pointer"
+               onClick={() => navigate('/admin/product-visibility')}
+               _hover={{ 
+                 boxShadow: "xl",
+                 transform: "translateY(-4px)",
+                 transition: "all 0.3s ease",
+                 _before: {
+                   transform: "scaleX(1)"
+                 }
+               }}
+               transition="all 0.3s ease"
+               position="relative"
+               overflow="hidden"
+               _before={{
+                 content: '""',
+                 position: "absolute",
+                 top: 0,
+                 left: 0,
+                 right: 0,
+                 height: "4px",
+                 bg: "teal.500",
+                 transform: "scaleX(0)",
+                 transition: "transform 0.3s ease",
+                 transformOrigin: "left"
+               }}
+             >
+               <VStack spacing={5} align="center">
+                 <Box
+                   p={4}
+                   borderRadius="full"
+                   bg="teal.50"
+                   color="teal.600"
+                   _dark={{ bg: "teal.900", color: "teal.200" }}
+                   boxShadow="md"
+                 >
+                   <FaChartBar size={28} />
+                 </Box>
+                 <VStack spacing={2} align="center">
+                   <Text fontSize="3xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                     {stats.totalVendors || 0}
+                   </Text>
+                   <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                     Product Visibility
+                   </Text>
+                 </VStack>
+                 <Button 
+                   colorScheme="teal" 
+                   size="md" 
+                   w="full" 
+                   borderRadius="lg"
+                   fontWeight="semibold"
+                   _hover={{
+                     transform: "translateY(-2px)",
+                     boxShadow: "lg"
+                   }}
+                   transition="all 0.2s ease"
+                 >
+                   Manage Access
+                 </Button>
+               </VStack>
+             </Box>
+
             </SimpleGrid>
           </VStack>
 

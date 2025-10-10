@@ -77,4 +77,11 @@ router.get('/pending-investors', protect, authorize('admin'), adminController.ge
 router.put('/approve-investor/:investorId', protect, authorize('admin'), adminController.approveInvestor);
 router.put('/reject-investor/:investorId', protect, authorize('admin'), adminController.rejectInvestor);
 
+// =======================================================
+// --- VENDOR PRODUCT VISIBILITY ROUTES ---
+// =======================================================
+router.get('/vendors-visibility', protect, authorize('admin', 'coordinator'), adminController.getAllVendorsVisibility);
+router.get('/vendors/:vendorId/product-visibility', protect, authorize('admin', 'coordinator'), adminController.getVendorProductVisibility);
+router.put('/vendors/:vendorId/product-visibility', protect, authorize('admin', 'coordinator'), adminController.toggleVendorProductVisibility);
+
 module.exports = router;
