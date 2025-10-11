@@ -1,0 +1,106 @@
+# ===================================================================
+# PRODUCT QUOTA SYSTEM CONFIGURATION
+# ===================================================================
+# Add these to your .env file in the backend folder
+
+# --------------------------------------------------------------------
+# PRODUCT DISPLAY TIME SLOTS
+# --------------------------------------------------------------------
+# Define when products are visible to vendors (IST timezone)
+# Format: "HH:MM-HH:MM,HH:MM-HH:MM,..."
+# 
+# Current Configuration:
+#   - Morning: 06:30 to 13:00 (6:30 AM to 1:00 PM)
+#   - Afternoon: 14:00 to 18:15 (2:00 PM to 6:15 PM)  
+#   - Evening/Night: 19:15 to 05:00 (7:15 PM to 5:00 AM next day)
+#
+PRODUCT_DISPLAY_TIME_SLOTS="06:30-13:00,14:00-18:15,19:15-05:00"
+
+# --------------------------------------------------------------------
+# INDIVIDUAL QUOTA TIME SLOTS (NEW!)
+# --------------------------------------------------------------------
+# Define when the personal quota system is active (IST timezone)
+# These MUST be within the PRODUCT_DISPLAY_TIME_SLOTS above
+# Format: "HH:MM-HH:MM,HH:MM-HH:MM,..."
+#
+# How it works:
+#   - During these windows: Fair quota allocation (each vendor gets equal share)
+#   - After window ends: Shared pool (first-come-first-served)
+#
+# Current Configuration (30-minute windows):
+#   - Morning quota: 06:30 to 07:00 (first 30 min of morning display)
+#   - Afternoon quota: 14:00 to 14:30 (first 30 min of afternoon display)
+#   - Evening quota: 19:15 to 19:45 (first 30 min of evening display)
+#
+INDIVIDUAL_QUOTA_TIME_SLOTS="06:30-07:00,14:00-14:30,19:15-19:45"
+
+# --------------------------------------------------------------------
+# EXPLANATION OF QUOTA SYSTEM
+# --------------------------------------------------------------------
+#
+# Example: 500 units released at 6:30 AM with 10 active vendors
+#
+# PERSONAL QUOTA PHASE (6:30-7:00):
+#   - Each vendor quota: floor(500/10) = 50 units
+#   - Vendor A buys 30 → has 20 remaining
+#   - Vendor B still has 50 quota (unaffected by A's purchase)
+#   - Quotas DON'T shrink when others buy
+#   - Purchase limit enforced: Can't buy more than remaining quota
+#
+# SHARED POOL PHASE (7:00-13:00):
+#   - No quota limits
+#   - All vendors see same total stock
+#   - First-come-first-served
+#   - Anyone can buy any amount
+#
+# --------------------------------------------------------------------
+# IMPORTANT NOTES
+# --------------------------------------------------------------------
+#
+# 1. Quota slots MUST be within display slots
+# 2. Wild products NOT affected (always first-come-first-served)
+# 3. Uses Math.floor() for division (65.7 rounds to 65)
+# 4. Only active vendors counted for quota calculation
+# 5. Restocking resets quota cycle with new release time
+#
+# --------------------------------------------------------------------
+# CUSTOMIZATION EXAMPLES
+# --------------------------------------------------------------------
+#
+# Shorter quota windows (15 minutes):
+# INDIVIDUAL_QUOTA_TIME_SLOTS="06:30-06:45,14:00-14:15,19:15-19:30"
+#
+# Longer quota windows (1 hour):
+# INDIVIDUAL_QUOTA_TIME_SLOTS="06:30-07:30,14:00-15:00,19:15-20:15"
+#
+# Single daily quota window:
+# INDIVIDUAL_QUOTA_TIME_SLOTS="06:30-07:00"
+#
+# No quota system (all shared pool):
+# INDIVIDUAL_QUOTA_TIME_SLOTS=""
+#
+# ===================================================================
+
+# --------------------------------------------------------------------
+# SETUP INSTRUCTIONS
+# --------------------------------------------------------------------
+#
+# 1. Add original_stock column to your product table:
+#    ALTER TABLE product ADD COLUMN original_stock BIGINT;
+#    UPDATE product SET original_stock = available_stock WHERE original_stock IS NULL;
+#
+# 2. Add the above ENV variables to your backend/.env file
+#
+# 3. Restart your backend server:
+#    cd backend
+#    npm run dev
+#
+# 4. Test the system:
+#    - Add a product during quota hours (e.g., 6:30 AM)
+#    - Check vendor sees their quota
+#    - Try purchasing within quota → should work
+#    - Try purchasing over quota → should reject
+#    - Wait until shared pool phase → no restrictions
+#
+# ===================================================================
+

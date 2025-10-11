@@ -1004,10 +1004,17 @@ exports.getDashboardKpis = async (req, res) => {
                 SELECT COALESCE(digital_money, 0) AS balance FROM wallet WHERE id = $1
             ),
             ActiveInvestments AS (
-                -- Calculate the total current value of all active, approved investments
-                SELECT COALESCE(SUM(t.no_of_stock_bought * p.selling_price), 0) AS value
+                -- Calculate the total current value of all active, approved investments (including wild products)
+                SELECT COALESCE(SUM(
+                    t.no_of_stock_bought * 
+                    CASE 
+                        WHEN t.product_id LIKE 'WP_%' THEN wp.selling_price
+                        ELSE p.selling_price
+                    END
+                ), 0) AS value
                 FROM trading t
-                JOIN product p ON t.product_id = p.product_id
+                LEFT JOIN product p ON t.product_id = p.product_id AND t.product_id NOT LIKE 'WP_%'
+                LEFT JOIN wild_products wp ON t.product_id = wp.wild_product_id AND t.product_id LIKE 'WP_%'
                 WHERE t.vendor_id = $1 AND t.is_approved = 'approved' AND (t.is_sold IS NULL OR t.is_sold = FALSE)
             ),
             UnclaimedCommissions AS (

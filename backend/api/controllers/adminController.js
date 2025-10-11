@@ -190,17 +190,23 @@ const reviewWalletTransaction = async (req, res) => {
 
         
         if (decision === 'approved') {
+            let balanceAfterTransaction;
+            
             if (transaction.transaction_type === 'deposit') {
-                await client.query('UPDATE wallet SET digital_money = digital_money + $1 WHERE id = $2', [amount, userId]);
+                const updatedWallet = await client.query('UPDATE wallet SET digital_money = digital_money + $1 WHERE id = $2 RETURNING digital_money', [amount, userId]);
+                balanceAfterTransaction = parseFloat(updatedWallet.rows[0].digital_money);
             } else if (transaction.transaction_type === 'withdrawal') {
                 const walletRes = await client.query('SELECT digital_money FROM wallet WHERE id = $1 FOR UPDATE', [userId]);
                 if (walletRes.rows[0].digital_money < amount) {
                     throw new Error('User balance is insufficient for this withdrawal.');
                 }
-                await client.query('UPDATE wallet SET digital_money = digital_money - $1 WHERE id = $2', [amount, userId]);
+                const updatedWallet = await client.query('UPDATE wallet SET digital_money = digital_money - $1 WHERE id = $2 RETURNING digital_money', [amount, userId]);
+                balanceAfterTransaction = parseFloat(updatedWallet.rows[0].digital_money);
             }
-            await client.query("UPDATE transaction SET status = 'approved', admin_comment = $1 WHERE trans_id = $2", [comment || 'Approved by admin', transactionId]);
+            
+            await client.query("UPDATE transaction SET status = 'approved', admin_comment = $1, balance_after_transaction = $2 WHERE trans_id = $3", [comment || 'Approved by admin', balanceAfterTransaction, transactionId]);
         } else { // Decision is 'rejected'
+            // For rejected transactions, we don't update balance_after_transaction since the wallet wasn't affected
             await client.query("UPDATE transaction SET status = 'rejected', admin_comment = $1 WHERE trans_id = $2", [comment, transactionId]);
         }
         await client.query('COMMIT');
@@ -2194,6 +2200,57 @@ const getAllVendorsVisibility = async (req, res) => {
     }
 };
 
+/**
+ * @desc    Bulk update product visibility for all vendors
+ * @route   PUT /api/admin/vendors/bulk-product-visibility
+ * @access  Private (Admin/Coordinator)
+ */
+const bulkUpdateProductVisibility = async (req, res) => {
+    const { productVisibility } = req.body;
+
+    if (typeof productVisibility !== 'boolean') {
+        return res.status(400).json({ 
+            success: false,
+            message: 'Product visibility must be a boolean value (true or false).' 
+        });
+    }
+
+    const client = await db.connect();
+    try {
+        await client.query('BEGIN');
+
+        // Update all vendors' product visibility
+        const updateResult = await client.query(
+            'UPDATE vendors SET product_visibility = $1, updated_at = NOW() RETURNING id, vendor_name',
+            [productVisibility]
+        );
+
+        await client.query('COMMIT');
+
+        const statusText = productVisibility ? 'enabled' : 'disabled';
+        const updatedCount = updateResult.rows.length;
+        
+        console.log(`✅ Product visibility ${statusText} for ${updatedCount} vendors by admin ${req.user.user_id}`);
+
+        res.status(200).json({
+            success: true,
+            message: `Product visibility has been ${statusText} for all ${updatedCount} vendors.`,
+            count: updatedCount,
+            status: statusText
+        });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('❌ Error bulk updating vendor product visibility:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Failed to bulk update vendor product visibility.' 
+        });
+    } finally {
+        client.release();
+    }
+};
+
 // Update the exports to include the new functions
 module.exports = {
     getPendingVendors,
@@ -2230,4 +2287,5 @@ module.exports = {
     toggleVendorProductVisibility,
     getVendorProductVisibility,
     getAllVendorsVisibility,
+    bulkUpdateProductVisibility,
 };

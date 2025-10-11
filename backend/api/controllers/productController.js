@@ -1,7 +1,7 @@
 const db = require('../config/database');
 const path = require('path');
 const { uploadFileToR2, deleteFileFromR2 } = require('../utils/cloudflareR2'); // Import R2 utilities
-const { shouldDisplayProducts, getISTTimeInfo } = require('../utils/timeUtils'); // Import time utilities
+const { shouldDisplayProducts, getISTTimeInfo, isInPersonalQuotaPhase } = require('../utils/timeUtils'); // Import time utilities
 
 /**
  * Helper function to calculate stock status based on available stock
@@ -60,10 +60,10 @@ exports.addProduct = async (req, res) => {
         const stock_status = calculateStockStatus(available_stock);
         
         const query = `
-            INSERT INTO product (product_id, paper_type, product_image_url, size, gsm, price_per_slot, selling_price, selling_price_2, selling_price_3, stock_status, available_stock, last_updated)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW()) RETURNING *;
+            INSERT INTO product (product_id, paper_type, product_image_url, size, gsm, price_per_slot, selling_price, selling_price_2, selling_price_3, stock_status, available_stock, original_stock, last_updated)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW()) RETURNING *;
         `;
-        const params = [product_id, paper_type, product_image_url, size, gsm, price_per_slot, selling_price, selling_price_2 || selling_price, selling_price_3 || selling_price, stock_status, available_stock];
+        const params = [product_id, paper_type, product_image_url, size, gsm, price_per_slot, selling_price, selling_price_2 || selling_price, selling_price_3 || selling_price, stock_status, available_stock, available_stock];
         const { rows } = await client.query(query, params);
         
         // No more local file system operations needed.
@@ -208,12 +208,178 @@ exports.getAvailableProducts = async (req, res) => {
             });
         }
         
-        const query = "SELECT product_id, product_image_url, paper_type, size, gsm, price_per_slot, selling_price, selling_price_2, selling_price_3, available_stock FROM product WHERE stock_status != 'out_of_stock' ORDER BY product_id ASC";
+        console.log('📦 [QUOTA] Starting product fetch for user:', userId);
+        
+        // Get products with quota-related fields
+        const query = `
+            SELECT 
+                product_id, product_image_url, paper_type, size, gsm, 
+                price_per_slot, selling_price, selling_price_2, selling_price_3, 
+                available_stock, original_stock
+            FROM product 
+            WHERE stock_status != 'out_of_stock' 
+            ORDER BY product_id ASC
+        `;
         const { rows } = await db.query(query);
+        console.log(`📦 [QUOTA] Found ${rows.length} products in database`);
+        
+        // Check current quota phase (same for all products)
+        const isPersonalPhase = isInPersonalQuotaPhase();
+        console.log(`📦 [QUOTA] Current phase: ${isPersonalPhase ? 'PERSONAL QUOTA' : 'SHARED POOL'}`);
+        
+        // Calculate quota info for each product
+        const productsWithQuota = await Promise.all(rows.map(async (product) => {
+            console.log(`\n📦 [QUOTA] Processing product: ${product.product_id}`);
+            console.log(`   - Available stock: ${product.available_stock}`);
+            console.log(`   - Original stock: ${product.original_stock}`);
+            
+            if (!isPersonalPhase) {
+                console.log(`   - Phase: SHARED POOL (no quota limits)`);
+                // Shared pool phase - just return product with available stock
+                return {
+                    ...product,
+                    quota_phase: 'shared_pool',
+                    vendor_quota: null,
+                    vendor_purchased: null,
+                    vendor_remaining_quota: null
+                };
+            }
+            
+            console.log(`   - Phase: PERSONAL QUOTA (calculating quota...)`);
+            // Personal quota phase - calculate vendor's quota
+            try {
+                // Get approved vendor count (join with login to check approval status)
+                const vendorCountResult = await db.query(
+                    `SELECT COUNT(*) 
+                     FROM vendors v
+                     INNER JOIN login l ON v.id = l.user_id
+                     WHERE l.is_approved = TRUE AND l.role = 'vendor'`
+                );
+                const vendorCount = parseInt(vendorCountResult.rows[0].count, 10);
+                console.log(`   - Approved vendor count: ${vendorCount}`);
+                
+                if (vendorCount === 0) {
+                    console.log(`   ⚠️ No approved vendors found - switching to shared pool`);
+                    return {
+                        ...product,
+                        quota_phase: 'shared_pool',
+                        vendor_quota: null,
+                        vendor_purchased: null,
+                        vendor_remaining_quota: null
+                    };
+                }
+                
+                // Calculate total sold for this product
+                const soldResult = await db.query(
+                    `SELECT COALESCE(SUM(no_of_stock_bought), 0) as total_sold 
+                     FROM trading 
+                     WHERE product_id = $1`,
+                    [product.product_id]
+                );
+                const totalSold = parseInt(soldResult.rows[0].total_sold, 10);
+                console.log(`   - Total sold: ${totalSold}`);
+                
+                // Calculate original total stock
+                const originalTotal = product.original_stock || (product.available_stock + totalSold);
+                console.log(`   - Original total stock: ${originalTotal}`);
+                
+                // Calculate fair share per vendor (rounded down)
+                const fairSharePerVendor = Math.floor(originalTotal / vendorCount);
+                console.log(`   - Fair share per vendor: ${originalTotal} / ${vendorCount} = ${fairSharePerVendor}`);
+                
+                // Get vendor's purchases for this product TODAY during current quota window
+                // Get current quota slot times
+                const quotaSlots = require('../utils/timeUtils').parseQuotaTimeSlotsFromEnv();
+                const currentIST = require('../utils/timeUtils').getCurrentISTTime();
+                const currentMinutes = currentIST.getHours() * 60 + currentIST.getMinutes();
+                
+                // Find which quota slot we're in
+                let currentSlot = null;
+                for (const slot of quotaSlots) {
+                    const [startH, startM] = slot.start.split(':').map(Number);
+                    const [endH, endM] = slot.end.split(':').map(Number);
+                    const slotStart = startH * 60 + startM;
+                    const slotEnd = endH * 60 + endM;
+                    
+                    let inSlot = false;
+                    if (slotStart > slotEnd) {
+                        inSlot = currentMinutes >= slotStart || currentMinutes <= slotEnd;
+                    } else {
+                        inSlot = currentMinutes >= slotStart && currentMinutes < slotEnd;
+                    }
+                    
+                    if (inSlot) {
+                        currentSlot = slot;
+                        break;
+                    }
+                }
+                
+                // Build time range for today's quota window
+                const today = new Date(currentIST.toDateString());
+                let startTime, endTime;
+                
+                if (currentSlot) {
+                    const [startH, startM] = currentSlot.start.split(':').map(Number);
+                    const [endH, endM] = currentSlot.end.split(':').map(Number);
+                    
+                    startTime = new Date(today);
+                    startTime.setHours(startH, startM, 0, 0);
+                    
+                    endTime = new Date(today);
+                    endTime.setHours(endH, endM, 59, 999);
+                    
+                    // Handle slot crossing midnight
+                    if (endH < startH) {
+                        endTime.setDate(endTime.getDate() + 1);
+                    }
+                }
+                
+                console.log(`   - Quota window: ${currentSlot?.start} - ${currentSlot?.end} (today)`);
+                console.log(`   - Checking purchases between: ${startTime?.toISOString()} and ${endTime?.toISOString()}`);
+                
+                // Get vendor's purchases ONLY from today's quota window
+                const vendorPurchasedResult = await db.query(
+                    `SELECT COALESCE(SUM(no_of_stock_bought), 0) as purchased 
+                     FROM trading 
+                     WHERE product_id = $1 
+                       AND vendor_id = $2
+                       AND date >= $3
+                       AND date <= $4`,
+                    [product.product_id, userId, startTime, endTime]
+                );
+                const vendorPurchased = parseInt(vendorPurchasedResult.rows[0].purchased, 10);
+                console.log(`   - Vendor purchased (today's quota window only): ${vendorPurchased}`);
+                
+                // Calculate remaining quota
+                const vendorRemainingQuota = Math.max(0, fairSharePerVendor - vendorPurchased);
+                console.log(`   - Vendor remaining quota: ${fairSharePerVendor} - ${vendorPurchased} = ${vendorRemainingQuota}`);
+                console.log(`   ✅ Quota calculated successfully!`);
+                
+                return {
+                    ...product,
+                    quota_phase: 'personal_quota',
+                    vendor_quota: fairSharePerVendor,
+                    vendor_purchased: vendorPurchased,
+                    vendor_remaining_quota: vendorRemainingQuota
+                };
+            } catch (error) {
+                console.error(`   ❌ Error calculating quota for product ${product.product_id}:`, error.message);
+                // On error, default to shared pool
+                return {
+                    ...product,
+                    quota_phase: 'shared_pool',
+                    vendor_quota: null,
+                    vendor_purchased: null,
+                    vendor_remaining_quota: null
+                };
+            }
+        }));
+        
+        console.log(`\n📦 [QUOTA] Finished processing all products. Returning ${productsWithQuota.length} products\n`);
         
         res.status(200).json({
             success: true,
-            products: rows,
+            products: productsWithQuota,
             timeInfo: {
                 currentTime: timeInfo.currentTimeString,
                 allowedHours: timeInfo.formattedSlots,
@@ -240,15 +406,23 @@ exports.updateProduct = async (req, res) => {
 
     try {
         const stock_status = calculateStockStatus(available_stock);
+        
+        // Always update original_stock when admin edits stock
         const query = `
-            UPDATE product SET price_per_slot = $1, selling_price = $2, selling_price_2 = $3, selling_price_3 = $4, stock_status = $5, available_stock = $6, last_updated = NOW()
-            WHERE product_id = $7 RETURNING *;
+            UPDATE product 
+            SET price_per_slot = $1, selling_price = $2, selling_price_2 = $3, selling_price_3 = $4, 
+                stock_status = $5, available_stock = $6, original_stock = $7, last_updated = NOW()
+            WHERE product_id = $8 RETURNING *;
         `;
-        const { rows } = await db.query(query, [price_per_slot, selling_price, selling_price_2 || selling_price, selling_price_3 || selling_price, stock_status, available_stock, productId]);
+        const params = [price_per_slot, selling_price, selling_price_2 || selling_price, selling_price_3 || selling_price, stock_status, available_stock, available_stock, productId];
+        
+        const { rows } = await db.query(query, params);
 
         if (rows.length === 0) {
             return res.status(404).json({ message: 'Product not found.' });
         }
+        
+        console.log(`📦 Product ${productId} updated: stock = ${available_stock}, original_stock = ${available_stock}`);
         res.status(200).json(rows[0]);
     } catch (error) {
         console.error(`❌ Error updating product ${productId}:`, error);

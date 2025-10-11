@@ -83,5 +83,6 @@ router.put('/reject-investor/:investorId', protect, authorize('admin'), adminCon
 router.get('/vendors-visibility', protect, authorize('admin', 'coordinator'), adminController.getAllVendorsVisibility);
 router.get('/vendors/:vendorId/product-visibility', protect, authorize('admin', 'coordinator'), adminController.getVendorProductVisibility);
 router.put('/vendors/:vendorId/product-visibility', protect, authorize('admin', 'coordinator'), adminController.toggleVendorProductVisibility);
+router.put('/vendors/bulk-product-visibility', protect, authorize('admin', 'coordinator'), adminController.bulkUpdateProductVisibility);
 
 module.exports = router;

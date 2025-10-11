@@ -472,6 +472,19 @@ const PurchaseModal = ({ isOpen, onClose, product, onProceed, walletBalance }) =
 
   if (!product) return null;
 
+  // Check quota phase and calculate max quantity
+  const isPersonalQuota = product.quota_phase === 'personal_quota';
+  const maxQuantity = isPersonalQuota ? product.vendor_remaining_quota : product.available_stock;
+  
+  console.log('🔍 [FRONTEND Modal] Product:', {
+    product_id: product.product_id,
+    quota_phase: product.quota_phase,
+    isPersonalQuota,
+    available_stock: product.available_stock,
+    vendor_remaining_quota: product.vendor_remaining_quota,
+    maxQuantity
+  });
+
   // convert string -> number for calculations
   const numericQuantity = parseInt(quantity, 10) || 0;
   const totalCost = numericQuantity * (Number(product.price_per_slot) || 0);
@@ -490,7 +503,7 @@ const PurchaseModal = ({ isOpen, onClose, product, onProceed, walletBalance }) =
               <FormLabel fontWeight="bold">Quantity to Buy:</FormLabel>
               <NumberInput
                 min={1}
-                max={product.available_stock || 1}
+                max={maxQuantity || 1}
                 value={quantity === "0" ? "" : quantity} // show "" instead of 0
                 onChange={(valString) => setQuantity(valString)} // keep string
               >
@@ -561,6 +574,9 @@ const BuyProduct = ({ url }) => {
       const productsData = await productsRes.json();
       const walletData = await walletRes.json();
       
+      console.log('🔍 [FRONTEND BuyProduct] API Response:', productsData);
+      console.log('🔍 [FRONTEND BuyProduct] Products array:', productsData.products || productsData);
+      
       // Handle new API response structure with time constraints
       if (productsData.success === false) {
         // Products not available due to time constraints
@@ -574,7 +590,9 @@ const BuyProduct = ({ url }) => {
         setProducts([]);
       } else {
         // Products available - extract from new response structure
-        setProducts(productsData.products || productsData || []);
+        const productsArray = productsData.products || productsData || [];
+        console.log('🔍 [FRONTEND BuyProduct] Setting products state:', productsArray);
+        setProducts(productsArray);
       }
       setWalletBalance(walletData.digital_money || 0);
     } catch (error) {
@@ -665,26 +683,39 @@ const BuyProduct = ({ url }) => {
             </Center>
           ) : (
             <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing={6}>
-              {products.map(product => (
-                <VStack key={product.product_id} borderWidth="1px" borderRadius="lg" p={4} spacing={4} align="stretch" justify="space-between" bg={productCardBg} boxShadow="md">
-                  <Box>
-                    <Image src={product.product_image_url} h="150px" w="full" objectFit="cover" borderRadius="md" fallbackSrc="https://via.placeholder.com/150" />
-                    <Heading size="md" mt={4} fontWeight="bold">{product.paper_type}</Heading>
-                    <Text fontWeight="bold">Size: {product.size}</Text>
-                                         <Text fontWeight="bold">Available: {product.available_stock} units</Text>
-                                           <Text fontWeight="bold" color="green.600" fontSize="sm">
+              {products.map(product => {
+                // Check quota phase and calculate display units
+                const isPersonalQuota = product.quota_phase === 'personal_quota';
+                const displayUnits = isPersonalQuota ? product.vendor_remaining_quota : product.available_stock;
+                
+                console.log(`🔍 [FRONTEND] Product ${product.product_id}:`, {
+                  quota_phase: product.quota_phase,
+                  available_stock: product.available_stock,
+                  vendor_remaining_quota: product.vendor_remaining_quota,
+                  displayUnits
+                });
+                
+                return (
+                  <VStack key={product.product_id} borderWidth="1px" borderRadius="lg" p={4} spacing={4} align="stretch" justify="space-between" bg={productCardBg} boxShadow="md">
+                    <Box>
+                      <Image src={product.product_image_url} h="150px" w="full" objectFit="cover" borderRadius="md" fallbackSrc="https://via.placeholder.com/150" />
+                      <Heading size="md" mt={4} fontWeight="bold">{product.paper_type}</Heading>
+                      <Text fontWeight="bold">Size: {product.size}</Text>
+                      <Text fontWeight="bold">Available: {displayUnits} units</Text>
+                      <Text fontWeight="bold" color="green.600" fontSize="sm">
                         Profit: ₹{product.selling_price && product.price_per_slot ? (product.selling_price - product.price_per_slot).toFixed(2) : 'N/A'}
                       </Text>
-                    <Heading size="sm" mt={2} fontWeight="bold">₹{product.price_per_slot}</Heading>
-                    <Text fontSize="xs" color="gray.500" textAlign="center">
-                      Buy Price per Slot
-                    </Text>
-                  </Box>
-                  <Button colorScheme="blue" onClick={() => handleBuyClick(product)} isDisabled={product.available_stock <= 0 || isSubmitting}>
-                    {product.available_stock > 0 ? 'Buy Stock' : 'Out of Stock'}
-                  </Button>
-                </VStack>
-              ))}
+                      <Heading size="sm" mt={2} fontWeight="bold">₹{product.price_per_slot}</Heading>
+                      <Text fontSize="xs" color="gray.500" textAlign="center">
+                        Buy Price per Slot
+                      </Text>
+                    </Box>
+                    <Button colorScheme="blue" onClick={() => handleBuyClick(product)} isDisabled={displayUnits <= 0 || isSubmitting}>
+                      {displayUnits > 0 ? 'Buy Stock' : 'Out of Stock'}
+                    </Button>
+                  </VStack>
+                );
+              })}
             </SimpleGrid>
           )}
         </Box>

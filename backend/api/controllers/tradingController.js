@@ -4,6 +4,7 @@ const db = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 const { checkAndCancelWithdrawals, generateCancellationMessage } = require('../utils/withdrawalChecker');
 const { uploadFileToR2 } = require('../utils/cloudflareR2');
+const { isInPersonalQuotaPhase } = require('../utils/timeUtils');
 const path = require('path');
 
 /**
@@ -122,10 +123,127 @@ const executeWalletTrade = async (req, res) => {
         }
         // --- END OF NEW LOGIC ---
 
-        const productRes = await client.query('SELECT paper_type, price_per_slot, available_stock FROM product WHERE product_id = $1 FOR UPDATE', [productId]);
+        const productRes = await client.query('SELECT paper_type, price_per_slot, available_stock, original_stock FROM product WHERE product_id = $1 FOR UPDATE', [productId]);
         if (productRes.rows.length === 0) throw new Error('Product not found.');
         const product = productRes.rows[0];
         if (product.available_stock < quantity) throw new Error('Not enough stock available.');
+        
+        // Check if current time is in personal quota phase
+        const isPersonalPhase = isInPersonalQuotaPhase();
+        
+        if (isPersonalPhase) {
+            // In personal quota phase - enforce quota limits
+            console.log('🔒 Personal quota phase active for product:', productId);
+            
+            // Get approved vendor count (join with login to check approval status)
+            const vendorCountResult = await client.query(
+                `SELECT COUNT(*) 
+                 FROM vendors v
+                 INNER JOIN login l ON v.id = l.user_id
+                 WHERE l.is_approved = TRUE AND l.role = 'vendor'`
+            );
+            const vendorCount = parseInt(vendorCountResult.rows[0].count, 10);
+            
+            if (vendorCount > 0) {
+                // Calculate total sold for this product
+                const soldResult = await client.query(
+                    `SELECT COALESCE(SUM(no_of_stock_bought), 0) as total_sold 
+                     FROM trading 
+                     WHERE product_id = $1`,
+                    [productId]
+                );
+                const totalSold = parseInt(soldResult.rows[0].total_sold, 10);
+                
+                // Calculate original total stock
+                const originalTotal = product.original_stock || (product.available_stock + totalSold);
+                
+                // Calculate fair share per vendor (rounded down)
+                const fairSharePerVendor = Math.floor(originalTotal / vendorCount);
+                
+                // Get vendor's purchases for this product TODAY during current quota window only
+                const { parseQuotaTimeSlotsFromEnv, getCurrentISTTime } = require('../utils/timeUtils');
+                const quotaSlots = parseQuotaTimeSlotsFromEnv();
+                const currentIST = getCurrentISTTime();
+                const currentMinutes = currentIST.getHours() * 60 + currentIST.getMinutes();
+                
+                // Find which quota slot we're in
+                let currentSlot = null;
+                for (const slot of quotaSlots) {
+                    const [startH, startM] = slot.start.split(':').map(Number);
+                    const [endH, endM] = slot.end.split(':').map(Number);
+                    const slotStart = startH * 60 + startM;
+                    const slotEnd = endH * 60 + endM;
+                    
+                    let inSlot = false;
+                    if (slotStart > slotEnd) {
+                        inSlot = currentMinutes >= slotStart || currentMinutes <= slotEnd;
+                    } else {
+                        inSlot = currentMinutes >= slotStart && currentMinutes < slotEnd;
+                    }
+                    
+                    if (inSlot) {
+                        currentSlot = slot;
+                        break;
+                    }
+                }
+                
+                // Build time range for today's quota window
+                const today = new Date(currentIST.toDateString());
+                let startTime, endTime;
+                
+                if (currentSlot) {
+                    const [startH, startM] = currentSlot.start.split(':').map(Number);
+                    const [endH, endM] = currentSlot.end.split(':').map(Number);
+                    
+                    startTime = new Date(today);
+                    startTime.setHours(startH, startM, 0, 0);
+                    
+                    endTime = new Date(today);
+                    endTime.setHours(endH, endM, 59, 999);
+                    
+                    // Handle slot crossing midnight
+                    if (endH < startH) {
+                        endTime.setDate(endTime.getDate() + 1);
+                    }
+                }
+                
+                console.log('📊 Quota window check:', {
+                    currentSlot: currentSlot?.start + '-' + currentSlot?.end,
+                    startTime: startTime?.toISOString(),
+                    endTime: endTime?.toISOString()
+                });
+                
+                // Get vendor's purchases ONLY from today's quota window
+                const vendorPurchasedResult = await client.query(
+                    `SELECT COALESCE(SUM(no_of_stock_bought), 0) as purchased 
+                     FROM trading 
+                     WHERE product_id = $1 
+                       AND vendor_id = $2
+                       AND date >= $3
+                       AND date <= $4`,
+                    [productId, vendorId, startTime, endTime]
+                );
+                const vendorPurchased = parseInt(vendorPurchasedResult.rows[0].purchased, 10);
+                
+                // Calculate remaining quota
+                const vendorRemainingQuota = Math.max(0, fairSharePerVendor - vendorPurchased);
+                
+                console.log('📊 Quota check:', {
+                    originalTotal,
+                    vendorCount,
+                    fairSharePerVendor,
+                    vendorPurchasedTodayInWindow: vendorPurchased,
+                    vendorRemainingQuota,
+                    requestedQuantity: quantity
+                });
+                
+                // Check if requested quantity exceeds quota
+                if (quantity > vendorRemainingQuota) {
+                    throw new Error(`Quota limit exceeded. You can purchase up to ${vendorRemainingQuota} more units of this product during the personal quota phase.`);
+                }
+            }
+        }
+        
         const totalAmount = parseFloat(product.price_per_slot) * quantity;
         
         const walletRes = await client.query('SELECT digital_money FROM wallet WHERE id = $1 FOR UPDATE', [vendorId]);

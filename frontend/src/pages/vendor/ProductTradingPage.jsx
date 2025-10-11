@@ -117,7 +117,9 @@ const PurchaseModal = ({ isOpen, onClose, product, onSuccess, url }) => {
                                     value={quantity}
                                     onChange={(e) => setQuantity(e.target.value)}
                                     min={1}
-                                    max={product?.available_stock}
+                                    max={product?.quota_phase === 'personal_quota' 
+                                        ? product?.vendor_remaining_quota 
+                                        : product?.available_stock}
                                 />
                             </HStack>
                             <Divider />
@@ -161,19 +163,43 @@ const PurchaseModal = ({ isOpen, onClose, product, onSuccess, url }) => {
 };
 
 
-// --- Product Card Component (No changes) ---
-const ProductCard = ({ product, onBuyClick, url }) => (
-    <Box borderWidth="1px" borderRadius="lg" overflow="hidden" bg="gray.700">
-        <Image src={`${url}${product.product_image_url}`} alt={product.paper_type} h="200px" w="full" objectFit="cover" fallbackSrc='https://via.placeholder.com/300' />
-        <Box p={6}>
-            <Heading size="md">{product.paper_type}</Heading>
-            <Text mt={2}>Size: {product.size} | GSM: {product.gsm}</Text>
-            <Text>Available: <Text as="span" color="green.300" fontWeight="bold">{product.available_stock} units</Text></Text>
-            <Text fontSize="xl" fontWeight="bold" color="cyan.400" mt={2}>₹{product.price_per_slot} / slot</Text>
-            <Button mt={4} w="full" colorScheme="blue" onClick={() => onBuyClick(product)}>Buy Stock</Button>
+// --- Product Card Component ---
+const ProductCard = ({ product, onBuyClick, url }) => {
+    // Check if product is in personal quota phase
+    const isPersonalQuota = product.quota_phase === 'personal_quota';
+    
+    console.log(`🔍 [FRONTEND] ProductCard for ${product.product_id}:`, {
+        quota_phase: product.quota_phase,
+        isPersonalQuota: isPersonalQuota,
+        available_stock: product.available_stock,
+        vendor_remaining_quota: product.vendor_remaining_quota,
+        vendor_quota: product.vendor_quota,
+        vendor_purchased: product.vendor_purchased
+    });
+    
+    const displayUnits = isPersonalQuota ? product.vendor_remaining_quota : product.available_stock;
+    console.log(`🔍 [FRONTEND] Will display: ${displayUnits} units`);
+    
+    return (
+        <Box borderWidth="1px" borderRadius="lg" overflow="hidden" bg="gray.700">
+            <Image src={`${url}${product.product_image_url}`} alt={product.paper_type} h="200px" w="full" objectFit="cover" fallbackSrc='https://via.placeholder.com/300' />
+            <Box p={6}>
+                <Heading size="md">{product.paper_type}</Heading>
+                <Text mt={2}>Size: {product.size} | GSM: {product.gsm}</Text>
+                
+                {/* Display available units */}
+                <Text mt={2}>
+                    Available: <Text as="span" color="green.300" fontWeight="bold">
+                        {displayUnits} units
+                    </Text>
+                </Text>
+                
+                <Text fontSize="xl" fontWeight="bold" color="cyan.400" mt={2}>₹{product.price_per_slot} / slot</Text>
+                <Button mt={4} w="full" colorScheme="blue" onClick={() => onBuyClick(product)}>Buy Stock</Button>
+            </Box>
         </Box>
-    </Box>
-);
+    );
+};
 
 // --- Main Page Component ---
 // This is now much simpler. It just displays products and opens the modal.
@@ -194,6 +220,9 @@ const ProductTradingPage = ({ url }) => {
       if (!response.ok) throw new Error('Failed to fetch products.');
       const data = await response.json();
       
+      console.log('🔍 [FRONTEND] API Response:', data);
+      console.log('🔍 [FRONTEND] Products array:', data.products || data);
+      
       // Handle new API response structure with time constraints
       if (data.success === false) {
         // Products not available due to time constraints
@@ -207,9 +236,12 @@ const ProductTradingPage = ({ url }) => {
         setProducts([]);
       } else {
         // Products available - extract from new response structure
-        setProducts(data.products || data || []);
+        const productsArray = data.products || data || [];
+        console.log('🔍 [FRONTEND] Setting products:', productsArray);
+        setProducts(productsArray);
       }
     } catch (err) { 
+      console.error('❌ [FRONTEND] Error fetching products:', err);
       setError(err.message); 
     } finally { 
       setLoading(false); 

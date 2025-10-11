@@ -23,6 +23,7 @@ const ProductVisibilityPage = ({ url }) => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('all'); // 'all', 'enabled', 'disabled'
+  const [bulkUpdating, setBulkUpdating] = useState(false);
 
   const pageBg = useColorModeValue('gray.50', 'gray.900');
   const cardBg = useColorModeValue('white', 'gray.800');
@@ -105,6 +106,49 @@ const ProductVisibilityPage = ({ url }) => {
     }
   };
 
+  // Bulk update product visibility for all vendors
+  const bulkUpdateVisibility = async (visibility) => {
+    setBulkUpdating(true);
+    try {
+      const response = await fetch(`${url}/api/admin/vendors/bulk-product-visibility`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ productVisibility: visibility })
+      });
+
+      if (!response.ok) throw new Error('Failed to bulk update visibility');
+      
+      const data = await response.json();
+      
+      // Update local state - set all vendors to the new visibility
+      setVendors(prevVendors =>
+        prevVendors.map(v => ({ ...v, product_visibility: visibility }))
+      );
+
+      toast({
+        title: 'Success',
+        description: data.message || `Product visibility ${visibility ? 'enabled' : 'disabled'} for all vendors`,
+        status: 'success',
+        duration: 4000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error('Error bulk updating visibility:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to bulk update product visibility',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
   // Filter vendors based on search and filter
   const filteredVendors = vendors.filter(vendor => {
     const matchesSearch = 
@@ -158,14 +202,45 @@ const ProductVisibilityPage = ({ url }) => {
 
         <VStack spacing={6} align="stretch" maxW="1400px" mx="auto">
           {/* Header */}
-          <VStack align="start" spacing={1}>
-            <Heading size="lg" color={headingColor}>
-              Product Visibility Management
-            </Heading>
-            <Text color="gray.600">
-              Control which vendors can see and purchase products
-            </Text>
-          </VStack>
+          <Flex 
+            direction={{ base: 'column', md: 'row' }} 
+            justify="space-between" 
+            align={{ base: 'stretch', md: 'center' }}
+            gap={4}
+          >
+            <VStack align="start" spacing={1} flex="1">
+              <Heading size="lg" color={headingColor}>
+                Product Visibility Management
+              </Heading>
+              <Text color="gray.600">
+                Control which vendors can see and purchase products
+              </Text>
+            </VStack>
+            
+            {/* Bulk Action Buttons */}
+            <HStack spacing={3}>
+              <Button
+                leftIcon={<FaEye />}
+                colorScheme="green"
+                size="md"
+                isLoading={bulkUpdating}
+                onClick={() => bulkUpdateVisibility(true)}
+                isDisabled={loading}
+              >
+                Enable All
+              </Button>
+              <Button
+                leftIcon={<FaEyeSlash />}
+                colorScheme="red"
+                size="md"
+                isLoading={bulkUpdating}
+                onClick={() => bulkUpdateVisibility(false)}
+                isDisabled={loading}
+              >
+                Disable All
+              </Button>
+            </HStack>
+          </Flex>
 
         {/* Statistics Cards */}
         <HStack spacing={4} flexWrap="wrap">

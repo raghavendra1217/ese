@@ -85,6 +85,74 @@ function parseTimeSlotsFromEnv() {
 }
 
 /**
+ * Parse individual quota time slots from ENV
+ * Format: "06:30-07:00,14:00-14:30,19:15-19:45"
+ */
+function parseQuotaTimeSlotsFromEnv() {
+    const env = process.env.INDIVIDUAL_QUOTA_TIME_SLOTS;
+    if (!env) return [{ start: "06:30", end: "07:00" }];
+
+    try {
+        return env.split(",").map((slot) => {
+            const [start, end] = slot.trim().split("-");
+            if (!start || !end) throw new Error("Invalid quota slot: " + slot);
+            return { start: start.trim(), end: end.trim() };
+        });
+    } catch (err) {
+        console.error("❌ Error parsing quota slots:", err);
+        return [{ start: "06:30", end: "07:00" }];
+    }
+}
+
+/**
+ * Check if current time is within personal quota phase
+ * @returns {boolean} - True if in personal quota phase, false if in shared pool phase
+ */
+function isInPersonalQuotaPhase() {
+    try {
+        const quotaSlots = parseQuotaTimeSlotsFromEnv();
+        
+        console.log('🔍 Quota Phase Check:', {
+            quotaSlotsFromEnv: process.env.INDIVIDUAL_QUOTA_TIME_SLOTS,
+            parsedQuotaSlots: quotaSlots,
+            currentTime: getCurrentISTTimeString()
+        });
+        
+        // If no quota slots configured, always shared pool
+        if (!quotaSlots || quotaSlots.length === 0) {
+            console.log('⚠️ No quota slots configured - defaulting to shared pool');
+            return false;
+        }
+        
+        // Check if current time is within any quota slot
+        const isInQuotaPhase = isWithinAllowedTimeSlots(quotaSlots);
+        console.log('✅ Is in personal quota phase:', isInQuotaPhase);
+        
+        return isInQuotaPhase;
+        
+    } catch (err) {
+        console.error("❌ Error checking quota phase:", err);
+        return false; // Default to shared phase on error
+    }
+}
+
+/**
+ * Get current quota phase info
+ * @returns {object} - { isPersonalPhase: boolean, phase: string, quotaSlots: array }
+ */
+function getQuotaPhaseInfo() {
+    const isPersonalPhase = isInPersonalQuotaPhase();
+    const quotaSlots = parseQuotaTimeSlotsFromEnv();
+    
+    return {
+        isPersonalPhase,
+        phase: isPersonalPhase ? 'personal_quota' : 'shared_pool',
+        quotaSlots,
+        formattedQuotaSlots: quotaSlots.map((s) => `${s.start}-${s.end}`).join(", ")
+    };
+}
+
+/**
  * Get product display hours
  */
 function getProductDisplayHours() {
@@ -234,8 +302,11 @@ module.exports = {
     getCurrentISTTimeString,
     isWithinAllowedTimeSlots,
     parseTimeSlotsFromEnv,
+    parseQuotaTimeSlotsFromEnv,
     getProductDisplayHours,
     shouldDisplayProducts,
+    isInPersonalQuotaPhase,
+    getQuotaPhaseInfo,
     getISTTimeInfo,
     convertToIST,
     formatTimestampToIST,
