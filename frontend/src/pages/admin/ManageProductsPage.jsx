@@ -303,7 +303,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box, Flex, Heading, Button, IconButton, useToast, Spinner, Center, Table, Thead, Tbody, Tr, Th, Td,
   Image, Tag, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton,
-  FormControl, FormLabel, Input, Select, NumberInput, NumberInputField, AlertDialog, AlertDialogBody, AlertDialogFooter,
+  FormControl, FormLabel, FormHelperText, Input, Select, NumberInput, NumberInputField, AlertDialog, AlertDialogBody, AlertDialogFooter,
   AlertDialogHeader, AlertDialogContent, AlertDialogOverlay, Drawer, DrawerOverlay, DrawerContent, Text, useColorModeValue,
   Stack, Divider, // NEW: Import Stack and Divider for card layout
 } from '@chakra-ui/react';
@@ -316,16 +316,20 @@ const ProductModal = ({ isOpen, onClose, onSave, product, isEditing }) => {
   // ... (Your existing ProductModal code)
   const initialFormState = {
     paper_type: '', size: '', gsm: '', price_per_slot: '', selling_price: '',
-    available_stock: ''
+    available_stock: '', selling_days: ''
   };
 
   const [formData, setFormData] = useState(initialFormState);
   const [imageFile, setImageFile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [sellingDaysError, setSellingDaysError] = useState('');
 
   useEffect(() => {
     if (isOpen) {
-      if (isEditing && product) setFormData(product);
+      if (isEditing && product) setFormData({
+        ...product,
+        selling_days: product.selling_days || ''
+      });
       else setFormData(initialFormState);
       setImageFile(null);
     }
@@ -335,7 +339,22 @@ const ProductModal = ({ isOpen, onClose, onSave, product, isEditing }) => {
   const handleNumberChange = (value, name) => { setFormData({ ...formData, [name]: value }); };
   const handleFileChange = (e) => { if (e.target.files && e.target.files[0]) setImageFile(e.target.files[0]); };
 
-  const handleSubmit = async (e) => { e.preventDefault(); setIsLoading(true); await onSave(formData, imageFile); setIsLoading(false); };
+  const handleSubmit = async (e) => { 
+    e.preventDefault(); 
+    
+    // Validate selling days before submission (only if not empty)
+    if (formData.selling_days && formData.selling_days.trim() !== '') {
+      const days = Number(formData.selling_days);
+      if (days < 1 || days > 365 || isNaN(days) || days % 1 !== 0) {
+        setSellingDaysError('Please enter a valid number of days (1-365) or leave empty for default');
+        return;
+      }
+    }
+    
+    setIsLoading(true); 
+    await onSave(formData, imageFile); 
+    setIsLoading(false); 
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered>
@@ -391,6 +410,33 @@ const ProductModal = ({ isOpen, onClose, onSave, product, isEditing }) => {
               <NumberInputField name="available_stock" fontWeight="bold" />
             </NumberInput>
           </FormControl>
+          <FormControl mt={4}>
+            <FormLabel fontWeight="bold">Selling Days</FormLabel>
+            <Input 
+              name="selling_days" 
+              value={formData.selling_days || ''} 
+              onChange={handleChange}
+              placeholder="Enter number of days (default: 7)"
+              fontWeight="bold"
+              type="number"
+              min="1"
+              max="365"
+            />
+            <FormHelperText color="gray.600">
+              <Text fontSize="sm">
+                <Text as="span" fontWeight="semibold">Selling Rules (default: 7 days):</Text>
+                <br />• Days 1-{formData.selling_days || 7}: Sell at purchase price (no profit/loss)
+                <br />• Days {(formData.selling_days || 7) + 1}+: Sell at market price (potential profit/loss)
+                <br />• Days {(formData.selling_days || 7) + 2}+: Market price + ₹1/day bonus (max ₹2 bonus)
+                <br />• Leave empty to use default (7 days)
+              </Text>
+            </FormHelperText>
+            {sellingDaysError && (
+              <Text color="red.500" fontSize="sm" mt={1}>
+                {sellingDaysError}
+              </Text>
+            )}
+          </FormControl>
         </ModalBody>
         <ModalFooter>
           <Button fontWeight="bold" colorScheme="blue" mr={3} type="submit" isLoading={isLoading}>Save</Button>
@@ -440,6 +486,7 @@ const ManageProductsPage = ({ url }) => {
       selling_price_2: formData.selling_price_2 === '' || formData.selling_price_2 === null ? null : Number(formData.selling_price_2),
       selling_price_3: formData.selling_price_3 === '' || formData.selling_price_3 === null ? null : Number(formData.selling_price_3),
       available_stock: formData.available_stock === '' || formData.available_stock === null ? null : Number(formData.available_stock),
+      selling_days: formData.selling_days === '' || formData.selling_days === null || formData.selling_days === undefined ? 7 : Number(formData.selling_days),
     };
 
     const apiUrl = isEditing ? `${url}/api/products/${currentProduct.product_id}` : `${url}/api/products`;
@@ -539,7 +586,7 @@ const ManageProductsPage = ({ url }) => {
                   <Tr>
                     <Th>Image</Th><Th>ID</Th><Th>Paper Type</Th><Th>GSM</Th>
                     <Th isNumeric>Price/Slot</Th><Th isNumeric>Selling Price 1</Th><Th isNumeric>Selling Price 2</Th><Th isNumeric>Selling Price 3</Th><Th isNumeric>Profit</Th><Th isNumeric>Stock</Th>
-                    <Th>Status</Th><Th isNumeric>Margin %</Th><Th>Last Updated</Th><Th>Actions</Th>
+                    <Th>Status</Th><Th isNumeric>Margin %</Th><Th isNumeric>Selling Days</Th><Th>Last Updated</Th><Th>Actions</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
@@ -568,6 +615,17 @@ const ManageProductsPage = ({ url }) => {
                         <Td><Tag colorScheme={p.stock_status === 'available' ? 'green' : p.stock_status === 'low' ? 'orange' : 'red'}>{p.stock_status}</Tag></Td>
                         <Td isNumeric color={marginPercentage > 0 ? 'green.500' : marginPercentage < 0 ? 'red.500' : 'inherit'}>
                           {marginPercentage !== null ? `${marginPercentage.toFixed(2)}%` : 'N/A'}
+                        </Td>
+                        <Td isNumeric>
+                          <Tag 
+                            colorScheme="blue" 
+                            size="sm" 
+                            cursor="pointer"
+                            _hover={{ bg: "blue.600", color: "white" }}
+                            title="Click to edit selling days"
+                          >
+                            {p.selling_days || 7} days
+                          </Tag>
                         </Td>
                         <Td>{displayLastUpdated}</Td>
                         <Td>
@@ -622,6 +680,17 @@ const ManageProductsPage = ({ url }) => {
                          <Text as="span" color={marginPercentage > 0 ? 'green.500' : marginPercentage < 0 ? 'red.500' : 'inherit'}>
                            {marginPercentage !== null ? `${marginPercentage.toFixed(2)}%` : 'N/A'}
                          </Text>
+                       </CardDataRow>
+                       <CardDataRow label="Selling Days">
+                         <Tag 
+                           colorScheme="blue" 
+                           size="sm"
+                           cursor="pointer"
+                           _hover={{ bg: "blue.600", color: "white" }}
+                           title="Click edit button to modify selling days"
+                         >
+                           {p.selling_days || 7} days
+                         </Tag>
                        </CardDataRow>
                     </Stack>
 

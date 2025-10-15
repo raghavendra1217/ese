@@ -518,36 +518,39 @@ exports.loginUser = async (req, res) => {
 };
 
 /**
- * Test endpoint to verify database connectivity
+ * Test endpoint to verify database connectivity with enhanced monitoring
  */
 exports.testDatabase = async (req, res) => {
     try {
         console.log('🧪 Testing database connectivity...');
         
-        const client = await db.connect();
-        console.log('✅ Database connection successful');
+        // Use the new health check function
+        const healthStatus = await db.checkConnectionHealth();
         
-        // Test basic query
-        const result = await client.query('SELECT NOW() as current_time');
-        console.log('✅ Basic query successful:', result.rows[0]);
+        if (!healthStatus.healthy) {
+            return res.status(500).json({
+                success: false,
+                message: 'Database health check failed',
+                error: healthStatus.error,
+                poolStats: healthStatus.poolStats
+            });
+        }
         
-        // Test vendors table
-        const vendorCount = await client.query('SELECT COUNT(*) as count FROM vendors');
-        console.log('✅ Vendors table query successful:', vendorCount.rows[0]);
-        
-        // Test transaction table
-        const transactionCount = await client.query('SELECT COUNT(*) as count FROM transaction');
-        console.log('✅ Transaction table query successful:', transactionCount.rows[0]);
-        
-        client.release();
+        // Test additional tables
+        const vendorCount = await db.query('SELECT COUNT(*) as count FROM vendors');
+        const transactionCount = await db.query('SELECT COUNT(*) as count FROM transaction');
+        const loginCount = await db.query('SELECT COUNT(*) as count FROM login');
         
         res.status(200).json({
             success: true,
             message: 'Database connectivity test successful',
             data: {
-                current_time: result.rows[0].current_time,
+                current_time: healthStatus.timestamp,
+                pg_version: healthStatus.version,
                 vendors_count: vendorCount.rows[0].count,
-                transactions_count: transactionCount.rows[0].count
+                transactions_count: transactionCount.rows[0].count,
+                login_count: loginCount.rows[0].count,
+                pool_stats: healthStatus.poolStats
             }
         });
         
@@ -556,7 +559,12 @@ exports.testDatabase = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Database test failed',
-            error: error.message
+            error: error.message,
+            poolStats: db.pool ? {
+                total: db.pool.totalCount,
+                idle: db.pool.idleCount,
+                waiting: db.pool.waitingCount
+            } : 'Pool not available'
         });
     }
 };

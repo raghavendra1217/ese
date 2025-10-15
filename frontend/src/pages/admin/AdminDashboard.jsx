@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Flex, VStack, SimpleGrid, useColorModeValue, useDisclosure,
   Drawer, DrawerContent, DrawerOverlay, Heading, IconButton,
-  Text, Button
+  Text, Button, Input, HStack, Spinner, Alert, AlertIcon
 } from '@chakra-ui/react';
 import { HamburgerIcon } from '@chakra-ui/icons';
-import { FaUsers, FaChartBar, FaCog, FaWallet, FaMoneyBillWave, FaArrowUp, FaArrowDown, FaHandshake, FaFileArchive, FaFileInvoice, FaFileAlt } from 'react-icons/fa';
+import { FaUsers, FaChartBar, FaCog, FaWallet, FaMoneyBillWave, FaArrowUp, FaArrowDown, FaHandshake, FaFileArchive, FaFileInvoice, FaFileAlt, FaShoppingCart, FaDollarSign } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../AppContext';
 
@@ -44,6 +44,20 @@ const AdminDashboard = ({ url }) => {
       },
     };
   });
+
+  // Daily trading statistics state
+  const [dailyTradingStats, setDailyTradingStats] = useState({
+    totalBought: 0,
+    totalSold: 0,
+    regularProductBought: 0,
+    regularProductSold: 0,
+    wildProductBought: 0,
+    wildProductSold: 0,
+    netAmount: 0
+  });
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isLoadingDailyStats, setIsLoadingDailyStats] = useState(false);
+  const [dailyStatsError, setDailyStatsError] = useState(null);
 
   const fetchAllStats = useCallback(async () => {
     if (!token) return;
@@ -166,7 +180,47 @@ const AdminDashboard = ({ url }) => {
     }
   }, [url, token]);
 
+  // Function to fetch daily trading statistics
+  const fetchDailyTradingStats = useCallback(async (date) => {
+    if (!token || !date) return;
+    
+    setIsLoadingDailyStats(true);
+    setDailyStatsError(null);
+    
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const response = await fetch(`${url}/api/admin/stats/daily-trading?date=${date}`, { headers });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setDailyTradingStats(data);
+      } else {
+        const errorData = await response.json();
+        setDailyStatsError(errorData.message || 'Failed to fetch daily trading statistics');
+      }
+    } catch (error) {
+      console.error('Error fetching daily trading stats:', error);
+      setDailyStatsError('Failed to fetch daily trading statistics');
+    } finally {
+      setIsLoadingDailyStats(false);
+    }
+  }, [url, token]);
+
+  // Function to handle date change
+  const handleDateChange = (event) => {
+    const newDate = event.target.value;
+    setSelectedDate(newDate);
+    fetchDailyTradingStats(newDate);
+  };
+
   useEffect(() => { if (token) fetchAllStats(); }, [token, fetchAllStats]);
+  
+  // Fetch daily trading stats when component mounts and when selectedDate changes
+  useEffect(() => {
+    if (token && selectedDate) {
+      fetchDailyTradingStats(selectedDate);
+    }
+  }, [token, selectedDate, fetchDailyTradingStats]);
 
   const pageBg = useColorModeValue('gray.50', 'gray.900');
   const headingColor = useColorModeValue('gray.800', 'gray.200');
@@ -888,6 +942,193 @@ const AdminDashboard = ({ url }) => {
                  </VStack>
                </Box>
             </SimpleGrid>
+          </VStack>
+
+          {/* Daily Trading Statistics Section */}
+          <VStack spacing={6} align="stretch">
+            <Heading size="lg" color={headingColor} mb={4}>
+              Daily Trading Statistics
+            </Heading>
+            
+            {/* Date Selector */}
+            <Box
+              bg={cardBg}
+              p={6}
+              borderRadius="xl"
+              borderWidth="1px"
+              borderColor={cardBorder}
+              boxShadow="lg"
+            >
+              <VStack spacing={4}>
+                <HStack spacing={4} align="center" w="full" justify="center">
+                  <Text fontSize="lg" fontWeight="semibold" color={headingColor}>
+                    Select Date:
+                  </Text>
+                  <Input
+                    type="date"
+                    value={selectedDate}
+                    onChange={handleDateChange}
+                    maxW="200px"
+                    borderRadius="lg"
+                    borderColor={cardBorder}
+                    _focus={{
+                      borderColor: "blue.400",
+                      boxShadow: "0 0 0 1px #3182ce"
+                    }}
+                  />
+                </HStack>
+                
+                {dailyStatsError && (
+                  <Alert status="error" borderRadius="lg">
+                    <AlertIcon />
+                    {dailyStatsError}
+                  </Alert>
+                )}
+              </VStack>
+            </Box>
+
+            {/* Trading Statistics Display */}
+            {isLoadingDailyStats ? (
+              <Box
+                bg={cardBg}
+                p={8}
+                borderRadius="xl"
+                borderWidth="1px"
+                borderColor={cardBorder}
+                boxShadow="lg"
+                textAlign="center"
+              >
+                <Spinner size="xl" color="blue.500" />
+                <Text mt={4} fontSize="lg" color={headingColor}>
+                  Loading trading statistics...
+                </Text>
+              </Box>
+            ) : (
+              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+                {/* Total Bought */}
+                <Box
+                  bg={cardBg}
+                  p={6}
+                  borderRadius="xl"
+                  borderWidth="1px"
+                  borderColor={cardBorder}
+                  boxShadow="lg"
+                  transition="all 0.3s ease"
+                  _hover={{ 
+                    boxShadow: "xl",
+                    transform: "translateY(-4px)"
+                  }}
+                >
+                  <VStack spacing={5} align="center">
+                    <Box
+                      p={4}
+                      borderRadius="full"
+                      bg="orange.50"
+                      color="orange.600"
+                      _dark={{ bg: "orange.900", color: "orange.200" }}
+                      boxShadow="md"
+                    >
+                      <FaShoppingCart size={28} />
+                    </Box>
+                    <VStack spacing={2} align="center">
+                      <Text fontSize="4xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                        ₹{dailyTradingStats.totalBought?.toLocaleString() || '0'}
+                      </Text>
+                      <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                        Total Bought
+                      </Text>
+                      <Text fontSize="sm" color="gray.500" textAlign="center">
+                        {selectedDate}
+                      </Text>
+                    </VStack>
+                  </VStack>
+                </Box>
+
+                {/* Total Sold */}
+                <Box
+                  bg={cardBg}
+                  p={6}
+                  borderRadius="xl"
+                  borderWidth="1px"
+                  borderColor={cardBorder}
+                  boxShadow="lg"
+                  transition="all 0.3s ease"
+                  _hover={{ 
+                    boxShadow: "xl",
+                    transform: "translateY(-4px)"
+                  }}
+                >
+                  <VStack spacing={5} align="center">
+                    <Box
+                      p={4}
+                      borderRadius="full"
+                      bg="green.50"
+                      color="green.600"
+                      _dark={{ bg: "green.900", color: "green.200" }}
+                      boxShadow="md"
+                    >
+                      <FaDollarSign size={28} />
+                    </Box>
+                    <VStack spacing={2} align="center">
+                      <Text fontSize="4xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                        ₹{dailyTradingStats.totalSold?.toLocaleString() || '0'}
+                      </Text>
+                      <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                        Total Sold
+                      </Text>
+                      <Text fontSize="sm" color="gray.500" textAlign="center">
+                        {selectedDate}
+                      </Text>
+                    </VStack>
+                  </VStack>
+                </Box>
+
+                {/* Breakdown */}
+                <Box
+                  bg={cardBg}
+                  p={6}
+                  borderRadius="xl"
+                  borderWidth="1px"
+                  borderColor={cardBorder}
+                  boxShadow="lg"
+                  transition="all 0.3s ease"
+                  _hover={{ 
+                    boxShadow: "xl",
+                    transform: "translateY(-4px)"
+                  }}
+                >
+                  <VStack spacing={4} align="center">
+                    <Text fontSize="lg" fontWeight="semibold" color={headingColor} textAlign="center">
+                      Breakdown
+                    </Text>
+                    <VStack spacing={2} align="stretch" w="full">
+                      <HStack justify="space-between">
+                        <Text fontSize="sm" color="gray.600">Regular Products:</Text>
+                        <VStack spacing={0} align="end">
+                          <Text fontSize="sm" fontWeight="medium" color="orange.600">
+                            Bought: ₹{dailyTradingStats.regularProductBought?.toLocaleString() || '0'}
+                          </Text>
+                          <Text fontSize="sm" fontWeight="medium" color="green.600">
+                            Sold: ₹{dailyTradingStats.regularProductSold?.toLocaleString() || '0'}
+                          </Text>
+                        </VStack>
+                      </HStack>
+                      <HStack justify="space-between">
+                        <Text fontSize="sm" color="gray.600">Wild Products:</Text>
+                        <VStack spacing={0} align="end">
+                          <Text fontSize="sm" fontWeight="medium" color="orange.600">
+                            Bought: ₹{dailyTradingStats.wildProductBought?.toLocaleString() || '0'}
+                          </Text>
+                          <Text fontSize="sm" fontWeight="medium" color="green.600">
+                            Sold: ₹{dailyTradingStats.wildProductSold?.toLocaleString() || '0'}
+                          </Text>
+                        </VStack>
+                      </HStack>
+                    </VStack>
+                  </VStack>
+                </Box>
+              </SimpleGrid>
+            )}
           </VStack>
 
           {/* Second Section - Tools & Management */}

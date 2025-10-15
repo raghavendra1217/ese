@@ -38,6 +38,7 @@ router.get('/vendors/today/paginated', protect, authorize('admin', 'coordinator'
 // =======================================================
 router.get('/stats/dashboard', protect, authorize('admin', 'coordinator'), adminController.getAdminDashboardStats);
 router.get('/stats/wallet', protect, authorize('admin', 'coordinator'), adminController.getWalletStats);
+router.get('/stats/daily-trading', protect, authorize('admin', 'coordinator'), adminController.getDailyTradingStats);
 
 
 // =======================================================

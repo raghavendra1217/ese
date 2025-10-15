@@ -74,14 +74,14 @@ const createUpiTrade = async (req, res) => {
             INSERT INTO trading (
                 trade_id, vendor_id, product_id, no_of_stock_bought, price_per_slot, 
                 total_amount_paid, is_approved, transaction_id, payment_url,
-                referred_id, percentage, is_claimed
+                referred_id, percentage, is_claimed, selling_days
             )
-            VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10, FALSE)`;
+            VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10, FALSE, $11)`;
             
         await client.query(insertQuery, [
             tradeId, vendorId, productId, quantity, product.price_per_slot, 
             totalAmount, transactionId, paymentScreenshotUrl,
-            referrerId, commissionPercentage
+            referrerId, commissionPercentage, product.selling_days
         ]);
         
         await client.query('COMMIT');
@@ -123,7 +123,7 @@ const executeWalletTrade = async (req, res) => {
         }
         // --- END OF NEW LOGIC ---
 
-        const productRes = await client.query('SELECT paper_type, price_per_slot, available_stock, original_stock FROM product WHERE product_id = $1 FOR UPDATE', [productId]);
+        const productRes = await client.query('SELECT paper_type, price_per_slot, available_stock, original_stock, selling_days FROM product WHERE product_id = $1 FOR UPDATE', [productId]);
         if (productRes.rows.length === 0) throw new Error('Product not found.');
         const product = productRes.rows[0];
         if (product.available_stock < quantity) throw new Error('Not enough stock available.');
@@ -505,13 +505,13 @@ const sellProduct = async (req, res) => {
               END AS selling_price,
               CASE 
                   WHEN $1 LIKE 'WP_%' THEN wp.selling_date_count
-                  ELSE 7
+                  ELSE COALESCE(t.selling_days, p.selling_days, 7)
               END AS selling_date_count
-       FROM product p
-       FULL OUTER JOIN wild_products wp ON $1 = wp.wild_product_id AND $1 LIKE 'WP_%'
-       WHERE ($1 LIKE 'WP_%' AND wp.wild_product_id IS NOT NULL) 
-          OR ($1 NOT LIKE 'WP_%' AND p.product_id = $1)`,
-      [trade.product_id]
+       FROM trading t
+       LEFT JOIN product p ON t.product_id = p.product_id AND $1 NOT LIKE 'WP_%'
+       LEFT JOIN wild_products wp ON t.product_id = wp.wild_product_id AND $1 LIKE 'WP_%'
+       WHERE t.trade_id = $2 AND t.vendor_id = $3`,
+      [trade.product_id, trade_id, vendorId]
     );
     
     const productInfo = productInfoRes.rows[0];
@@ -539,11 +539,12 @@ const sellProduct = async (req, res) => {
       finalSellPrice = selectedSellingPrice; // Use selected market price for potential profit/loss
     }
     
-    // Calculate daily bonus from day 9 onwards (capped at ₹2 per stock max)
-    if (daysSinceBought >= 9) {
-      const daysBeyondDay8 = Math.floor(daysSinceBought) - 8; // Days beyond day 8
+    // Calculate daily bonus from (selling_days + 2) onwards (capped at ₹2 per stock max)
+    const bonusStartDay = sellingDateCount + 2; // Bonus starts from selling_days + 2
+    if (daysSinceBought >= bonusStartDay) {
+      const daysBeyondBonusStart = Math.floor(daysSinceBought) - (bonusStartDay - 1); // Days beyond bonus start day
       // Cap bonus at ₹2 per stock maximum
-      const cappedBonusDays = Math.min(daysBeyondDay8, 2); // Maximum 2 days of bonus
+      const cappedBonusDays = Math.min(daysBeyondBonusStart, 2); // Maximum 2 days of bonus
       bonusAmount = cappedBonusDays * parseFloat(trade.no_of_stock_bought); // ₹1 per day per stock
       finalSellPrice += bonusAmount / parseFloat(trade.no_of_stock_bought); // Add bonus to per-unit price
     }
@@ -556,11 +557,12 @@ const sellProduct = async (req, res) => {
             selling_date_count: productInfo.selling_date_count,
             daysSinceBought: daysSinceBought,
             sellingDateCount: sellingDateCount,
+            bonusStartDay: bonusStartDay,
             purchasePrice: trade.price_per_slot,
             currentSellingPrice: currentSellingPrice,
             finalSellPrice: sellPrice,
             bonusAmount: bonusAmount,
-            cappedBonusDays: Math.min(Math.floor(daysSinceBought) - 8, 2),
+            cappedBonusDays: Math.min(Math.floor(daysSinceBought) - (bonusStartDay - 1), 2),
             isWithinSellingPeriod: daysSinceBought < sellingDateCount
         });
     }
@@ -685,16 +687,16 @@ const getActiveTrades = async (req, res) => {
                     ELSE p.selling_price_3
                 END AS current_selling_price_3,
 
-                -- 1. Calculate lock status: 7 days for regular products, selling_date_count for wild products
+                -- 1. Calculate lock status: use trading.selling_days for regular products, wp.selling_date_count for wild products
                 CASE 
                     WHEN t.product_id LIKE 'WP_%' THEN (NOW() < (t.date + COALESCE(wp.selling_date_count, 30) * INTERVAL '1 day'))
-                    ELSE (NOW() < (t.date + INTERVAL '7 days'))
+                    ELSE (NOW() < (t.date + COALESCE(t.selling_days, p.selling_days, 7) * INTERVAL '1 day'))
                 END AS is_locked,
 
-                -- 2. Calculate unlock timestamp: 7 days for regular products, selling_date_count for wild products
+                -- 2. Calculate unlock timestamp: use trading.selling_days for regular products, wp.selling_date_count for wild products
                 CASE 
                     WHEN t.product_id LIKE 'WP_%' THEN EXTRACT(EPOCH FROM (t.date + COALESCE(wp.selling_date_count, 30) * INTERVAL '1 day')) * 1000
-                    ELSE EXTRACT(EPOCH FROM (t.date + INTERVAL '7 days')) * 1000
+                    ELSE EXTRACT(EPOCH FROM (t.date + COALESCE(t.selling_days, p.selling_days, 7) * INTERVAL '1 day')) * 1000
                 END AS unlock_timestamp_utc
 
             FROM 
@@ -776,7 +778,7 @@ const getSoldTrades = async (req, res) => {
         t.date::date AS purchase_date,
         CASE
             WHEN t.product_id LIKE 'WP_%' THEN COALESCE(t.sold_on::date, (t.date::date + wp.selling_date_count * INTERVAL '1 day')::date)
-            ELSE COALESCE(t.sold_on::date, (t.date::date + INTERVAL '7 days')::date)
+            ELSE COALESCE(t.sold_on::date, (t.date::date + COALESCE(t.selling_days, p.selling_days, 7) * INTERVAL '1 day')::date)
         END AS sale_date,
         CASE 
             WHEN t.product_id LIKE 'WP_%' THEN wp.product_name

@@ -316,11 +316,10 @@ exports.uploadVendorProfileImage = async (req, res) => {
   const vendorId = req.user.user_id;
   const client = await db.connect();
 
-  if (!req.file) {
-    return res.status(400).json({ message: 'No image file provided.' });
-  }
-
   try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image file provided.' });
+    }
     await client.query('BEGIN');
 
     // Step 1: Get the user's current photo URL to decide our strategy.
@@ -385,7 +384,11 @@ exports.uploadVendorProfileImage = async (req, res) => {
     res.json({ imageUrl });
 
   } catch (err) {
-    await client.query('ROLLBACK');
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackErr) {
+      console.error('❌ Rollback failed:', rollbackErr);
+    }
     console.error(`❌ Error uploading vendor profile image for ${vendorId}:`, err);
     res.status(500).json({ message: 'Image upload failed', error: err.message });
   } finally {

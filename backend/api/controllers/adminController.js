@@ -1458,6 +1458,101 @@ const getWalletStats = async (req, res) => {
     }
 };
 
+// Get daily trading statistics (total bought and sold amounts by date)
+const getDailyTradingStats = async (req, res) => {
+    try {
+        const { date } = req.query;
+        
+        if (!date) {
+            return res.status(400).json({ 
+                message: 'Date parameter is required (YYYY-MM-DD format).' 
+            });
+        }
+
+        // Validate date format
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(date)) {
+            return res.status(400).json({ 
+                message: 'Invalid date format. Please use YYYY-MM-DD format.' 
+            });
+        }
+
+        // Query for total amount bought on the specified date
+        const totalBoughtQuery = `
+            SELECT COALESCE(SUM(total_amount_paid), 0) as total_bought
+            FROM trading 
+            WHERE DATE(date) = $1 AND is_approved = 'approved'
+        `;
+
+        // Query for total amount sold on the specified date
+        const totalSoldQuery = `
+            SELECT COALESCE(SUM(sold_at * no_of_stock_bought), 0) as total_sold
+            FROM trading 
+            WHERE DATE(sold_on) = $1 AND is_sold = TRUE
+        `;
+
+        // Query for total wild product purchases on the specified date
+        const totalWildProductBoughtQuery = `
+            SELECT COALESCE(SUM(total_amount_paid), 0) as total_wild_bought
+            FROM trading 
+            WHERE DATE(date) = $1 AND is_approved = 'approved' AND product_id LIKE 'WP_%'
+        `;
+
+        // Query for total wild product sales on the specified date
+        const totalWildProductSoldQuery = `
+            SELECT COALESCE(SUM(sold_at * no_of_stock_bought), 0) as total_wild_sold
+            FROM trading 
+            WHERE DATE(sold_on) = $1 AND is_sold = TRUE AND product_id LIKE 'WP_%'
+        `;
+
+        const [
+            totalBoughtResult,
+            totalSoldResult,
+            totalWildProductBoughtResult,
+            totalWildProductSoldResult
+        ] = await Promise.all([
+            db.query(totalBoughtQuery, [date]),
+            db.query(totalSoldQuery, [date]),
+            db.query(totalWildProductBoughtQuery, [date]),
+            db.query(totalWildProductSoldQuery, [date])
+        ]);
+
+        const totalBought = parseFloat(totalBoughtResult.rows[0].total_bought) || 0;
+        const totalSold = parseFloat(totalSoldResult.rows[0].total_sold) || 0;
+        const totalWildProductBought = parseFloat(totalWildProductBoughtResult.rows[0].total_wild_bought) || 0;
+        const totalWildProductSold = parseFloat(totalWildProductSoldResult.rows[0].total_wild_sold) || 0;
+
+        // Calculate regular product amounts (excluding wild products)
+        const regularProductBought = totalBought - totalWildProductBought;
+        const regularProductSold = totalSold - totalWildProductSold;
+
+        res.status(200).json({
+            date,
+            totalBought,
+            totalSold,
+            regularProductBought,
+            regularProductSold,
+            wildProductBought: totalWildProductBought,
+            wildProductSold: totalWildProductSold,
+            netAmount: totalSold - totalBought // Positive means more sold than bought
+        });
+
+    } catch (error) {
+        console.error('❌ Error fetching daily trading statistics:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch daily trading statistics.',
+            date: req.query.date,
+            totalBought: 0,
+            totalSold: 0,
+            regularProductBought: 0,
+            regularProductSold: 0,
+            wildProductBought: 0,
+            wildProductSold: 0,
+            netAmount: 0
+        });
+    }
+};
+
 // Get referral tree for admin (for any vendor)
 const getAdminReferralTree = async (req, res) => {
     const { vendorId } = req.params;
@@ -2279,6 +2374,7 @@ module.exports = {
     getVendorsLast8DaysPaginated,
     getTodaysVendorsPaginated,
     getWalletStats,
+    getDailyTradingStats,
     getPendingInvestors,
     approveInvestor,
     rejectInvestor,
