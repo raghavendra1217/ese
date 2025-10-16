@@ -311,12 +311,10 @@ import { EditIcon, DeleteIcon, AddIcon, HamburgerIcon } from '@chakra-ui/icons';
 import { useAuth } from '../../AppContext';
 import AdminNavBar from '../../components/layout/AdminNavBar';
 
-// No changes needed for the ProductModal component. It remains the same.
 const ProductModal = ({ isOpen, onClose, onSave, product, isEditing }) => {
-  // ... (Your existing ProductModal code)
   const initialFormState = {
     paper_type: '', size: '', gsm: '', price_per_slot: '', selling_price: '',
-    available_stock: '', selling_days: ''
+    available_stock: '', selling_days: '', selling_price_2: '', selling_price_3: ''
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -326,21 +324,49 @@ const ProductModal = ({ isOpen, onClose, onSave, product, isEditing }) => {
 
   useEffect(() => {
     if (isOpen) {
-      if (isEditing && product) setFormData({
-        ...product,
-        selling_days: product.selling_days || ''
-      });
-      else setFormData(initialFormState);
+      if (isEditing && product) {
+        setFormData({
+          paper_type: product.paper_type || '',
+          size: product.size || '',
+          gsm: product.gsm || '',
+          price_per_slot: product.price_per_slot || '',
+          selling_price: product.selling_price || '',
+          selling_price_2: product.selling_price_2 || '',
+          selling_price_3: product.selling_price_3 || '',
+          available_stock: product.available_stock || '',
+          selling_days: product.selling_days || ''
+        });
+      } else {
+        setFormData(initialFormState);
+      }
       setImageFile(null);
+      setSellingDaysError('');
     }
   }, [isOpen, product, isEditing]);
 
-  const handleChange = (e) => { setFormData({ ...formData, [e.target.name]: e.target.value }); };
-  const handleNumberChange = (value, name) => { setFormData({ ...formData, [name]: value }); };
-  const handleFileChange = (e) => { if (e.target.files && e.target.files[0]) setImageFile(e.target.files[0]); };
+  const handleChange = (e) => { 
+    setFormData({ ...formData, [e.target.name]: e.target.value }); 
+  };
+  
+  const handleNumberChange = (value, name) => { 
+    setFormData({ ...formData, [name]: value }); 
+  };
+  
+  const handleFileChange = (e) => { 
+    if (e.target.files && e.target.files[0]) setImageFile(e.target.files[0]); 
+  };
 
   const handleSubmit = async (e) => { 
     e.preventDefault(); 
+    
+    // Clear any previous errors
+    setSellingDaysError('');
+    
+    // Validate required fields
+    if (!formData.price_per_slot || !formData.selling_price || !formData.available_stock) {
+      console.error('Missing required fields:', formData);
+      return;
+    }
     
     // Validate selling days before submission (only if not empty)
     if (formData.selling_days && formData.selling_days.trim() !== '') {
@@ -351,9 +377,17 @@ const ProductModal = ({ isOpen, onClose, onSave, product, isEditing }) => {
       }
     }
     
+    console.log('Submitting form data:', formData);
+    console.log('Image file:', imageFile);
+    
     setIsLoading(true); 
-    await onSave(formData, imageFile); 
-    setIsLoading(false); 
+    try {
+      await onSave(formData, imageFile); 
+    } catch (error) {
+      console.error('Error saving product:', error);
+    } finally {
+      setIsLoading(false); 
+    }
   };
 
   return (
@@ -449,8 +483,11 @@ const ProductModal = ({ isOpen, onClose, onSave, product, isEditing }) => {
 
 
 const ManageProductsPage = ({ url }) => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const toast = useToast();
+  
+  // Debug authentication
+  console.log('ManageProductsPage - Auth Debug:', { token: token ? 'Present' : 'Missing', user });
   const [products, setProducts] = useState([]);
   const [currentProduct, setCurrentProduct] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -461,23 +498,40 @@ const ManageProductsPage = ({ url }) => {
   const cancelRef = useRef();
 
   const fetchProducts = useCallback(async () => {
-    // ... (Your existing fetchProducts logic, no changes needed)
-        if (!token) return;
+    if (!token) {
+      console.log('No token available for fetchProducts');
+      return;
+    }
+    
+    console.log('Fetching products with token:', token.substring(0, 20) + '...');
     setIsLoading(true);
     try {
-      const response = await fetch(`${url}/api/products`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const response = await fetch(`${url}/api/products`, { 
+        headers: { 'Authorization': `Bearer ${token}` } 
+      });
+      
+      console.log('Fetch products response status:', response.status);
+      
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Failed to fetch products');
+      console.log('Fetch products response data:', data);
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to fetch products');
+      }
       setProducts(data);
     } catch (error) {
+      console.error('Error fetching products:', error);
       toast({ title: 'Error fetching products', description: error.message, status: 'error', isClosable: true });
-    } finally { setIsLoading(false); }
+    } finally { 
+      setIsLoading(false); 
+    }
   }, [token, toast, url]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
   const handleSave = async (formData, imageFile) => {
-    // ... (Your existing handleSave logic, no changes needed)
+    console.log('handleSave called with:', { formData, imageFile, isEditing, currentProduct });
+    
     const preparedData = {
       ...formData,
       gsm: formData.gsm === '' || formData.gsm === null ? null : Number(formData.gsm),
@@ -489,31 +543,60 @@ const ManageProductsPage = ({ url }) => {
       selling_days: formData.selling_days === '' || formData.selling_days === null || formData.selling_days === undefined ? 7 : Number(formData.selling_days),
     };
 
+    console.log('Prepared data:', preparedData);
+
     const apiUrl = isEditing ? `${url}/api/products/${currentProduct.product_id}` : `${url}/api/products`;
     const method = isEditing ? 'PUT' : 'POST';
     let body;
     let headers = { 'Authorization': `Bearer ${token}` };
 
+    console.log('API URL:', apiUrl);
+    console.log('Method:', method);
+
     try {
       if (isEditing) {
         body = JSON.stringify(preparedData);
         headers['Content-Type'] = 'application/json';
+        console.log('Sending JSON body:', body);
       } else {
         body = new FormData();
         for (const key in preparedData) {
-          if (preparedData[key] !== null && preparedData[key] !== undefined) body.append(key, preparedData[key]);
+          if (preparedData[key] !== null && preparedData[key] !== undefined) {
+            body.append(key, preparedData[key]);
+          }
         }
         if (imageFile) body.append('productImage', imageFile);
+        console.log('Sending FormData');
       }
 
+      console.log('Making request with headers:', headers);
       const response = await fetch(apiUrl, { method, headers, body });
+      console.log('Response status:', response.status);
+      
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Failed to save product');
-      toast({ title: `Product ${isEditing ? 'updated' : 'added'}`, status: 'success', isClosable: true });
+      console.log('Response data:', data);
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to save product');
+      }
+      
+      toast({ 
+        title: `Product ${isEditing ? 'updated' : 'added'} successfully`, 
+        status: 'success', 
+        isClosable: true 
+      });
+      
       onClose();
       fetchProducts();
     } catch (error) {
-      toast({ title: 'Error saving product', description: error.message, status: 'error', isClosable: true });
+      console.error('Error saving product:', error);
+      toast({ 
+        title: 'Error saving product', 
+        description: error.message, 
+        status: 'error', 
+        isClosable: true 
+      });
+      throw error; // Re-throw to handle in the modal
     }
   };
 
