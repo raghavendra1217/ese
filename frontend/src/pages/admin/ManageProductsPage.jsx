@@ -334,7 +334,7 @@ const ProductModal = ({ isOpen, onClose, onSave, product, isEditing }) => {
           selling_price_2: product.selling_price_2 || '',
           selling_price_3: product.selling_price_3 || '',
           available_stock: product.available_stock || '',
-          selling_days: product.selling_days || ''
+          selling_days: product.selling_days ? String(product.selling_days) : ''
         });
       } else {
         setFormData(initialFormState);
@@ -369,7 +369,7 @@ const ProductModal = ({ isOpen, onClose, onSave, product, isEditing }) => {
     }
     
     // Validate selling days before submission (only if not empty)
-    if (formData.selling_days && formData.selling_days.trim() !== '') {
+    if (formData.selling_days && String(formData.selling_days).trim() !== '') {
       const days = Number(formData.selling_days);
       if (days < 1 || days > 365 || isNaN(days) || days % 1 !== 0) {
         setSellingDaysError('Please enter a valid number of days (1-365) or leave empty for default');
@@ -459,9 +459,9 @@ const ProductModal = ({ isOpen, onClose, onSave, product, isEditing }) => {
             <FormHelperText color="gray.600">
               <Text fontSize="sm">
                 <Text as="span" fontWeight="semibold">Selling Rules (default: 7 days):</Text>
-                <br />• Days 1-{formData.selling_days || 7}: Sell at purchase price (no profit/loss)
-                <br />• Days {(formData.selling_days || 7) + 1}+: Sell at market price (potential profit/loss)
-                <br />• Days {(formData.selling_days || 7) + 2}+: Market price + ₹1/day bonus (max ₹2 bonus)
+                <br />• Days 1-{Number(formData.selling_days) || 7}: Sell at purchase price (no profit/loss)
+                <br />• Days {(Number(formData.selling_days) || 7) + 1}+: Sell at market price (potential profit/loss)
+                <br />• Days {(Number(formData.selling_days) || 7) + 2}+: Market price + ₹1/day bonus (max ₹2 bonus)
                 <br />• Leave empty to use default (7 days)
               </Text>
             </FormHelperText>
