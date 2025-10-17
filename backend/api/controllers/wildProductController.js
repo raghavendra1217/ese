@@ -89,7 +89,7 @@ exports.deleteWildProduct = async (req, res) => {
         await client.query('BEGIN');
 
         // Check if the wild product has associated sales records.
-        const tradeCheck = await client.query('SELECT 1 FROM wild_product_trading WHERE wild_product_id = $1 LIMIT 1', [wildProductId]);
+        const tradeCheck = await client.query('SELECT 1 FROM trading WHERE product_id = $1 LIMIT 1', [wildProductId]);
         if (tradeCheck.rows.length > 0) {
             await client.query('ROLLBACK');
             return res.status(409).json({ message: 'Cannot delete wild product because it has associated sales records. Consider setting its stock to zero instead.' });

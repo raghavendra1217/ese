@@ -98,7 +98,7 @@ exports.purchaseWildProduct = async (req, res) => {
             }
         }
 
-        // Create trading record in the existing trading table
+        // Create trading record in the regular trading table (same as regular products)
         const tradeId = uuidv4();
         const insertQuery = `
             INSERT INTO trading (
@@ -112,18 +112,8 @@ exports.purchaseWildProduct = async (req, res) => {
             totalAmount, referrerId, commissionPercentage
         ]);
 
-        // Update wallet's total_spent field for claims system
-        const purchaseRecord = {
-            date_of_purchase: new Date().toISOString(),
-            amount_spent: totalAmount,
-            product_type: 'wild_product',
-            trade_id: tradeId
-        };
-        
-        await client.query(
-            `UPDATE wallet SET total_spent = COALESCE(total_spent, '[]'::jsonb) || $1::jsonb WHERE id = $2`,
-            [JSON.stringify([purchaseRecord]), vendorId]
-        );
+        // Note: total_spent tracking removed as it's not part of the wallet table schema
+        // Purchase tracking is handled through the transaction table instead
 
         // Create transaction record
         const description = `Purchase of ${quantityNum} units of ${product.product_name} (Wild Product Trade ID: ${tradeId})`;
@@ -183,10 +173,7 @@ exports.getWildProductTradingHistory = async (req, res) => {
                 t.price_per_slot as final_price,
                 t.total_amount_paid as total_amount,
                 t.is_approved,
-                t.is_sold,
                 t.date as purchase_date,
-                t.sold_at as sale_price,
-                t.sold_on as sale_date,
                 wp.product_name,
                 wp.product_image_url,
                 wp.selling_date_count
@@ -219,12 +206,12 @@ exports.getAllWildProductTrades = async (req, res) => {
                 t.price_per_slot as final_price,
                 t.total_amount_paid as total_amount,
                 t.is_approved,
-                t.created_at
+                t.date as created_at
             FROM trading t
             JOIN vendors v ON t.vendor_id = v.id
             JOIN wild_products wp ON t.product_id = wp.wild_product_id
             WHERE t.product_id LIKE 'WP_%'
-            ORDER BY t.created_at DESC
+            ORDER BY t.date DESC
         `;
         const { rows } = await db.query(query);
         res.status(200).json(rows);

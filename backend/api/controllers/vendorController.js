@@ -514,34 +514,8 @@ const getApplicablePercentage = (purchaseDate, percentages) => {
     return validPercentages.length > 0 ? parseFloat(validPercentages[0].percentage) : 0;
 };
 
-/**
- * Helper function to calculate the total claimable amount for a single referral.
- * @param {object} vendor - The vendor object containing total_spent, percentage, and total_claims.
- * @returns {number} The total calculated claimable amount.
- */
-const calculateClaimableAmount = (vendor) => {
-    const { total_spent, percentage, total_claims } = vendor;
-
-    if (!total_spent || total_spent.length === 0) {
-        return 0;
-    }
-
-    // Create a set of already claimed purchase dates for efficient lookup
-    const claimedDates = new Set((total_claims || []).map(c => new Date(c.claimed_purchase_date).toISOString()));
-
-    let totalClaimable = 0;
-
-    for (const purchase of total_spent) {
-        const purchaseDate = new Date(purchase.date_of_purchase);
-        // If this purchase date has not been claimed yet...
-        if (!claimedDates.has(purchaseDate.toISOString())) {
-            const applicable_percentage = getApplicablePercentage(purchaseDate, percentage);
-            const earnings = parseFloat(purchase.amount_spent) * (applicable_percentage / 100);
-            totalClaimable += earnings;
-        }
-    }
-    return totalClaimable;
-};
+// Note: calculateClaimableAmount function removed as it referenced non-existent wallet columns
+// Purchase and claim tracking is now handled through the transaction table
 
 
 /**
@@ -757,51 +731,72 @@ exports.claimReferralEarnings = async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // --- THE FIX IS HERE: Re-fetch and re-calculate from the 'wallet' table ---
+        // Get referral's wallet percentage and check if wallet exists
         const walletDataRes = await client.query(
-            `SELECT total_spent, percentage, total_claims FROM wallet WHERE id = $1 FOR UPDATE`, [referralId]
+            `SELECT percentage FROM wallet WHERE id = $1 FOR UPDATE`, [referralId]
         );
         if (walletDataRes.rowCount === 0) throw new Error("Referred user's wallet not found.");
 
-        const claimableAmount = calculateClaimableAmount(walletDataRes.rows[0]);
-        
-        if (claimableAmount <= 0) {
+        const percentage = walletDataRes.rows[0].percentage;
+        if (!percentage || percentage <= 0) {
+            return res.status(400).json({ message: 'No commission percentage set for this referral.' });
+        }
+
+        // Calculate claimable amount from transaction table purchases
+        const purchasesRes = await client.query(
+            `SELECT amount, created_at FROM transaction 
+             WHERE user_id = $1 AND transaction_type = 'purchase' AND status = 'approved'
+             ORDER BY created_at ASC`, [referralId]
+        );
+
+        const claimedRes = await client.query(
+            `SELECT amount, created_at FROM transaction 
+             WHERE user_id = $2 AND transaction_type = 'referral_earning' AND status = 'approved'
+             AND description LIKE '%Referral earning for purchase%'`, [referralId, vendorId]
+        );
+
+        // Calculate total claimable amount
+        let totalClaimable = 0;
+        for (const purchase of purchasesRes.rows) {
+            const purchaseAmount = parseFloat(purchase.amount);
+            const applicablePercentage = getApplicablePercentage(new Date(purchase.created_at), percentage);
+            const earnings = purchaseAmount * (applicablePercentage / 100);
+            totalClaimable += earnings;
+        }
+
+        // Subtract already claimed amounts
+        for (const claim of claimedRes.rows) {
+            totalClaimable -= parseFloat(claim.amount);
+        }
+
+        if (totalClaimable <= 0) {
             return res.status(400).json({ message: 'No earnings available to claim for this referral.' });
         }
 
-        const claimedDates = new Set((walletDataRes.rows[0].total_claims || []).map(c => new Date(c.claimed_purchase_date).toISOString()));
-        const newClaims = [];
-        (walletDataRes.rows[0].total_spent || []).forEach(purchase => {
-            if (!claimedDates.has(new Date(purchase.date_of_purchase).toISOString())) {
-                newClaims.push({
-                    claimed_date: new Date().toISOString(),
-                    claim_amount: parseFloat(purchase.amount_spent) * (getApplicablePercentage(new Date(purchase.date_of_purchase), walletDataRes.rows[0].percentage) / 100),
-                    claimed_purchase_date: new Date(purchase.date_of_purchase).toISOString()
-                });
-            }
-        });
-        
-        // --- THE FIX IS HERE: Add new claims to the 'wallet' table ---
-        await client.query(
-            `UPDATE wallet SET total_claims = COALESCE(total_claims, '[]'::jsonb) || $1::jsonb WHERE id = $2`,
-            [JSON.stringify(newClaims), referralId]
-        );
-
-        // The rest of the logic is correct as it already targets the wallet and transaction tables.
-        const updatedWallet = await client.query(
-            `UPDATE wallet SET digital_money = digital_money + $1 WHERE id = $2 RETURNING digital_money`,
-            [claimableAmount, vendorId]
-        );
-        const balanceAfter = updatedWallet.rows[0].digital_money;
-
+        // Create claim transaction
+        const claimDescription = `Referral earning for purchases by ${referralId} (Commission: ${percentage}%)`;
         await client.query(
             `INSERT INTO transaction (user_id, transaction_type, amount, status, description, balance_after_transaction)
              VALUES ($1, 'referral_earning', $2, 'approved', $3, $4)`,
-            [vendorId, claimableAmount, `Claimed earnings from referral ${referralId}`, balanceAfter]
+            [vendorId, totalClaimable, claimDescription, 0] // balance_after_transaction will be updated by wallet controller
+        );
+
+        // Update wallet balance with claimed amount
+        const updatedWallet = await client.query(
+            `UPDATE wallet SET digital_money = digital_money + $1 WHERE id = $2 RETURNING digital_money`,
+            [totalClaimable, vendorId]
+        );
+        const balanceAfter = updatedWallet.rows[0].digital_money;
+
+        // Update the transaction record with the correct balance
+        await client.query(
+            `UPDATE transaction SET balance_after_transaction = $1 
+             WHERE user_id = $2 AND transaction_type = 'referral_earning' AND description = $3`,
+            [balanceAfter, vendorId, claimDescription]
         );
         
         await client.query('COMMIT');
-        res.status(200).json({ message: `Successfully claimed ${claimableAmount.toFixed(2)} from referral.` });
+        res.status(200).json({ message: `Successfully claimed ${totalClaimable.toFixed(2)} from referral.` });
 
     } catch (error) {
         await client.query('ROLLBACK');

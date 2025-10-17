@@ -281,18 +281,8 @@ const executeWalletTrade = async (req, res) => {
             [vendorId, totalAmount, description, balanceAfterTransaction]
         );
 
-        // Update wallet's total_spent field for claims system
-        const purchaseRecord = {
-            date_of_purchase: new Date().toISOString(),
-            amount_spent: totalAmount,
-            product_type: 'regular_product',
-            trade_id: tradeId
-        };
-        
-        await client.query(
-            `UPDATE wallet SET total_spent = COALESCE(total_spent, '[]'::jsonb) || $1::jsonb WHERE id = $2`,
-            [JSON.stringify([purchaseRecord]), vendorId]
-        );
+        // Note: total_spent tracking removed as it's not part of the wallet table schema
+        // Purchase tracking is handled through the transaction table instead
 
         await client.query('COMMIT');
         
@@ -729,20 +719,19 @@ const getActiveTrades = async (req, res) => {
 
         const result = await db.query(query, [vendorId]);
 
-        // Debug logging for wild products
+        // Debug logging for all products (regular and wild)
         console.log('🔍 Active trades fetched:', result.rows.length);
         result.rows.forEach((trade, index) => {
-            if (trade.product_id && trade.product_id.startsWith('WP_')) {
-                console.log(`🔍 Wild Product ${index + 1}:`, {
-                    product_id: trade.product_id,
-                    paper_type: trade.paper_type,
-                    is_locked: trade.is_locked,
-                    unlock_timestamp_utc: trade.unlock_timestamp_utc,
-                    purchase_date: trade.purchase_date,
-                    current_time: new Date().toISOString(),
-                    unlock_time: new Date(parseInt(trade.unlock_timestamp_utc)).toISOString()
-                });
-            }
+            const productType = trade.product_id && trade.product_id.startsWith('WP_') ? 'Wild Product' : 'Regular Product';
+            console.log(`🔍 ${productType} ${index + 1}:`, {
+                product_id: trade.product_id,
+                paper_type: trade.paper_type,
+                is_locked: trade.is_locked,
+                unlock_timestamp_utc: trade.unlock_timestamp_utc,
+                purchase_date: trade.purchase_date,
+                current_time: new Date().toISOString(),
+                unlock_time: new Date(parseInt(trade.unlock_timestamp_utc)).toISOString()
+            });
         });
 
         // The response will now automatically include the new 'is_locked' 
