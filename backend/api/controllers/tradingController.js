@@ -562,8 +562,8 @@ const sellProduct = async (req, res) => {
             sellingDateCount: sellingDateCount,
             bonusStartDay: bonusStartDay,
             purchasePrice: trade.price_per_slot,
-            currentSellingPrice: currentSellingPrice,
-            finalSellPrice: sellPrice,
+            currentSellingPrice: selectedSellingPrice,
+            finalSellPrice: finalSellPrice,
             bonusAmount: bonusAmount,
             cappedBonusDays: Math.min(Math.floor(daysSinceBought) - (bonusStartDay - 1), 2),
             isWithinSellingPeriod: daysSinceBought < sellingDateCount
