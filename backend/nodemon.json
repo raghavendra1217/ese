@@ -1,0 +1,17 @@
+{
+  "watch": [
+    "server.js",
+    "api/**/*.js"
+  ],
+  "ignore": [
+    "temp/**/*",
+    "uploads/**/*",
+    "pdf_generator/**/*.pdf",
+    "pdf_generator/**/*.json",
+    "node_modules/**/*",
+    "public/**/*",
+    "*.log"
+  ],
+  "ext": "js,json",
+  "delay": 1000
+}
