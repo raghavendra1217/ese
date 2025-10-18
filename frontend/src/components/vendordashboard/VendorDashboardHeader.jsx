@@ -22,11 +22,13 @@ import {
     Grid,
     GridItem,
     Icon, // Import Icon component
+    Image,
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
-import { FaWallet, FaUserPlus, FaWhatsapp } from 'react-icons/fa';
+import { FaWallet, FaUserPlus, FaWhatsapp, FaShoppingCart } from 'react-icons/fa';
 import { useAuth } from '../../AppContext';
 import axios from 'axios';
+import ProductRequestModal from '../vendor/ProductRequestModal';
 
 // AddMemberModal component (no changes)
 const AddMemberModal = ({ isOpen, onClose, referralLink, onRegisterAndLogout }) => {
@@ -75,6 +77,7 @@ const VendorDashboardHeader = ({ url }) => {
     const toast = useToast();
     const navigate = useNavigate();
     const { isOpen, onOpen, onClose } = useDisclosure();
+    const { isOpen: isProductRequestOpen, onOpen: onProductRequestOpen, onClose: onProductRequestClose } = useDisclosure();
     
     // Debug logging for modal state
     useEffect(() => {
@@ -86,6 +89,7 @@ const VendorDashboardHeader = ({ url }) => {
     const secondaryTextColor = useColorModeValue('gray.500', 'gray.400');
     const mobileButtonBg = useColorModeValue('gray.100', 'gray.700');
     const [photoUrl, setPhotoUrl] = useState(null);
+    const [currentBalance, setCurrentBalance] = useState(0);
 
     useEffect(() => {
         const fetchPhotoUrl = async () => {
@@ -100,6 +104,26 @@ const VendorDashboardHeader = ({ url }) => {
             }
         };
         fetchPhotoUrl();
+    }, [token, url]);
+
+    // Fetch current wallet balance
+    const fetchCurrentBalance = async () => {
+        if (!token) return;
+        try {
+            const response = await fetch(`${url}/api/wallet`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setCurrentBalance(parseFloat(data.digital_money || 0));
+            }
+        } catch (error) {
+            console.error('Failed to fetch wallet balance:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchCurrentBalance();
     }, [token, url]);
 
     const referralLink = user?.id ? `https://esepapertrading.onrender.com/register?ref=${user.id}` : '';
@@ -207,6 +231,12 @@ const VendorDashboardHeader = ({ url }) => {
                                 <Text fontSize="xs">Chat</Text>
                             </VStack>
                         </Button>
+                         <Button size="md" variant="ghost" colorScheme="blue" onClick={onProductRequestOpen} flex={1} h="auto" py={2}>
+                             <VStack spacing={1}>
+                                 <Icon as={FaShoppingCart} />
+                                 <Text fontSize="xs">Products</Text>
+                             </VStack>
+                         </Button>
                     </HStack>
                 </GridItem>
             </Grid>
@@ -218,6 +248,16 @@ const VendorDashboardHeader = ({ url }) => {
                 onRegisterAndLogout={handleRegisterAndLogout}
             />
             
+            <ProductRequestModal
+                isOpen={isProductRequestOpen}
+                onClose={onProductRequestClose}
+                url={url}
+                currentBalance={currentBalance}
+                onRequestSuccess={() => {
+                    fetchCurrentBalance();
+                    onProductRequestClose();
+                }}
+            />
 
         </>
     );

@@ -524,58 +524,122 @@ exports.getInvestorById = async (req, res) => {
  */
 exports.updateInvestor = async (req, res) => {
     const { id } = req.params;
-    const {
-        first_name,
-        mobile_number,
-        pan_card,
-        coordinator_id,
-        co_name,
-        bank_account_number,
-        bank_name,
-        branch_name,
-        ifsc_code,
-        mode_of_payment,
-        plan_type,
-        select_plan,
-        transaction_id,
-        address,
-        investment_date
-    } = req.body;
+    const updateData = req.body;
 
     const client = await db.connect();
     try {
         await client.query('BEGIN');
 
+        // Build dynamic update query based on provided fields
+        const updateFields = [];
+        const updateValues = [];
+        let paramCount = 1;
+
         // Get coordinator name from coordinator_id if provided
-        let coordinator_name = null;
-        if (coordinator_id) {
-            const coordinatorQuery = 'SELECT name FROM coordinator WHERE coordinator_id = $1';
-            const coordinatorResult = await client.query(coordinatorQuery, [coordinator_id]);
-            if (coordinatorResult.rows.length > 0) {
-                coordinator_name = coordinatorResult.rows[0].name;
+        if (updateData.coordinator_id !== undefined) {
+            let coordinator_name = null;
+            if (updateData.coordinator_id) {
+                const coordinatorQuery = 'SELECT name FROM coordinator WHERE coordinator_id = $1';
+                const coordinatorResult = await client.query(coordinatorQuery, [updateData.coordinator_id]);
+                if (coordinatorResult.rows.length > 0) {
+                    coordinator_name = coordinatorResult.rows[0].name;
+                }
             }
+            
+            updateFields.push(`coordinator = $${paramCount}`);
+            updateValues.push(coordinator_name);
+            paramCount++;
+            
+            updateFields.push(`coordinator_id = $${paramCount}`);
+            updateValues.push(updateData.coordinator_id);
+            paramCount++;
+        }
+
+        // Add other fields only if they are provided
+        if (updateData.first_name !== undefined) {
+            updateFields.push(`first_name = $${paramCount}`);
+            updateValues.push(updateData.first_name);
+            paramCount++;
+        }
+        if (updateData.mobile_number !== undefined) {
+            updateFields.push(`mobile_number = $${paramCount}`);
+            updateValues.push(updateData.mobile_number);
+            paramCount++;
+        }
+        if (updateData.pan_card !== undefined) {
+            updateFields.push(`pan_card = $${paramCount}`);
+            updateValues.push(updateData.pan_card);
+            paramCount++;
+        }
+        if (updateData.co_name !== undefined) {
+            updateFields.push(`co_name = $${paramCount}`);
+            updateValues.push(updateData.co_name);
+            paramCount++;
+        }
+        if (updateData.bank_account_number !== undefined) {
+            updateFields.push(`bank_account_number = $${paramCount}`);
+            updateValues.push(updateData.bank_account_number);
+            paramCount++;
+        }
+        if (updateData.bank_name !== undefined) {
+            updateFields.push(`bank_name = $${paramCount}`);
+            updateValues.push(updateData.bank_name);
+            paramCount++;
+        }
+        if (updateData.branch_name !== undefined) {
+            updateFields.push(`branch_name = $${paramCount}`);
+            updateValues.push(updateData.branch_name);
+            paramCount++;
+        }
+        if (updateData.ifsc_code !== undefined) {
+            updateFields.push(`ifsc_code = $${paramCount}`);
+            updateValues.push(updateData.ifsc_code);
+            paramCount++;
+        }
+        if (updateData.mode_of_payment !== undefined) {
+            updateFields.push(`mode_of_payment = $${paramCount}`);
+            updateValues.push(updateData.mode_of_payment);
+            paramCount++;
+        }
+        if (updateData.plan_type !== undefined) {
+            updateFields.push(`plan_type = $${paramCount}`);
+            updateValues.push(updateData.plan_type);
+            paramCount++;
+        }
+        if (updateData.select_plan !== undefined) {
+            updateFields.push(`select_plan = $${paramCount}`);
+            updateValues.push(updateData.select_plan);
+            paramCount++;
+        }
+        if (updateData.transaction_id !== undefined) {
+            updateFields.push(`transaction_id = $${paramCount}`);
+            updateValues.push(updateData.transaction_id);
+            paramCount++;
+        }
+        if (updateData.address !== undefined) {
+            updateFields.push(`address = $${paramCount}`);
+            updateValues.push(updateData.address);
+            paramCount++;
+        }
+        if (updateData.investment_date !== undefined) {
+            updateFields.push(`investment_date = $${paramCount}`);
+            updateValues.push(updateData.investment_date);
+            paramCount++;
+        }
+
+        if (updateFields.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: 'No fields provided for update.' });
         }
 
         const query = `
             UPDATE investordetails
-            SET
-                first_name = $1, mobile_number = $2, pan_card = $3,
-                coordinator = COALESCE($4, coordinator),
-                coordinator_id = COALESCE($5, coordinator_id),
-                co_name = $6, bank_account_number = $7, bank_name = $8, branch_name = $9, ifsc_code = $10,
-                mode_of_payment = $11, plan_type = $12, select_plan = $13,
-                transaction_id = $14, address = $15,
-                investment_date = $16
-            WHERE id = $17
+            SET ${updateFields.join(', ')}
+            WHERE id = $${paramCount}
             RETURNING *;
         `;
 
-        const params = [
-            first_name, mobile_number, pan_card, coordinator_name, coordinator_id, co_name,
-            bank_account_number, bank_name, branch_name, ifsc_code, mode_of_payment,
-            plan_type, select_plan, transaction_id,
-            address, investment_date, id
-        ];
+        const params = [...updateValues, id];
         
         const { rows } = await client.query(query, params);
         
@@ -585,29 +649,27 @@ exports.updateInvestor = async (req, res) => {
         }
         
         // Update disbursement schedule if plan details changed
-        if (select_plan && plan_type && investment_date) {
+        if (updateData.select_plan && updateData.plan_type && updateData.investment_date) {
             try {
                 console.log(`🔄 Updating disbursement schedule for investor ${id} with new data:`, {
-                    select_plan,
-                    plan_type,
-                    investment_date
+                    select_plan: updateData.select_plan,
+                    plan_type: updateData.plan_type,
+                    investment_date: updateData.investment_date
                 });
-                
-                const { calculateDisbursementSchedule, createDisbursementSchedule } = require('../utils/disbursementCalculator');
                 
                 // Calculate investment amount
                 let investmentAmount;
-                if (select_plan === '5k') {
+                if (updateData.select_plan === '5k') {
                     investmentAmount = 5000;
-                } else if (select_plan === '10k') {
+                } else if (updateData.select_plan === '10k') {
                     investmentAmount = 10000;
-                } else if (select_plan === '50k') {
+                } else if (updateData.select_plan === '50k') {
                     investmentAmount = 50000;
-                } else if (select_plan === '1 lakh') {
+                } else if (updateData.select_plan === '1 lakh') {
                     investmentAmount = 100000;
-                } else if (select_plan === '5 lakh') {
+                } else if (updateData.select_plan === '5 lakh') {
                     investmentAmount = 500000;
-                } else if (select_plan === '10 lakh') {
+                } else if (updateData.select_plan === '10 lakh') {
                     investmentAmount = 1000000;
                 } else {
                     investmentAmount = 100000; // Default fallback
@@ -616,16 +678,16 @@ exports.updateInvestor = async (req, res) => {
                 // Calculate new disbursement schedule
                 const scheduleData = calculateDisbursementSchedule({
                     investmentAmount,
-                    selectPlan: select_plan,
-                    planType: plan_type,
-                    investmentDate: investment_date
+                    selectPlan: updateData.select_plan,
+                    planType: updateData.plan_type,
+                    investmentDate: updateData.investment_date
                 });
                 
                 console.log(`📊 Calculated new schedule data:`, {
                     investmentAmount,
-                    selectPlan: select_plan,
-                    planType: plan_type,
-                    investmentDate: investment_date,
+                    selectPlan: updateData.select_plan,
+                    planType: updateData.plan_type,
+                    investmentDate: updateData.investment_date,
                     disbursementDates: scheduleData.disbursementDates
                 });
                 

@@ -525,6 +525,7 @@ import {
   Package2,    // Wild Products
   Users,       // Manage Referrals
   Wallet,      // Manage Wallet Approvals
+  ShoppingCart, // Product Requests
   Handshake,   // Investor Management
   UserCog,     // Coordinator Management
   LogOut,
@@ -597,6 +598,7 @@ const AdminNavContent = ({ onLinkClick, showLabels }) => {
     { icon: <Package2         size={22} />, label: 'Wild Products',           to: '/admin/wild-products' },
     { icon: <Users            size={22} />, label: 'Manage Referrals',        to: '/admin/manage-percentages' },
     { icon: <Wallet           size={22} />, label: 'Manage Wallet Approvals', to: '/admin/wallet-approvals' },
+    { icon: <ShoppingCart     size={22} />, label: 'Product Requests',         to: '/admin/product-requests' },
     { icon: <Handshake        size={22} />, label: 'Investor Management',      to: '/admin/investors' },
     { icon: <UserCog          size={22} />, label: 'Manage Coordinators',     to: '/admin/manage-coordinators' },
   ];

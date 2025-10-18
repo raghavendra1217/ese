@@ -64,7 +64,7 @@ const EditCoordinatorPage = ({ url }) => {
   useEffect(() => {
     const fetchCoordinator = async () => {
       try {
-        const response = await fetch(`${url}/api/coordinator/${coordinatorId}`, {
+        const response = await fetch(`${url}/api/coordinator/admin/${coordinatorId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -168,7 +168,7 @@ const EditCoordinatorPage = ({ url }) => {
         updateData.password = formData.password;
       }
 
-      const response = await fetch(`${url}/api/coordinator/${coordinatorId}`, {
+      const response = await fetch(`${url}/api/coordinator/admin/${coordinatorId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

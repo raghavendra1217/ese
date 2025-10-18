@@ -2346,6 +2346,228 @@ const bulkUpdateProductVisibility = async (req, res) => {
     }
 };
 
+// =================================================================
+// --- PRODUCT REQUEST MANAGEMENT FUNCTIONS ---
+// =================================================================
+
+// Get all product requests for admin
+const getAllProductRequests = async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 10,
+            sortBy = 'created_at',
+            sortOrder = 'desc',
+            search = '',
+            startDate = '',
+            endDate = '',
+            status = ''
+        } = req.query;
+
+        const allowedSortBy = [
+            'request_id', 'created_at', 'user_id', 'vendor_name', 
+            'amount', 'status', 'remarks'
+        ];
+        if (!allowedSortBy.includes(sortBy)) {
+            return res.status(400).json({ message: 'Invalid sort column.' });
+        }
+        const sortColumn = sortBy === 'vendor_name' ? 'v.vendor_name' : `pr.${sortBy}`;
+        const sanitizedSortOrder = sortOrder.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+
+        const queryParams = [];
+        let baseQuery = `
+            FROM product_requests pr 
+            LEFT JOIN vendors v ON pr.user_id = v.id 
+            LEFT JOIN wallet w ON pr.user_id = w.id
+            WHERE 1=1
+        `;
+
+        // Search filter
+        if (search) {
+            queryParams.push(`%${search}%`);
+            const searchIndex = queryParams.length;
+            baseQuery += ` AND (pr.user_id ILIKE $${searchIndex} OR pr.remarks ILIKE $${searchIndex} OR v.vendor_name ILIKE $${searchIndex} OR v.email ILIKE $${searchIndex} OR v.phone_number ILIKE $${searchIndex})`;
+        }
+
+        // Status filter
+        if (status) {
+            queryParams.push(status);
+            baseQuery += ` AND pr.status = $${queryParams.length}`;
+        }
+
+        // Date filters
+        if (startDate) {
+            queryParams.push(startDate);
+            baseQuery += ` AND pr.created_at >= $${queryParams.length}`;
+        }
+        if (endDate) {
+            queryParams.push(endDate);
+            baseQuery += ` AND pr.created_at < ($${queryParams.length}::date + interval '1 day')`;
+        }
+        
+        const countQuery = `SELECT COUNT(*) ${baseQuery}`;
+        const totalResult = await db.query(countQuery, queryParams);
+        const totalCount = parseInt(totalResult.rows[0].count);
+
+        const offset = (page - 1) * limit;
+        queryParams.push(limit, offset);
+        
+        const dataQuery = `
+            SELECT pr.*, v.vendor_name, v.email, v.phone_number, w.digital_money as current_balance
+            ${baseQuery}
+            ORDER BY ${sortColumn} ${sanitizedSortOrder}
+            LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}
+        `;
+        
+        const { rows } = await db.query(dataQuery, queryParams);
+        const totalPages = Math.ceil(totalCount / limit);
+
+        res.status(200).json({
+            data: rows,
+            totalCount,
+            totalPages,
+            currentPage: parseInt(page),
+            limit: parseInt(limit)
+        });
+
+    } catch (error) {
+        console.error('❌ Error fetching product requests:', error);
+        res.status(500).json({ message: 'Server error while fetching product requests.' });
+    }
+};
+
+// Get pending product requests for admin approval
+const getPendingProductRequests = async (req, res) => {
+    try {
+        const result = await db.query(
+            `SELECT pr.*, v.vendor_name, v.email, v.phone_number, w.digital_money as current_balance
+             FROM product_requests pr 
+             LEFT JOIN vendors v ON pr.user_id = v.id 
+             LEFT JOIN wallet w ON pr.user_id = w.id
+             WHERE pr.status = 'pending'
+             ORDER BY pr.created_at ASC`
+        );
+
+        res.status(200).json(result.rows);
+
+    } catch (error) {
+        console.error('❌ Error fetching pending product requests:', error);
+        res.status(500).json({ message: 'Server error while fetching pending requests.' });
+    }
+};
+
+// Review product request (approve/reject)
+const reviewProductRequest = async (req, res) => {
+    const { requestId, decision, comment } = req.body;
+    
+    if (!requestId || !decision || !['approved', 'rejected'].includes(decision)) {
+        return res.status(400).json({ message: 'Request ID and a valid decision are required.' });
+    }
+    
+    if (decision === 'rejected' && (!comment || comment.trim() === '')) {
+        return res.status(400).json({ message: 'A comment is required for rejected requests.' });
+    }
+
+    const client = await db.connect();
+    try {
+        await client.query('BEGIN');
+
+        const requestRes = await client.query(
+            'SELECT * FROM product_requests WHERE request_id = $1 FOR UPDATE',
+            [requestId]
+        );
+
+        if (requestRes.rows.length === 0) {
+            throw new Error('Product request not found.');
+        }
+
+        const request = requestRes.rows[0];
+        if (request.status !== 'pending') {
+            throw new Error('This request has already been processed.');
+        }
+
+        const amount = parseFloat(request.amount);
+        const userId = request.user_id;
+
+        if (decision === 'approved') {
+            // Check if user still has sufficient balance
+            const walletRes = await client.query(
+                'SELECT digital_money FROM wallet WHERE id = $1 FOR UPDATE',
+                [userId]
+            );
+            
+            if (walletRes.rows.length === 0) {
+                throw new Error('User wallet not found.');
+            }
+
+            const currentBalance = parseFloat(walletRes.rows[0].digital_money);
+            if (currentBalance < amount) {
+                throw new Error('User balance is insufficient for this product request.');
+            }
+
+            // Deduct amount from wallet
+            await client.query(
+                'UPDATE wallet SET digital_money = digital_money - $1 WHERE id = $2',
+                [amount, userId]
+            );
+
+            // Update request status
+            await client.query(
+                `UPDATE product_requests 
+                 SET status = 'approved', admin_comment = $1, approved_by = $2, approved_at = CURRENT_TIMESTAMP
+                 WHERE request_id = $3`,
+                [comment || 'Approved by admin', req.user.user_id, requestId]
+            );
+
+        } else { // Decision is 'rejected'
+            await client.query(
+                `UPDATE product_requests 
+                 SET status = 'rejected', admin_comment = $1, rejected_at = CURRENT_TIMESTAMP
+                 WHERE request_id = $2`,
+                [comment, requestId]
+            );
+        }
+
+        await client.query('COMMIT');
+        res.status(200).json({ message: `Product request ${decision} successfully.` });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('❌ Error reviewing product request:', error);
+        res.status(500).json({ message: error.message || 'Server error while reviewing request.' });
+    } finally {
+        client.release();
+    }
+};
+
+// Get product request statistics
+const getProductRequestStats = async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT 
+                COUNT(*) FILTER (WHERE status = 'pending') as countPending,
+                COUNT(*) FILTER (WHERE status = 'approved') as countApproved,
+                COUNT(*) FILTER (WHERE status = 'rejected') as countRejected,
+                COALESCE(SUM(amount) FILTER (WHERE status = 'pending'), 0) as totalPending,
+                COALESCE(SUM(amount) FILTER (WHERE status = 'approved'), 0) as totalApproved
+            FROM product_requests
+        `);
+
+        const stats = result.rows[0];
+        res.status(200).json({
+            totalPending: parseFloat(stats.totalpending || 0),
+            totalApproved: parseFloat(stats.totalapproved || 0),
+            countPending: parseInt(stats.countpending || 0),
+            countApproved: parseInt(stats.countapproved || 0),
+            countRejected: parseInt(stats.countrejected || 0)
+        });
+
+    } catch (error) {
+        console.error('❌ Error fetching product request stats:', error);
+        res.status(500).json({ message: 'Server error while fetching statistics.' });
+    }
+};
+
 // Update the exports to include the new functions
 module.exports = {
     getPendingVendors,
@@ -2384,4 +2606,10 @@ module.exports = {
     getVendorProductVisibility,
     getAllVendorsVisibility,
     bulkUpdateProductVisibility,
+    
+    // Product Request Management
+    getAllProductRequests,
+    getPendingProductRequests,
+    reviewProductRequest,
+    getProductRequestStats,
 };

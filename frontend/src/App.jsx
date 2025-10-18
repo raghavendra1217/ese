@@ -28,6 +28,7 @@ import ProductVisibilityPage from './pages/admin/ProductVisibilityPage';
 import WildProductManagementPage from './pages/admin/WildProductManagementPage';
 import ManageTradingApprovalsPage from './pages/admin/ManageTradingApprovalsPage';
 import ManageWalletApprovalsPage from './pages/admin/ManageWalletApprovalsPage';
+import ManageProductRequestsPage from './pages/admin/ManageProductRequestsPage';
 import ManagePercentagePage from './pages/admin/ManagePercentagePage';
 import ManageProfile from './pages/admin/ManageProfile';
 import InvestorManagementPage from './pages/admin/InvestorManagementPage';
@@ -188,6 +189,14 @@ function App() {
                 element={
                   <ProtectedRoute role="admin">
                     <ManageWalletApprovalsPage url={url} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/product-requests"
+                element={
+                  <ProtectedRoute role="admin">
+                    <ManageProductRequestsPage url={url} />
                   </ProtectedRoute>
                 }
               />

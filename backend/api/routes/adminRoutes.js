@@ -60,6 +60,14 @@ router.post('/review-wallet-transaction', protect, authorize('admin', 'coordinat
 router.get('/withdrawals', protect, authorize('admin', 'coordinator'), adminController.getAllWithdrawals);
 router.get('/withdrawal-stats', protect, authorize('admin', 'coordinator'), adminController.getWithdrawalStats);
 
+// =======================================================
+// --- PRODUCT REQUEST MANAGEMENT ROUTES ---
+// =======================================================
+router.get('/pending-product-requests', protect, authorize('admin', 'coordinator'), adminController.getPendingProductRequests);
+router.post('/review-product-request', protect, authorize('admin', 'coordinator'), adminController.reviewProductRequest);
+router.get('/product-requests', protect, authorize('admin', 'coordinator'), adminController.getAllProductRequests);
+router.get('/product-request-stats', protect, authorize('admin', 'coordinator'), adminController.getProductRequestStats);
+
 router.get('/wallets-with-percentages', protect, authorize('admin', 'coordinator'), adminController.getWalletsWithPercentages);
 
 // POST /api/admin/update-percentage - Updates the percentage for a specific user

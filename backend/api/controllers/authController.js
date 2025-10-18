@@ -100,11 +100,18 @@ exports.registerAndProceedToPayment = async (req, res) => {
 
         // This validation logic is already correct and remains unchanged.
         const trimmedReferralId = referralId ? referralId.trim() : null;
+        console.log(`🔍 [DEBUG] Original referralId: "${referralId}", trimmed: "${trimmedReferralId}"`);
+        
         if (trimmedReferralId) {
+            console.log(`🔍 [DEBUG] Validating referral ID: ${trimmedReferralId}`);
             const referrerResult = await client.query('SELECT 1 FROM vendors WHERE id = $1', [trimmedReferralId]);
             if (referrerResult.rows.length === 0) {
+                console.log(`❌ [DEBUG] Referral ID ${trimmedReferralId} not found in vendors table`);
                 throw new Error('The provided Referral ID is not valid.');
             }
+            console.log(`✅ [DEBUG] Referral ID ${trimmedReferralId} is valid`);
+        } else {
+            console.log(`🔍 [DEBUG] No referral ID provided`);
         }
 
         const existingLogin = await client.query('SELECT 1 FROM login WHERE email = $1', [email]);
@@ -127,6 +134,8 @@ exports.registerAndProceedToPayment = async (req, res) => {
             // --- CHANGE #1: UPDATE query now includes the 'referred_id' ---
             // This handles cases where a pre-registered user completes registration with a referral code.
             vendorId = existingVendorRes.rows[0].id;
+            console.log(`🔍 [DEBUG] Updating existing vendor ${vendorId} with referred_id: "${trimmedReferralId}"`);
+            
             const updateQuery = `
                 UPDATE vendors SET 
                     vendor_name = $1, phone_number = $2, aadhar_number = $3, pan_card_number = $4, 
@@ -140,10 +149,13 @@ exports.registerAndProceedToPayment = async (req, res) => {
                 trimmedReferralId, // <-- The new value to set
                 vendorId
             ]);
+            console.log(`✅ [DEBUG] Successfully updated vendor ${vendorId} with referred_id: "${trimmedReferralId}"`);
         } else {
             // --- CHANGE #2: INSERT query now includes the 'referred_id' column and value ---
             await client.query('LOCK TABLE vendors IN EXCLUSIVE MODE');
             vendorId = await getNextVendorId(client);
+            console.log(`🔍 [DEBUG] Creating new vendor ${vendorId} with referred_id: "${trimmedReferralId}"`);
+            
             const insertQuery = `
                 INSERT INTO vendors (
                     id, email, vendor_name, phone_number, aadhar_number, 
@@ -157,17 +169,34 @@ exports.registerAndProceedToPayment = async (req, res) => {
                 panCardNumber, bankName, accountNumber, ifscCode, address, 
                 passportPhotoUrl, trimmedReferralId // <-- The new value to insert
             ]);
+            console.log(`✅ [DEBUG] Successfully created vendor ${vendorId} with referred_id: "${trimmedReferralId}"`);
         }
 
         // This logic is for the REFERRER and is still correct. No change needed here.
         if (trimmedReferralId) {
+            console.log(`🔍 [DEBUG] Adding vendor ${vendorId} to referral list of referrer ${trimmedReferralId}`);
             await client.query(
                 'UPDATE vendors SET referral_id_list = array_append(COALESCE(referral_id_list, ARRAY[]::TEXT[]), $1) WHERE id = $2',
                 [vendorId, trimmedReferralId]
             );
+            console.log(`✅ [DEBUG] Successfully added vendor ${vendorId} to referrer ${trimmedReferralId}'s referral list`);
         }
 
         await client.query('COMMIT');
+        console.log(`✅ [DEBUG] Transaction committed successfully for vendor ${vendorId}`);
+        
+        // Verify the referred_id was saved correctly
+        if (trimmedReferralId) {
+            const verifyQuery = await client.query('SELECT referred_id FROM vendors WHERE id = $1', [vendorId]);
+            const savedReferralId = verifyQuery.rows[0]?.referred_id;
+            console.log(`🔍 [DEBUG] Verification - Vendor ${vendorId} referred_id in DB: "${savedReferralId}"`);
+            if (savedReferralId !== trimmedReferralId) {
+                console.log(`❌ [DEBUG] MISMATCH! Expected: "${trimmedReferralId}", Got: "${savedReferralId}"`);
+            } else {
+                console.log(`✅ [DEBUG] Referred ID saved correctly!`);
+            }
+        }
+        
         res.status(200).json({ message: 'Details saved successfully. Please proceed to payment.' });
     } catch (error) {
         await client.query('ROLLBACK');

@@ -28,6 +28,7 @@ const quickRegRoutes = require('./api/routes/quickRegRoutes');
 const payslipRoutes = require('./api/routes/payslipRoutes');
 const coordinatorRoutes = require('./api/routes/coordinatorRoutes');
 const resumeRoutes = require('./api/routes/resumeRoutes');
+const productRequestRoutes = require('./api/routes/productRequestRoutes');
 const { startCompressorMonitoring } = require('./api/utils/statusMonitor');
 
 const PORT = process.env.PORT || 10000;
@@ -111,6 +112,7 @@ app.use('/api/quick-reg', quickRegRoutes);
 app.use('/api/payslip', payslipRoutes);
 app.use('/api/coordinator', coordinatorRoutes);
 app.use('/api/resumes', resumeRoutes);
+app.use('/api/product-requests', productRequestRoutes);
 
  
 

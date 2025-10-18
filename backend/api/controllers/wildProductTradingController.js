@@ -103,13 +103,13 @@ exports.purchaseWildProduct = async (req, res) => {
         const insertQuery = `
             INSERT INTO trading (
                 trade_id, vendor_id, product_id, no_of_stock_bought, price_per_slot, 
-                total_amount_paid, is_approved, referred_id, percentage, is_claimed
+                total_amount_paid, is_approved, referred_id, percentage, is_claimed, selling_days
             )
-            VALUES ($1, $2, $3, $4, $5, $6, 'approved', $7, $8, FALSE)
+            VALUES ($1, $2, $3, $4, $5, $6, 'approved', $7, $8, FALSE, $9)
         `;
         await client.query(insertQuery, [
             tradeId, vendorId, wildProductId, quantityNum, finalPrice,
-            totalAmount, referrerId, commissionPercentage
+            totalAmount, referrerId, commissionPercentage, product.selling_date_count
         ]);
 
         // Note: total_spent tracking removed as it's not part of the wallet table schema
