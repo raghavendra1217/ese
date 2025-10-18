@@ -234,7 +234,7 @@ const VendorDashboardHeader = ({ url }) => {
                          <Button size="md" variant="ghost" colorScheme="blue" onClick={onProductRequestOpen} flex={1} h="auto" py={2}>
                              <VStack spacing={1}>
                                  <Icon as={FaShoppingCart} />
-                                 <Text fontSize="xs">Products</Text>
+                                 <Text fontSize="xs">Request</Text>
                              </VStack>
                          </Button>
                     </HStack>

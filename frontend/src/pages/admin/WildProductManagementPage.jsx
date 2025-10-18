@@ -447,7 +447,8 @@ const WildProductManagementPage = ({ url }) => {
                   {wildProducts.map((wildProduct) => {
                     const basePrice = parseFloat(wildProduct.base_price);
                     const profit = parseFloat(wildProduct.profit);
-                    const marginPercentage = profit !== null && basePrice > 0 ? (profit * 100) / basePrice : null;
+                    const finalPrice = parseFloat(wildProduct.final_price);
+                    const marginPercentage = profit !== null && finalPrice > 0 ? (profit * 100) / finalPrice : null;
                     
                     return (
                     <Tr key={wildProduct.wild_product_id}>

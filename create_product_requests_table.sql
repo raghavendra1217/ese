@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS product_requests (
     request_id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
     amount DECIMAL(10,2) NOT NULL CHECK (amount > 0),
-    remarks TEXT NOT NULL,
+    remarks TEXT,
     status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'cancelled')),
     admin_comment TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

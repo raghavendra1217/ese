@@ -62,11 +62,6 @@ const ProductRequestModal = ({ isOpen, onClose, url, currentBalance, onRequestSu
             return;
         }
 
-        if (!remarks.trim()) {
-            setError('Remarks are required.');
-            return;
-        }
-
         if (numericAmount > currentBalance) {
             setError('Request amount cannot be greater than your current balance.');
             return;
@@ -89,7 +84,7 @@ const ProductRequestModal = ({ isOpen, onClose, url, currentBalance, onRequestSu
                 },
                 body: JSON.stringify({ 
                     amount: numericAmount,
-                    remarks: remarks.trim()
+                    remarks: remarks.trim() || ''
                 }),
             });
 
@@ -152,7 +147,7 @@ const ProductRequestModal = ({ isOpen, onClose, url, currentBalance, onRequestSu
                                     <VStack align="start" spacing={1} fontSize="sm">
                                         <Text fontWeight="bold">Request Guidelines:</Text>
                                         <Text>• Amount must not exceed your current balance</Text>
-                                        <Text>• Provide clear remarks about your product needs</Text>
+                                        <Text>• Remarks are optional but helpful for processing</Text>
                                         <Text>• All requests are subject to approval</Text>
                                         <Text>• You can have only one pending request at a time</Text>
                                     </VStack>
@@ -175,12 +170,12 @@ const ProductRequestModal = ({ isOpen, onClose, url, currentBalance, onRequestSu
                                     </NumberInput>
                                 </FormControl>
 
-                                <FormControl isRequired>
+                                <FormControl>
                                     <FormLabel>Remarks</FormLabel>
                                     <Textarea
                                         value={remarks}
                                         onChange={(e) => setRemarks(e.target.value)}
-                                        placeholder="Describe your product requirements, quantities, specifications, etc."
+                                        placeholder="Describe your product requirements, quantities, specifications, etc. (Optional)"
                                         rows={4}
                                     />
                                 </FormControl>

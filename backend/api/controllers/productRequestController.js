@@ -5,8 +5,8 @@ exports.submitProductRequest = async (req, res) => {
     const userId = req.user.user_id;
     const { amount, remarks } = req.body;
 
-    if (!amount || !remarks) {
-        return res.status(400).json({ message: 'Amount and remarks are required.' });
+    if (!amount) {
+        return res.status(400).json({ message: 'Amount is required.' });
     }
 
     const requestAmount = parseFloat(amount);
@@ -43,7 +43,7 @@ exports.submitProductRequest = async (req, res) => {
         const result = await db.query(
             `INSERT INTO product_requests (user_id, amount, remarks, status)
              VALUES ($1, $2, $3, 'pending') RETURNING request_id`,
-            [userId, requestAmount, remarks]
+            [userId, requestAmount, remarks || '']
         );
 
         const requestId = result.rows[0].request_id;
