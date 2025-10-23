@@ -2490,28 +2490,7 @@ const reviewProductRequest = async (req, res) => {
         const userId = request.user_id;
 
         if (decision === 'approved') {
-            // Check if user still has sufficient balance
-            const walletRes = await client.query(
-                'SELECT digital_money FROM wallet WHERE id = $1 FOR UPDATE',
-                [userId]
-            );
-            
-            if (walletRes.rows.length === 0) {
-                throw new Error('User wallet not found.');
-            }
-
-            const currentBalance = parseFloat(walletRes.rows[0].digital_money);
-            if (currentBalance < amount) {
-                throw new Error('User balance is insufficient for this product request.');
-            }
-
-            // Deduct amount from wallet
-            await client.query(
-                'UPDATE wallet SET digital_money = digital_money - $1 WHERE id = $2',
-                [amount, userId]
-            );
-
-            // Update request status
+            // Update request status - no wallet deduction, purely informational
             await client.query(
                 `UPDATE product_requests 
                  SET status = 'approved', admin_comment = $1, approved_by = $2, approved_at = CURRENT_TIMESTAMP
@@ -2545,11 +2524,11 @@ const getProductRequestStats = async (req, res) => {
     try {
         const result = await db.query(`
             SELECT 
-                COUNT(*) FILTER (WHERE status = 'pending') as countPending,
-                COUNT(*) FILTER (WHERE status = 'approved') as countApproved,
-                COUNT(*) FILTER (WHERE status = 'rejected') as countRejected,
-                COALESCE(SUM(amount) FILTER (WHERE status = 'pending'), 0) as totalPending,
-                COALESCE(SUM(amount) FILTER (WHERE status = 'approved'), 0) as totalApproved
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as countPending,
+                SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as countApproved,
+                SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as countRejected,
+                COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) as totalPending,
+                COALESCE(SUM(CASE WHEN status = 'approved' THEN amount ELSE 0 END), 0) as totalApproved
             FROM product_requests
         `);
 

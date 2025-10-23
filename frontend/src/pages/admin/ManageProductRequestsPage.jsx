@@ -343,6 +343,10 @@ const ManageProductRequestsPage = ({ url }) => {
     fetchRequestStats();
   }, [fetchPendingRequests, fetchRequestStats]);
 
+  useEffect(() => {
+    fetchRequestHistory();
+  }, [fetchRequestHistory]);
+
   const handleReview = async (requestId, decision, comment = null) => {
     setIsSubmitting(true);
     try {
