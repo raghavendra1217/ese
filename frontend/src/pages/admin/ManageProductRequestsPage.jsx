@@ -166,15 +166,23 @@ const ProductRequestCard = ({ request, onApprove, onReject, onWhatsApp }) => {
   const cardBg = useColorModeValue('white', 'gray.700');
   const nestedBg = useColorModeValue('gray.50', 'gray.600');
   
+  // Determine if this is a coordinator or vendor request
+  // If vendor_name exists, it's a vendor request; if coordinator_name exists and no vendor_name, it's a coordinator request
+  const isCoordinatorRequest = request.coordinator_name && !request.vendor_name;
+  const displayName = isCoordinatorRequest ? request.coordinator_name : request.vendor_name;
+  const displayEmail = isCoordinatorRequest ? request.coordinator_email : request.email;
+  const displayPhone = isCoordinatorRequest ? request.coordinator_phone : request.vendor_phone;
+  const requestType = isCoordinatorRequest ? 'Coordinator Request' : 'Product Request';
+  
   return (
     <VStack bg={cardBg} p={5} borderRadius="lg" boxShadow="md" align="stretch" spacing={3}>
       <Flex justify="space-between" align="center">
-        <Heading size="md">{request.vendor_name}</Heading>
-        <Tag colorScheme="blue">Product Request</Tag>
+        <Heading size="md">{displayName}</Heading>
+        <Tag colorScheme={isCoordinatorRequest ? "purple" : "blue"}>{requestType}</Tag>
       </Flex>
       <HStack spacing={2} align="center">
-        <Text fontSize="sm" color="gray.500">{request.email}</Text>
-        {request.phone_number && (
+        <Text fontSize="sm" color="gray.500">{displayEmail}</Text>
+        {(displayPhone || request.vendor_phone || request.coordinator_phone) && (
           <Tooltip label="Contact on WhatsApp" hasArrow>
             <IconButton
               aria-label="Contact on WhatsApp"
@@ -187,7 +195,9 @@ const ProductRequestCard = ({ request, onApprove, onReject, onWhatsApp }) => {
           </Tooltip>
         )}
       </HStack>
-      <Text><strong>Current Balance:</strong> ₹{parseFloat(request.current_balance || 0).toLocaleString('en-IN')}</Text>
+      {!isCoordinatorRequest && (
+        <Text><strong>Current Balance:</strong> ₹{parseFloat(request.current_balance || 0).toLocaleString('en-IN')}</Text>
+      )}
       <Text><strong>Request Date:</strong> {formatISTDate(request.created_at, true, true)}</Text>
       <Divider />
       <Box>
@@ -378,11 +388,16 @@ const ManageProductRequestsPage = ({ url }) => {
 
   // WhatsApp contact handler
   const handleWhatsAppClick = (request) => {
-    const phoneNumber = request.phone_number?.replace(/\D/g, '') || '';
+    // Determine if this is a coordinator or vendor request
+    const isCoordinatorRequest = request.coordinator_name && !request.vendor_name;
+    const phoneNumber = isCoordinatorRequest 
+      ? request.coordinator_phone?.replace(/\D/g, '') || ''
+      : request.vendor_phone?.replace(/\D/g, '') || '';
+      
     if (!phoneNumber) {
       toast({
         title: 'No Phone Number',
-        description: 'Phone number not available for this vendor.',
+        description: `Phone number not available for this ${isCoordinatorRequest ? 'coordinator' : 'vendor'}.`,
         status: 'warning',
         duration: 3000,
       });
@@ -766,7 +781,7 @@ const ManageProductRequestsPage = ({ url }) => {
                         <Table variant="simple" size="md" minW="980px">
                           <Thead>
                             <Tr>
-                              <Th>Vendor</Th>
+                              <Th>User</Th>
                               <Th>Date</Th>
                               <Th isNumeric>Amount</Th>
                               <Th>Status</Th>
@@ -775,84 +790,123 @@ const ManageProductRequestsPage = ({ url }) => {
                             </Tr>
                           </Thead>
                           <Tbody>
-                            {requestHistory.map(request => (
-                              <Tr key={request.request_id}>
-                                <Td fontWeight="bold">
-                                  <Text>{request.vendor_name || request.user_id}</Text>
-                                  <Text fontSize="sm" color={textColor} fontWeight="normal">{request.email}</Text>
-                                  <Text fontSize="sm" color={textColor} fontWeight="normal">{request.phone_number}</Text>
-                                </Td>
-                                <Td fontWeight="bold">
-                                  {request.created_at ? formatISTDate(request.created_at, true, true) : request.created_at}
-                                </Td>
-                                <Td isNumeric color="blue.400" fontWeight="bold">
-                                  ₹{Number(request.amount || 0).toFixed(2)}
-                                </Td>
-                                <Td fontWeight="bold" textTransform="capitalize">
-                                  <Tag size="sm" variant="subtle" colorScheme={statusColor(request.status)}>
-                                    {request.status}
-                                  </Tag>
-                                </Td>
-                                <Td>
-                                  <Text fontSize="sm" noOfLines={2} maxW="200px">
-                                    {request.remarks || 'N/A'}
-                                  </Text>
-                                  {request.admin_comment && (
-                                    <Text fontSize="xs" color="gray.500" mt={1}>
-                                      Note: {request.admin_comment}
+                            {requestHistory.map(request => {
+                              // Determine if this is a coordinator or vendor request
+                              // If vendor_name exists, it's a vendor request; if coordinator_name exists and no vendor_name, it's a coordinator request
+                              const isCoordinatorRequest = request.coordinator_name && !request.vendor_name;
+                              const isVendorRequest = request.vendor_name;
+                              const displayName = isCoordinatorRequest ? request.coordinator_name : request.vendor_name;
+                              const displayEmail = isCoordinatorRequest ? request.coordinator_email : request.email;
+                              const displayPhone = isCoordinatorRequest ? request.coordinator_phone : request.vendor_phone;
+                              
+                              return (
+                                <Tr key={request.request_id}>
+                                  <Td fontWeight="bold">
+                                    <Text>{displayName || request.user_id}</Text>
+                                    <Text fontSize="sm" color={textColor} fontWeight="normal">{displayEmail}</Text>
+                                    <Text fontSize="sm" color={textColor} fontWeight="normal">{displayPhone}</Text>
+                                    {isCoordinatorRequest && (
+                                      <Tag size="sm" colorScheme="purple" mt={1}>Coordinator</Tag>
+                                    )}
+                                  </Td>
+                                  <Td fontWeight="bold">
+                                    {request.created_at ? formatISTDate(request.created_at, true, true) : request.created_at}
+                                  </Td>
+                                  <Td isNumeric color="blue.400" fontWeight="bold">
+                                    ₹{Number(request.amount || 0).toFixed(2)}
+                                  </Td>
+                                  <Td fontWeight="bold" textTransform="capitalize">
+                                    <Tag size="sm" variant="subtle" colorScheme={statusColor(request.status)}>
+                                      {request.status}
+                                    </Tag>
+                                  </Td>
+                                  <Td>
+                                    <Text fontSize="sm" noOfLines={2} maxW="200px">
+                                      {request.remarks || 'N/A'}
                                     </Text>
-                                  )}
-                                </Td>
-                                <Td>
-                                  {request.phone_number && (
-                                    <Tooltip label="Contact on WhatsApp" hasArrow>
-                                      <IconButton
-                                        aria-label="Contact on WhatsApp"
-                                        icon={<FaWhatsapp />}
-                                        size="sm"
-                                        colorScheme="whatsapp"
-                                        variant="ghost"
-                                        onClick={() => handleWhatsAppClick(request)}
-                                      />
-                                    </Tooltip>
-                                  )}
-                                </Td>
-                              </Tr>
-                            ))}
+                                    {request.admin_comment && (
+                                      <Text fontSize="xs" color="gray.500" mt={1}>
+                                        Note: {request.admin_comment}
+                                      </Text>
+                                    )}
+                                  </Td>
+                                  <Td>
+                                    {(displayPhone || request.vendor_phone || request.coordinator_phone) && (
+                                      <Tooltip label="Contact on WhatsApp" hasArrow>
+                                        <IconButton
+                                          aria-label="Contact on WhatsApp"
+                                          icon={<FaWhatsapp />}
+                                          size="sm"
+                                          colorScheme="whatsapp"
+                                          variant="ghost"
+                                          onClick={() => handleWhatsAppClick(request)}
+                                        />
+                                      </Tooltip>
+                                    )}
+                                  </Td>
+                                </Tr>
+                              );
+                            })}
                           </Tbody>
                         </Table>
                       </TableContainer>
 
                       {/* Mobile view - Simple Cards */}
                       <VStack spacing={4} display={{ base: 'flex', md: 'none' }}>
-                        {requestHistory.map(request => (
-                          <Box key={request.request_id} w="100%" p={4} borderWidth="1px" borderColor={borderColor} borderRadius="lg" boxShadow="sm">
-                            <VStack spacing={2} align="stretch">
-                              <Flex justify="space-between" align="center">
-                                <Text fontWeight="bold" fontSize="md">{request.vendor_name || request.user_id}</Text>
-                                <Tag colorScheme={statusColor(request.status)} size="sm">{request.status}</Tag>
-                              </Flex>
-                              <Text fontSize="sm" color={textColor}>{request.email}</Text>
-                              <Text fontSize="sm" color={textColor}>{request.phone_number}</Text>
-                              <Flex justify="space-between" align="center">
-                                <Text fontSize="lg" fontWeight="bold" color="blue.400">
-                                  ₹{Number(request.amount || 0).toFixed(2)}
+                        {requestHistory.map(request => {
+                          // Determine if this is a coordinator or vendor request
+                          // If vendor_name exists, it's a vendor request; if coordinator_name exists and no vendor_name, it's a coordinator request
+                          const isCoordinatorRequest = request.coordinator_name && !request.vendor_name;
+                          const displayName = isCoordinatorRequest ? request.coordinator_name : request.vendor_name;
+                          const displayEmail = isCoordinatorRequest ? request.coordinator_email : request.email;
+                          const displayPhone = isCoordinatorRequest ? request.coordinator_phone : request.vendor_phone;
+                          
+                          return (
+                            <Box key={request.request_id} w="100%" p={4} borderWidth="1px" borderColor={borderColor} borderRadius="lg" boxShadow="sm">
+                              <VStack spacing={2} align="stretch">
+                                <Flex justify="space-between" align="center">
+                                  <Text fontWeight="bold" fontSize="md">{displayName || request.user_id}</Text>
+                                  <Tag colorScheme={statusColor(request.status)} size="sm">{request.status}</Tag>
+                                </Flex>
+                                {isCoordinatorRequest && (
+                                  <Tag size="sm" colorScheme="purple" alignSelf="flex-start">Coordinator</Tag>
+                                )}
+                                <Text fontSize="sm" color={textColor}>{displayEmail}</Text>
+                                <HStack spacing={2} align="center">
+                                  <Text fontSize="sm" color={textColor}>{displayPhone}</Text>
+                                  {(displayPhone || request.vendor_phone || request.coordinator_phone) && (
+                                    <Tooltip label="Contact on WhatsApp" hasArrow>
+                                      <IconButton
+                                        aria-label="Contact on WhatsApp"
+                                        icon={<FaWhatsapp />}
+                                        size="xs"
+                                        colorScheme="whatsapp"
+                                        variant="ghost"
+                                        onClick={() => handleWhatsAppClick(request)}
+                                      />
+                                    </Tooltip>
+                                  )}
+                                </HStack>
+                                <Flex justify="space-between" align="center">
+                                  <Text fontSize="lg" fontWeight="bold" color="blue.400">
+                                    ₹{Number(request.amount || 0).toFixed(2)}
+                                  </Text>
+                                </Flex>
+                                <Text fontSize="sm" color={textColor}>
+                                  {request.created_at ? formatISTDate(request.created_at, true, true) : request.created_at}
                                 </Text>
-                              </Flex>
-                              <Text fontSize="sm" color={textColor}>
-                                {request.created_at ? formatISTDate(request.created_at, true, true) : request.created_at}
-                              </Text>
-                              <Text fontSize="sm" color={textColor} noOfLines={2}>
-                                {request.remarks}
-                              </Text>
-                              {request.admin_comment && (
-                                <Text fontSize="xs" color="gray.500">
-                                  Note: {request.admin_comment}
+                                <Text fontSize="sm" color={textColor} noOfLines={2}>
+                                  {request.remarks}
                                 </Text>
-                              )}
-                            </VStack>
-                          </Box>
-                        ))}
+                                {request.admin_comment && (
+                                  <Text fontSize="xs" color="gray.500">
+                                    Note: {request.admin_comment}
+                                  </Text>
+                                )}
+                              </VStack>
+                            </Box>
+                          );
+                        })}
                       </VStack>
 
                       {requestHistory.length === 0 && !historyLoading ? (

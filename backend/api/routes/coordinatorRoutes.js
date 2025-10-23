@@ -64,6 +64,12 @@ router.put('/disbursements/:disbursementId', coordinatorController.updateDisburs
 // Transaction routes (accessible by coordinators only)
 router.get('/transactions', authorize('coordinator'), coordinatorController.getCoordinatorVendorTransactions);
 
+// Product request routes (accessible by coordinators)
+router.post('/product-requests/submit', authorize('coordinator'), coordinatorController.submitProductRequest);
+router.get('/product-requests/current-pending', authorize('coordinator'), coordinatorController.getCurrentPendingRequest);
+router.get('/product-requests/history', authorize('coordinator'), coordinatorController.getProductRequestHistory);
+router.put('/product-requests/cancel', authorize('coordinator'), coordinatorController.cancelProductRequest);
+
 // Test endpoint for coordinator transactions (remove after testing)
 router.get('/test-transactions', authorize('coordinator'), (req, res) => {
     console.log('🔍 Test transaction endpoint accessed:', {

@@ -47,6 +47,7 @@ import CoordinatorVendorsTodayPage from './pages/coordinator/CoordinatorVendorsT
 import CoordinatorInvestorPage from './pages/coordinator/CoordinatorInvestorPage';
 import CoordinatorProductsPage from './pages/coordinator/CoordinatorProductsPage';
 import CoordinatorWildProductsPage from './pages/coordinator/CoordinatorWildProductsPage';
+import CoordinatorProductRequestPage from './pages/coordinator/CoordinatorProductRequestPage';
 import CoordinatorQuickRegistrationPage from './pages/coordinator/CoordinatorQuickRegistrationPage';
 import CoordinatorVendorProfile from './pages/coordinator/CoordinatorVendorProfile';
 
@@ -343,6 +344,14 @@ function App() {
                 element={
                   <ProtectedRoute role="coordinator">
                     <CoordinatorWildProductsPage url={url} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/coordinator/product-requests"
+                element={
+                  <ProtectedRoute role="coordinator">
+                    <CoordinatorProductRequestPage url={url} />
                   </ProtectedRoute>
                 }
               />

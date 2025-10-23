@@ -2378,6 +2378,7 @@ const getAllProductRequests = async (req, res) => {
         let baseQuery = `
             FROM product_requests pr 
             LEFT JOIN vendors v ON pr.user_id = v.id 
+            LEFT JOIN coordinator c ON pr.user_id = c.coordinator_id
             LEFT JOIN wallet w ON pr.user_id = w.id
             WHERE 1=1
         `;
@@ -2386,7 +2387,7 @@ const getAllProductRequests = async (req, res) => {
         if (search) {
             queryParams.push(`%${search}%`);
             const searchIndex = queryParams.length;
-            baseQuery += ` AND (pr.user_id ILIKE $${searchIndex} OR pr.remarks ILIKE $${searchIndex} OR v.vendor_name ILIKE $${searchIndex} OR v.email ILIKE $${searchIndex} OR v.phone_number ILIKE $${searchIndex})`;
+            baseQuery += ` AND (pr.user_id ILIKE $${searchIndex} OR pr.remarks ILIKE $${searchIndex} OR v.vendor_name ILIKE $${searchIndex} OR v.email ILIKE $${searchIndex} OR v.phone_number ILIKE $${searchIndex} OR c.name ILIKE $${searchIndex} OR c.email ILIKE $${searchIndex})`;
         }
 
         // Status filter
@@ -2413,7 +2414,9 @@ const getAllProductRequests = async (req, res) => {
         queryParams.push(limit, offset);
         
         const dataQuery = `
-            SELECT pr.*, v.vendor_name, v.email, v.phone_number, w.digital_money as current_balance
+            SELECT pr.*, v.vendor_name, v.email as vendor_email, v.phone_number as vendor_phone, 
+                   c.name as coordinator_name, c.email as coordinator_email, c.phone_number as coordinator_phone,
+                   w.digital_money as current_balance
             ${baseQuery}
             ORDER BY ${sortColumn} ${sanitizedSortOrder}
             LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}
@@ -2440,9 +2443,12 @@ const getAllProductRequests = async (req, res) => {
 const getPendingProductRequests = async (req, res) => {
     try {
         const result = await db.query(
-            `SELECT pr.*, v.vendor_name, v.email, v.phone_number, w.digital_money as current_balance
+            `SELECT pr.*, v.vendor_name, v.email as vendor_email, v.phone_number as vendor_phone,
+                    c.name as coordinator_name, c.email as coordinator_email, c.phone_number as coordinator_phone,
+                    w.digital_money as current_balance
              FROM product_requests pr 
              LEFT JOIN vendors v ON pr.user_id = v.id 
+             LEFT JOIN coordinator c ON pr.user_id = c.coordinator_id
              LEFT JOIN wallet w ON pr.user_id = w.id
              WHERE pr.status = 'pending'
              ORDER BY pr.created_at ASC`

@@ -5,7 +5,7 @@ import {
   Text, Button
 } from '@chakra-ui/react';
 import { HamburgerIcon } from '@chakra-ui/icons';
-import { FaUsers, FaChartBar, FaCog, FaMoneyBillWave, FaHandshake, FaBox, FaLeaf } from 'react-icons/fa';
+import { FaUsers, FaChartBar, FaCog, FaMoneyBillWave, FaHandshake, FaBox, FaLeaf, FaClipboardList } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../AppContext';
 import CoordinatorNavBar, { NAV_WIDTH } from '../../components/layout/CoordinatorNavBar';
@@ -584,6 +584,78 @@ const CoordinatorDashboard = ({ url }) => {
                </VStack>
              </Box>
 
+             {/* Seventh Box - Product Requests */}
+             <Box
+               bg={cardBg}
+               p={6}
+               borderRadius="xl"
+               borderWidth="1px"
+               borderColor={cardBorder}
+               boxShadow="lg"
+               cursor="pointer"
+               onClick={() => {
+                 console.log('🔍 Coordinator Dashboard - Navigating to Product Requests page');
+                 navigate('/coordinator/product-requests');
+               }}
+               _hover={{
+                 boxShadow: "xl",
+                 transform: "translateY(-4px)",
+                 transition: "all 0.3s ease",
+                 _before: {
+                   transform: "scaleX(1)"
+                 }
+               }}
+               transition="all 0.3s ease"
+               position="relative"
+               overflow="hidden"
+               _before={{
+                 content: '""',
+                 position: "absolute",
+                 top: 0,
+                 left: 0,
+                 right: 0,
+                 height: "4px",
+                 bg: "purple.500",
+                 transform: "scaleX(0)",
+                 transition: "transform 0.3s ease",
+                 transformOrigin: "left"
+               }}
+             >
+               <VStack spacing={5} align="center">
+                 <Box
+                   p={4}
+                   borderRadius="full"
+                   bg="purple.50"
+                   color="purple.600"
+                   _dark={{ bg: "purple.900", color: "purple.200" }}
+                   boxShadow="md"
+                 >
+                   <FaClipboardList size={28} />
+                 </Box>
+                 <VStack spacing={2} align="center">
+                   <Text fontSize="4xl" fontWeight="bold" color={headingColor} lineHeight="1">
+                     Request
+                   </Text>
+                   <Text fontSize="lg" color="gray.600" textAlign="center" fontWeight="medium">
+                     Product Requests
+                   </Text>
+                 </VStack>
+                 <Button
+                   colorScheme="purple"
+                   size="md"
+                   w="full"
+                   borderRadius="lg"
+                   fontWeight="semibold"
+                   _hover={{
+                     transform: "translateY(-2px)",
+                     boxShadow: "lg"
+                   }}
+                   transition="all 0.2s ease"
+                 >
+                   Submit Request
+                 </Button>
+               </VStack>
+             </Box>
 
             </SimpleGrid>
           </VStack>
