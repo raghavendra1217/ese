@@ -107,13 +107,13 @@ const InvestorModal = ({
   const handleSelectChange = (name, value) => {
     let newFormData = { ...formData, [name]: value };
 
-    // Validation: 10k can only be combined with 30 days
+    // Validation: 10k can be combined with 30 days or 90 days
     if (name === 'select_plan' && value === '10k') {
-      if (newFormData.plan_type && newFormData.plan_type !== '30 days') {
-        newFormData.plan_type = '30 days'; // Force 30 days
+      if (newFormData.plan_type && newFormData.plan_type !== '30 days' && newFormData.plan_type !== '90 days') {
+        newFormData.plan_type = '30 days'; // Default to 30 days if invalid combination
       }
-    } else if (name === 'plan_type' && newFormData.select_plan === '10k' && value !== '30 days') {
-      newFormData.select_plan = ''; // Clear plan if type changes and it's 10k
+    } else if (name === 'plan_type' && newFormData.select_plan === '10k' && value !== '30 days' && value !== '90 days') {
+      newFormData.select_plan = ''; // Clear plan if type changes to invalid combination for 10k
     }
 
     setFormData(newFormData);
@@ -483,6 +483,7 @@ const InvestorModal = ({
                     <option value="30 days">30 days</option>
                     <option value="32 days">32 days</option>
                     <option value="60 days">60 days</option>
+                    <option value="90 days">90 days</option>
                     <option value="120 days">120 days</option>
                     <option value="180 days">180 days</option>
                     <option value="240 days">240 days</option>
@@ -599,6 +600,7 @@ const InvestorModal = ({
                     })()} → Return ₹{(() => {
                       if (formData.select_plan === '5k' && formData.plan_type === '32 days') return '6,000';
                       if (formData.select_plan === '10k' && formData.plan_type === '30 days') return '11,500';
+                      if (formData.select_plan === '10k' && formData.plan_type === '90 days') return '14,500';
                       if (formData.select_plan === '50k' && formData.plan_type === '60 days') return '60,000';
                       if (formData.select_plan === '1 lakh' && formData.plan_type === '60 days') return '1,20,000';
                       if (formData.select_plan === '50k' && formData.plan_type === '120 days') return '68,000';
@@ -618,6 +620,7 @@ const InvestorModal = ({
                       if (formData.plan_type === '30 days') return '2';
                       if (formData.plan_type === '32 days') return '4';
                       if (formData.plan_type === '60 days') return '4';
+                      if (formData.plan_type === '90 days') return '4';
                       if (formData.plan_type === '120 days') return '8';
                       if (formData.plan_type === '180 days') return '13';
                       if (formData.plan_type === '240 days') return '17';
@@ -625,6 +628,7 @@ const InvestorModal = ({
                       return '0';
                     })()} payments every {(() => {
                       if (formData.plan_type === '32 days') return '8';
+                      if (formData.plan_type === '90 days') return '30';
                       return '15';
                     })()} days
                   </Text>
@@ -632,6 +636,7 @@ const InvestorModal = ({
                     <strong>Amount per Disbursement:</strong> ₹{(() => {
                       if (formData.select_plan === '5k' && formData.plan_type === '32 days') return '1,500';
                       if (formData.select_plan === '10k' && formData.plan_type === '30 days') return '5,750';
+                      if (formData.select_plan === '10k' && formData.plan_type === '90 days') return '1,500 (first 3) + 10,000 (4th)';
                       if (formData.select_plan === '50k' && formData.plan_type === '60 days') return '15,000';
                       if (formData.select_plan === '1 lakh' && formData.plan_type === '60 days') return '30,000';
                       if (formData.select_plan === '50k' && formData.plan_type === '120 days') return '8,500';
@@ -662,6 +667,8 @@ const InvestorModal = ({
                         return { count: 4, interval: 8, amount: '1,500' };
                       } else if (formData.select_plan === '10k' && formData.plan_type === '30 days') {
                         return { count: 2, interval: 15, amount: '5,750' };
+                      } else if (formData.select_plan === '10k' && formData.plan_type === '90 days') {
+                        return { count: 4, interval: 30, amount: '1,500', specialPlan: true, principleReturnDay: 91, principleAmount: '10,000' };
                       } else if (formData.select_plan === '50k' && formData.plan_type === '60 days') {
                         return { count: 4, interval: 15, amount: '15,000' };
                       } else if (formData.select_plan === '1 lakh' && formData.plan_type === '60 days') {

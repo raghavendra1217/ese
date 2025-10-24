@@ -60,6 +60,18 @@ function calculateDisbursementSchedule({ investmentAmount, selectPlan, planType,
                 numDisbursements: 4
             }
         },
+        // 90 days plans
+        '90 days': {
+            '10k': {
+                investment: 10000,
+                profit: 4500,
+                totalReturn: 14500,
+                durationDays: 90,
+                intervalDays: 30,
+                numDisbursements: 4,
+                specialPlan: true // Flag for special handling
+            }
+        },
         // 120 days plans
         '120 days': {
             '50k': {
@@ -174,7 +186,9 @@ function calculateDisbursementSchedule({ investmentAmount, selectPlan, planType,
     // Special handling for special plans
     let disbursementAmount;
     if (specialPlan) {
-        if (selectPlan === '50k' && planType === '180 days') {
+        if (selectPlan === '10k' && planType === '90 days') {
+            disbursementAmount = 1500; // First 3 disbursements are 1.5k each
+        } else if (selectPlan === '50k' && planType === '180 days') {
             disbursementAmount = 2500; // First 12 disbursements are 2.5k each
         } else if (selectPlan === '50k' && planType === '240 days') {
             disbursementAmount = 2500; // First 16 disbursements are 2.5k each
@@ -221,7 +235,26 @@ function calculateDisbursementSchedule({ investmentAmount, selectPlan, planType,
         
         // Special handling for special plans
         if (specialPlan) {
-            if (selectPlan === '50k' && planType === '180 days') {
+            if (selectPlan === '10k' && planType === '90 days') {
+                if (i <= 3) {
+                    // First 3 disbursements: every 30 days, 1.5k each
+                    disbursementDate.setDate(startDate.getDate() + (i * intervalDays));
+                    disbursementDates.push({
+                        disbursementNumber: i,
+                        disbursementDate: disbursementDate.toISOString().split('T')[0],
+                        disbursementAmount: 1500
+                    });
+                } else if (i === 4) {
+                    // 4th disbursement: 91st day, 10k (principle)
+                    disbursementDate.setDate(startDate.getDate() + 91);
+                    disbursementDates.push({
+                        disbursementNumber: i,
+                        disbursementDate: disbursementDate.toISOString().split('T')[0],
+                        disbursementAmount: 10000,
+                        isPrincipleAmount: true
+                    });
+                }
+            } else if (selectPlan === '50k' && planType === '180 days') {
                 if (i <= 12) {
                     // First 12 disbursements: every 15 days, 2.5k each
                     disbursementDate.setDate(startDate.getDate() + (i * intervalDays));

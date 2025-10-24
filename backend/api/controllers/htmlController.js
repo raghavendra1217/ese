@@ -266,7 +266,8 @@ exports.generateInvestorReport = async (req, res) => {
             
             disbursementSchedule.disbursements.forEach((disbursement, index) => {
                 // Skip the final principle disbursement for special plans
-                if ((investorData.select_plan === '50k' && investorData.plan_type === '180 days' && index === 12) ||
+                if ((investorData.select_plan === '10k' && investorData.plan_type === '90 days' && index === 3) ||
+                    (investorData.select_plan === '50k' && investorData.plan_type === '180 days' && index === 12) ||
                     (investorData.select_plan === '50k' && investorData.plan_type === '240 days' && index === 16) ||
                     (investorData.select_plan === '1 lakh' && investorData.plan_type === '180 days' && index === 12) ||
                     (investorData.select_plan === '1 lakh' && investorData.plan_type === '240 days' && index === 16) ||
@@ -315,7 +316,8 @@ exports.generateInvestorReport = async (req, res) => {
                 const actualDisbursementAmount = parseFloat(disbursement.disbursement_amount || disbursement.disbursementAmount || 0);
                 
                 // Special handling for special plans
-                if ((investorData.select_plan === '50k' && investorData.plan_type === '180 days') ||
+                if ((investorData.select_plan === '10k' && investorData.plan_type === '90 days') ||
+                    (investorData.select_plan === '50k' && investorData.plan_type === '180 days') ||
                     (investorData.select_plan === '50k' && investorData.plan_type === '240 days') ||
                     (investorData.select_plan === '1 lakh' && investorData.plan_type === '180 days') ||
                     (investorData.select_plan === '1 lakh' && investorData.plan_type === '240 days') ||
@@ -374,7 +376,8 @@ exports.generateInvestorReport = async (req, res) => {
                 investorPlanType: investor.plan_type
             });
             // Special handling for special plans fallback
-            if ((investor.select_plan === '50k' && investor.plan_type === '180 days') ||
+            if ((investor.select_plan === '10k' && investor.plan_type === '90 days') ||
+                (investor.select_plan === '50k' && investor.plan_type === '180 days') ||
                 (investor.select_plan === '50k' && investor.plan_type === '240 days') ||
                 (investor.select_plan === '1 lakh' && investor.plan_type === '180 days') ||
                 (investor.select_plan === '1 lakh' && investor.plan_type === '240 days') ||
@@ -391,7 +394,10 @@ exports.generateInvestorReport = async (req, res) => {
                 });
                 
                 let sampleAmount, numDisbursements;
-                if (investor.select_plan === '50k' && investor.plan_type === '180 days') {
+                if (investor.select_plan === '10k' && investor.plan_type === '90 days') {
+                    sampleAmount = 1500; // 1.5k per disbursement for 10k/90d plan
+                    numDisbursements = 3;
+                } else if (investor.select_plan === '50k' && investor.plan_type === '180 days') {
                     sampleAmount = 2500; // 2.5k per disbursement for 50k/180d plan
                     numDisbursements = 12;
                 } else if (investor.select_plan === '50k' && investor.plan_type === '240 days') {
@@ -436,7 +442,12 @@ exports.generateInvestorReport = async (req, res) => {
                         continue;
                     }
                     
-                    date.setDate(date.getDate() + (i + 1) * 15); // Every 15 days
+                    // Different interval for different plans
+                    if (investor.select_plan === '10k' && investor.plan_type === '90 days') {
+                        date.setDate(date.getDate() + (i + 1) * 30); // Every 30 days for 10k/90d plan
+                    } else {
+                        date.setDate(date.getDate() + (i + 1) * 15); // Every 15 days for other plans
+                    }
                     
                     const day = date.getDate().toString().padStart(2, '0');
                     const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -493,7 +504,8 @@ exports.generateInvestorReport = async (req, res) => {
         });
         
         // Generate HTML content with special flag for special plans
-        const isSpecialPlan = (investor.select_plan === '50k' && investor.plan_type === '180 days') ||
+        const isSpecialPlan = (investor.select_plan === '10k' && investor.plan_type === '90 days') ||
+                              (investor.select_plan === '50k' && investor.plan_type === '180 days') ||
                               (investor.select_plan === '50k' && investor.plan_type === '240 days') ||
                               (investor.select_plan === '1 lakh' && investor.plan_type === '180 days') ||
                               (investor.select_plan === '1 lakh' && investor.plan_type === '240 days') ||
@@ -778,6 +790,10 @@ function generateHTMLContent(investorData, tableData, printMode = false, isSpeci
                     <li>2. If you do not receive the funds by the disbursement date, kindly notify us within three days. Requests submitted after this period cannot be processed.</li>
                     <li>3. We are unable to disclose any investor details except to the agent associated with that specific investor.</li>
                     <li>4. If you request a refund on the transaction day before your ID is approved, an 18% GST will be deducted, and the remaining amount will be sent to you within three working days. Once approved, it adds to the investments.</li>
+                    ${investorData.select_plan === '10k' && investorData.plan_type === '90 days' ? `
+                    <li>5. The principal amount of ₹10,000 will be disbursed only upon the user's request, and only after all previously scheduled disbursements have been completed.</li>
+                    <li>6. The principal amount of ₹10,000 will be released within one working day of the user's request, provided that at least 90 days have elapsed.</li>
+                    ` : ''}
                     ${investorData.select_plan === '50k' && investorData.plan_type === '180 days' ? `
                     <li>5. The principal amount of ₹50,000 will be disbursed only upon the user's request, and only after all previously scheduled disbursements have been completed.</li>
                     <li>6. The principal amount of ₹50,000 will be released within one working day of the user's request, provided that at least 180 days have elapsed.</li>
