@@ -67,23 +67,21 @@ exports.getWallet = async (req, res) => {
     }
 };
 
-// --- ADDED: New feature from incoming change ---
+// --- UPDATED: Integrated with Easebuzz Payment Gateway ---
 exports.requestDeposit = async (req, res) => {
     console.log('🔍 requestDeposit called with:', {
         body: req.body,
-        file: req.file,
         user: req.user
     });
     
     const userId = req.user.user_id;
-    const { amount, transactionId } = req.body;
-    const paymentScreenshotFile = req.file;
+    const { amount } = req.body;
     
-    console.log('🔍 Parsed data:', { userId, amount, transactionId, paymentScreenshotFile });
+    console.log('🔍 Parsed data:', { userId, amount });
     
-    if (!amount || !transactionId) {
-        console.log('❌ Validation failed: missing amount or transactionId');
-        return res.status(400).json({ message: 'Amount and transaction ID are required.' });
+    if (!amount) {
+        console.log('❌ Validation failed: missing amount');
+        return res.status(400).json({ message: 'Amount is required.' });
     }
     
     const depositAmount = parseFloat(amount);
@@ -92,58 +90,91 @@ exports.requestDeposit = async (req, res) => {
         return res.status(400).json({ message: 'A valid, positive amount is required.' });
     }
     
-    console.log('🔍 Starting database transaction for deposit:', { userId, depositAmount, transactionId });
+    // Minimum amount validation (from environment variable)
+    const minDepositAmount = parseFloat(process.env.MIN_DEPOSIT_AMOUNT) || 100;
+    if (depositAmount < minDepositAmount) {
+        console.log('❌ Validation failed: amount too low');
+        return res.status(400).json({ 
+            message: `Minimum deposit amount is ₹${minDepositAmount}.` 
+        });
+    }
     
-    const client = await db.connect();
     try {
-        await client.query('BEGIN');
-        const timestamp = Date.now();
-        let paymentProofUrl = null;
-        if (paymentScreenshotFile) {
-            console.log('🔍 Processing payment screenshot file');
-            const screenshotFilename = `DEP_${userId}_${timestamp}${path.extname(paymentScreenshotFile.originalname)}`;
-            paymentProofUrl = await uploadFileToR2(paymentScreenshotFile, 'deposits', screenshotFilename);
-            console.log('🔍 Payment screenshot uploaded:', paymentProofUrl);
-        } else {
-            console.log('🔍 No payment screenshot provided, proceeding without it');
+        // Get user details for payment gateway
+        const userQuery = await db.query(
+            'SELECT email FROM login WHERE user_id = $1',
+            [userId]
+        );
+        
+        if (userQuery.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found.' });
         }
         
-        const description = `User deposit request for ₹${depositAmount.toFixed(2)}`;
-        console.log('🔍 Inserting transaction with description:', description);
+        const user = userQuery.rows[0];
         
-        const query = `
-            INSERT INTO transaction (user_id, transaction_type, amount, status, description, upi_transaction_id, payment_proof_url)
-            VALUES ($1, 'deposit', $2, 'pending', $3, $4, $5) RETURNING trans_id;
-        `;
-        const result = await client.query(query, [userId, depositAmount, description, transactionId, paymentProofUrl]);
-        const transactionIdFromDB = result.rows[0].trans_id;
+        // Get user name and phone number from vendors table
+        let userName = 'User';
+        let userPhone = '9999999999'; // Default phone
         
-        console.log('🔍 Transaction inserted successfully with ID:', transactionIdFromDB);
-        
-        await client.query('COMMIT');
-        console.log('🔍 Database transaction committed successfully');
-
-        // Note: External API sending moved to admin approval process
-
         try {
-            console.log('🔍 Attempting to send admin notification email');
-            await runPy('../utils/sendAdminNotificationEmail.py', [
-                'Deposit request submitted',
-                `User: ${userId}\nAmount: ₹${depositAmount.toFixed(2)}\nUPI Txn ID: ${transactionId}`
-            ]);
-            console.log('🔍 Admin email sent successfully');
+            const vendorQuery = await db.query(
+                'SELECT vendor_name, phone_number FROM vendors WHERE id = $1',
+                [userId]
+            );
+            if (vendorQuery.rows.length > 0) {
+                userName = vendorQuery.rows[0].vendor_name || 'User';
+                userPhone = vendorQuery.rows[0].phone_number || '9999999999';
+            }
         } catch (e) {
-            console.error('❌ Admin email failed (deposit request):', e?.message || e);
+            console.log('Could not fetch vendor details, using defaults');
         }
-
-        console.log('✅ Deposit request completed successfully');
-        res.status(201).json({ message: 'Your deposit request has been submitted successfully and is awaiting approval.' });
+        
+        // Call Easebuzz payment initiation
+        const easebuzzController = require('./easebuzzController');
+        
+        // Create a mock request object for the Easebuzz controller
+        const mockReq = {
+            body: {
+                amount: depositAmount,
+                userId: userId,
+                userEmail: user.email,
+                userName: userName,
+                userPhone: userPhone
+            }
+        };
+        
+        // Create a mock response object to capture the result
+        let paymentResult = null;
+        const mockRes = {
+            json: (data) => { paymentResult = data; },
+            status: (code) => ({ json: (data) => { paymentResult = { status: code, ...data }; } })
+        };
+        
+        // Call the Easebuzz initiate payment function
+        await easebuzzController.initiatePayment(mockReq, mockRes);
+        
+        if (paymentResult && paymentResult.status === 1) {
+            console.log('✅ Payment initiated successfully');
+            res.json({
+                success: true,
+                message: 'Payment initiated successfully',
+                payment_url: paymentResult.data.payment_url,
+                redirect_url: paymentResult.data.redirect_url || paymentResult.data.payment_url
+            });
+        } else {
+            console.log('❌ Payment initiation failed:', paymentResult);
+            res.status(500).json({
+                success: false,
+                message: paymentResult?.message || 'Failed to initiate payment'
+            });
+        }
+        
     } catch (error) {
-        await client.query('ROLLBACK');
         console.error('❌ Error in requestDeposit:', error);
-        res.status(500).json({ message: 'A server error occurred while submitting your request.' });
-    } finally {
-        client.release();
+        res.status(500).json({ 
+            success: false,
+            message: 'A server error occurred while initiating payment.' 
+        });
     }
 };
 

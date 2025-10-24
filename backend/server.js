@@ -29,6 +29,7 @@ const payslipRoutes = require('./api/routes/payslipRoutes');
 const coordinatorRoutes = require('./api/routes/coordinatorRoutes');
 const resumeRoutes = require('./api/routes/resumeRoutes');
 const productRequestRoutes = require('./api/routes/productRequestRoutes');
+const easebuzzRoutes = require('./api/routes/easebuzzRoutes');
 const { startCompressorMonitoring } = require('./api/utils/statusMonitor');
 
 const PORT = process.env.PORT || 10000;
@@ -46,14 +47,20 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // ✅ This is the new, more flexible logic
-    // Allow requests with no origin (like mobile apps or Postman)
-    if (!origin) return callback(null, true);
+    console.log('🔍 CORS Check - Origin:', origin);
+    
+    // Allow requests with no origin or null origin (like mobile apps, Postman, or direct API calls)
+    if (!origin || origin === 'null') {
+      console.log('✅ CORS: Allowing request with no/null origin');
+      return callback(null, true);
+    }
     
     // Allow if the origin is in our list OR if it's an ngrok URL
     if (allowedOrigins.includes(origin) || origin.endsWith('.ngrok-free.app')) {
+      console.log('✅ CORS: Allowing origin:', origin);
       callback(null, true);
     } else {
+      console.log('❌ CORS: Blocking origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -64,6 +71,23 @@ app.use(cors({
   preflightContinue: false,
   optionsSuccessStatus: 200
 }));
+
+// --- Additional CORS Headers (fallback) ---
+app.use((req, res, next) => {
+  // Set CORS headers for all requests
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
+  next();
+});
 
 // --- Middleware ---
 app.use(morgan('dev'));
@@ -113,6 +137,7 @@ app.use('/api/payslip', payslipRoutes);
 app.use('/api/coordinator', coordinatorRoutes);
 app.use('/api/resumes', resumeRoutes);
 app.use('/api/product-requests', productRequestRoutes);
+app.use('/api/payment/easebuzz', easebuzzRoutes);
 
  
 
@@ -189,6 +214,15 @@ app.use('/api/*', (req, res) => {
 
 
 
+
+// --- Payment Result Pages ---
+app.get('/payment-success', (req, res) => {
+  res.sendFile(path.join(buildPath, 'index.html'));
+});
+
+app.get('/payment-failure', (req, res) => {
+  res.sendFile(path.join(buildPath, 'index.html'));
+});
 
 // --- Fallback to index.html for React Router (SPA Handling) ---
 app.get('*', (req, res) => {

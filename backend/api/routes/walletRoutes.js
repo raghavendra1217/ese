@@ -10,8 +10,8 @@ const upload = multer({ storage: multer.memoryStorage() });
 // GET /api/wallet - Fetch user wallet (Unchanged)
 router.get('/', protect, getWallet);
 
-// POST /api/wallet/deposit - User submits a deposit request (Unchanged)
-router.post('/deposit', protect, upload.single('paymentScreenshot'), requestDeposit);
+// POST /api/wallet/deposit - User initiates payment via Easebuzz gateway
+router.post('/deposit', protect, requestDeposit);
 
 
 // POST /api/wallet/withdraw - User requests a withdrawal (Unchanged)
