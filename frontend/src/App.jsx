@@ -65,6 +65,8 @@ import RecentActivityPage from './pages/vendor/RecentActivityPage';
 import MyReferralsPage from './pages/vendor/MyReferralsPage';
 import QuickRegistrationPage from './pages/QuickRegistrationPage';
 import QuickRegistrationFormPage from './pages/QuickRegistrationFormPage';
+import PaymentSuccessPage from './pages/PaymentSuccessPage';
+import PaymentFailurePage from './pages/PaymentFailurePage';
 import NotFound from './components/NotFound';
 
 
@@ -91,6 +93,8 @@ function App() {
                 <Route path="/forgot-password" element={<ForgotPassword url={url} />} />
                 <Route path="/quick-register" element={<QuickRegistrationPage url={url} />} />
                 <Route path="/quick-register-public" element={<QuickRegistrationFormPage url={url} />} />
+                <Route path="/payment-success" element={<PaymentSuccessPage />} />
+                <Route path="/payment-failure" element={<PaymentFailurePage />} />
               </Route>
             </Route>
 
