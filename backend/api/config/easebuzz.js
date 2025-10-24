@@ -9,8 +9,8 @@ const config = {
   enable_iframe: process.env.EASEBUZZ_IFRAME || '0', // '0' for redirect, '1' for iframe
   
   // URLs for callbacks
-  success_url: process.env.EASEBUZZ_SUCCESS_URL || 'http://localhost:10000/api/payment/easebuzz/success',
-  failure_url: process.env.EASEBUZZ_FAILURE_URL || 'http://localhost:10000/api/payment/easebuzz/failure',
+  success_url: process.env.EASEBUZZ_SUCCESS_URL || 'https://esepapertrading.onrender.com/payment-success',
+  failure_url: process.env.EASEBUZZ_FAILURE_URL || 'https://esepapertrading.onrender.com/payment-failure',
   webhook_url: process.env.EASEBUZZ_WEBHOOK_URL || 'http://localhost:10000/api/payment/easebuzz/webhook',
   
   // Payment gateway URLs

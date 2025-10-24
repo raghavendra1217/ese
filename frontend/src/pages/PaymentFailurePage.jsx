@@ -18,7 +18,7 @@ const PaymentFailurePage = () => {
     const borderColor = useColorModeValue('gray.200', 'gray.600');
     
     useEffect(() => {
-        // Show error toast
+        // Show error toast and redirect to wallet page
         toast({
             title: 'Payment Failed',
             description: 'Your payment could not be processed. Please try again.',
@@ -26,10 +26,15 @@ const PaymentFailurePage = () => {
             duration: 5000,
             isClosable: true,
         });
-    }, [toast]);
+        
+        // Redirect to wallet page after showing toast
+        setTimeout(() => {
+            navigate('/vendor/wallet');
+        }, 2000);
+    }, [toast, navigate]);
     
     const handleRetryPayment = () => {
-        navigate('/wallet');
+        navigate('/vendor/wallet');
     };
     
     const handleGoToDashboard = () => {
