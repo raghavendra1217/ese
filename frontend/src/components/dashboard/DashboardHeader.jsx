@@ -241,7 +241,7 @@ import {
     Button, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, 
     ModalFooter, ModalBody, ModalCloseButton, VStack, HStack, useClipboard
 } from '@chakra-ui/react';
-import { FaRegUserCircle, FaWallet, FaUserPlus, FaBolt } from 'react-icons/fa'; 
+import { FaRegUserCircle, FaWallet, FaUserPlus, FaBolt, FaHandHoldingUsd } from 'react-icons/fa'; 
 import { Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../../AppContext';
 
@@ -341,6 +341,18 @@ const DashboardHeader = ({ stats }) => {
             color={textAndIconColor}
             fontSize={{ base: '24px', lg: '26px' }}
             icon={<FaBolt />}
+        />
+    </Tooltip>
+
+    <Tooltip label="Add Wallet Deposits" hasArrow>
+        <IconButton 
+            as={RouterLink} 
+            to="/admin/wallet-deposits" 
+            variant="ghost" 
+            aria-label="Add Wallet Deposits" 
+            color={textAndIconColor}
+            fontSize={{ base: '24px', lg: '26px' }}
+            icon={<FaHandHoldingUsd />}
         />
     </Tooltip>
 

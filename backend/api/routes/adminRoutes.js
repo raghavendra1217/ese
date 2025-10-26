@@ -94,4 +94,10 @@ router.get('/vendors/:vendorId/product-visibility', protect, authorize('admin', 
 router.put('/vendors/:vendorId/product-visibility', protect, authorize('admin', 'coordinator'), adminController.toggleVendorProductVisibility);
 router.put('/vendors/bulk-product-visibility', protect, authorize('admin', 'coordinator'), adminController.bulkUpdateProductVisibility);
 
+// =======================================================
+// --- MANUAL DEPOSIT ROUTE ---
+// =======================================================
+router.post('/add-manual-deposit', protect, authorize('admin', 'coordinator'), adminController.addManualDeposit);
+router.get('/manual-deposits', protect, authorize('admin', 'coordinator'), adminController.getManualDeposits);
+
 module.exports = router;

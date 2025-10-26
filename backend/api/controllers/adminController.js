@@ -346,7 +346,7 @@ const getAllVendors = async (req, res) => {
     try {
         const query = `
             SELECT
-                v.id AS vendor_id,
+                v.id,
                 v.vendor_name,
                 v.email,
                 v.phone_number,
@@ -359,10 +359,12 @@ const getAllVendors = async (req, res) => {
                 v.coordinator_id,
                 c.name AS coordinator_name,
                 l.status,
-                l.role
+                l.role,
+                COALESCE(w.digital_money, 0) AS wallet_balance
             FROM vendors v
             JOIN login l ON v.id = l.user_id
             LEFT JOIN coordinator c ON v.coordinator_id = c.coordinator_id
+            LEFT JOIN wallet w ON v.id = w.id
             WHERE l.role = 'vendor' AND l.is_approved = TRUE
             ORDER BY v.vendor_name ASC;
         `;
@@ -2553,6 +2555,209 @@ const getProductRequestStats = async (req, res) => {
     }
 };
 
+// Manual Deposit Function
+const addManualDeposit = async (req, res) => {
+    const { vendorId, amount, transactionId } = req.body;
+    
+    if (!vendorId || !amount || !transactionId) {
+        return res.status(400).json({ message: 'Vendor ID, amount, and transaction ID are required.' });
+    }
+    
+    const depositAmount = parseFloat(amount);
+    if (isNaN(depositAmount) || depositAmount <= 0) {
+        return res.status(400).json({ message: 'A valid, positive amount is required.' });
+    }
+    
+    const client = await db.connect();
+    
+    try {
+        await client.query('BEGIN');
+        
+        // Verify vendor exists
+        const vendorCheck = await client.query('SELECT id FROM vendors WHERE id = $1', [vendorId]);
+        if (vendorCheck.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Vendor not found.' });
+        }
+        
+        // Update wallet balance
+        const walletResult = await client.query(
+            'UPDATE wallet SET digital_money = digital_money + $1 WHERE id = $2 RETURNING digital_money',
+            [depositAmount, vendorId]
+        );
+        
+        // If wallet doesn't exist, create it
+        if (walletResult.rows.length === 0) {
+            const idRes = await client.query(
+                'SELECT wallet_id FROM wallet ORDER BY CAST(SUBSTRING(wallet_id FROM 3) AS INTEGER) DESC LIMIT 1'
+            );
+            let nextNum = 1;
+            if (idRes.rows.length > 0 && idRes.rows[0].wallet_id) {
+                const lastIdNum = parseInt(idRes.rows[0].wallet_id.split('_')[1], 10);
+                if (!isNaN(lastIdNum)) nextNum = lastIdNum + 1;
+            }
+            const walletId = `w_${String(nextNum).padStart(3, '0')}`;
+            
+            const newWalletResult = await client.query(
+                'INSERT INTO wallet (wallet_id, id, digital_money) VALUES ($1, $2, $3) RETURNING digital_money',
+                [walletId, vendorId, depositAmount]
+            );
+            
+            const balanceAfterTransaction = parseFloat(newWalletResult.rows[0].digital_money);
+            
+            // Record transaction
+            const description = `Manual deposit via admin - Transaction ID: ${transactionId}`;
+            const transactionResult = await client.query(
+                `INSERT INTO transaction (user_id, transaction_type, amount, status, description, balance_after_transaction, upi_transaction_id)
+                 VALUES ($1, 'deposit', $2, 'approved', $3, $4, $5)
+                 RETURNING trans_id`,
+                [vendorId, depositAmount, description, balanceAfterTransaction, transactionId]
+            );
+            
+            const transactionId2 = transactionResult.rows[0].trans_id;
+            
+            // Send to external API
+            try {
+                await autoSendTransactionToAPI(transactionId2);
+            } catch (apiError) {
+                console.error('Error sending to external API:', apiError);
+            }
+            
+            await client.query('COMMIT');
+            
+            return res.status(201).json({
+                message: 'Deposit added successfully.',
+                balance: balanceAfterTransaction,
+                transaction_id: transactionId2
+            });
+        }
+        
+        const balanceAfterTransaction = parseFloat(walletResult.rows[0].digital_money);
+        
+        // Record transaction
+        const description = `Manual deposit via admin - Transaction ID: ${transactionId}`;
+        const transactionResult = await client.query(
+            `INSERT INTO transaction (user_id, transaction_type, amount, status, description, balance_after_transaction, upi_transaction_id)
+             VALUES ($1, 'deposit', $2, 'approved', $3, $4, $5)
+             RETURNING trans_id`,
+            [vendorId, depositAmount, description, balanceAfterTransaction, transactionId]
+        );
+        
+        const transactionId2 = transactionResult.rows[0].trans_id;
+        
+        // Send to external API
+        try {
+            await autoSendTransactionToAPI(transactionId2);
+        } catch (apiError) {
+            console.error('Error sending to external API:', apiError);
+        }
+        
+        await client.query('COMMIT');
+        
+        res.status(201).json({
+            message: 'Deposit added successfully.',
+            balance: balanceAfterTransaction,
+            transaction_id: transactionId2
+        });
+        
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error in addManualDeposit:', error);
+        res.status(500).json({ message: 'Failed to add deposit.' });
+    } finally {
+        client.release();
+    }
+};
+
+// Get Manual Deposits with Pagination and Filters
+const getManualDeposits = async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 10,
+            search = '',
+            status = '',
+            startDate = '',
+            endDate = ''
+        } = req.query;
+
+        const queryParams = [];
+        let baseQuery = `
+            FROM transaction t
+            JOIN vendors v ON t.user_id = v.id
+            WHERE t.transaction_type = 'deposit' 
+            AND t.description LIKE 'Manual deposit via admin%'
+            AND t.created_at >= '2024-10-26'
+        `;
+
+        // Add search filter
+        if (search) {
+            queryParams.push(`%${search}%`);
+            const searchIndex = queryParams.length;
+            baseQuery += ` AND (v.vendor_name ILIKE $${searchIndex} OR v.email ILIKE $${searchIndex} OR v.id ILIKE $${searchIndex} OR t.trans_id::text ILIKE $${searchIndex} OR t.upi_transaction_id ILIKE $${searchIndex})`;
+        }
+
+        // Add status filter
+        if (status) {
+            queryParams.push(status);
+            const statusIndex = queryParams.length;
+            baseQuery += ` AND t.status = $${statusIndex}`;
+        }
+
+        // Add date range filters
+        if (startDate) {
+            queryParams.push(startDate);
+            const startIndex = queryParams.length;
+            baseQuery += ` AND DATE(t.created_at) >= $${startIndex}`;
+        }
+
+        if (endDate) {
+            queryParams.push(endDate);
+            const endIndex = queryParams.length;
+            baseQuery += ` AND DATE(t.created_at) <= $${endIndex}`;
+        }
+
+        // Get total count
+        const countQuery = `SELECT COUNT(*) ${baseQuery}`;
+        const countResult = await db.query(countQuery, queryParams);
+        const totalCount = parseInt(countResult.rows[0].count, 10);
+
+        // Get paginated data
+        const offset = (page - 1) * limit;
+        const dataQuery = `
+            SELECT 
+                t.trans_id,
+                t.user_id AS vendor_id,
+                v.vendor_name,
+                v.email,
+                v.phone_number,
+                t.created_at,
+                t.amount,
+                t.status,
+                t.description,
+                t.balance_after_transaction,
+                t.upi_transaction_id
+            ${baseQuery}
+            ORDER BY t.created_at DESC
+            LIMIT $${queryParams.length + 1}
+            OFFSET $${queryParams.length + 2}
+        `;
+        
+        const dataResult = await db.query(dataQuery, [...queryParams, limit, offset]);
+
+        res.status(200).json({
+            data: dataResult.rows,
+            totalCount,
+            page: parseInt(page, 10),
+            limit: parseInt(limit, 10),
+            totalPages: Math.ceil(totalCount / limit)
+        });
+    } catch (error) {
+        console.error('Error fetching manual deposits:', error);
+        res.status(500).json({ message: 'Failed to fetch manual deposits.' });
+    }
+};
+
 // Update the exports to include the new functions
 module.exports = {
     getPendingVendors,
@@ -2597,4 +2802,8 @@ module.exports = {
     getPendingProductRequests,
     reviewProductRequest,
     getProductRequestStats,
+    
+    // Manual Deposit Management
+    addManualDeposit,
+    getManualDeposits,
 };
