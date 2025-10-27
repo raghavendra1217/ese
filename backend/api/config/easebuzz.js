@@ -17,9 +17,9 @@ const config = {
   
   // URLs for callbacks - dynamically generated based on environment
   success_url: process.env.EASEBUZZ_SUCCESS_URL || `${BASE_URL}/payment-success`,
-  failure_url: process.env.EASEBUZZ_FAILURE_URL || `${BASE_URL}/payment-failure`,
+  failure_url: process.env.EASEBUZZ_FAILURE_URL || `${BASE_URL}/api/payment/easebuzz/failure`,
   registration_success_url: process.env.EASEBUZZ_REG_SUCCESS_URL || `${BASE_URL}/api/payment/easebuzz/registration/success`,
-  registration_failure_url: process.env.EASEBUZZ_REG_FAILURE_URL || `${BASE_URL}/payment-failure`,
+  registration_failure_url: process.env.EASEBUZZ_REG_FAILURE_URL || `${BASE_URL}/api/payment/easebuzz/failure`,
   webhook_url: process.env.EASEBUZZ_WEBHOOK_URL || `${BASE_URL}/api/payment/easebuzz/webhook`,
   
   // Base URL for logging

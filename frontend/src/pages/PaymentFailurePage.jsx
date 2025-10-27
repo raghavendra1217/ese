@@ -6,6 +6,22 @@ import {
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { WarningIcon, ExternalLinkIcon, RepeatIcon } from '@chakra-ui/icons';
 
+// Helper function to determine redirect path based on returnTo parameter
+const getRedirectPath = (returnTo) => {
+    const pathMap = {
+        'wallet': '/vendor/wallet',
+        'registration': '/register',
+        'register': '/register',
+        'quick-register': '/quick-register',
+        'dashboard': '/vendor/dashboard',
+        'admin-dashboard': '/admin/dashboard',
+        'coordinator-dashboard': '/coordinator/dashboard',
+        'vendor-dashboard': '/vendor/dashboard',
+    };
+    
+    return pathMap[returnTo.toLowerCase()] || '/dashboard';
+};
+
 const PaymentFailurePage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -13,12 +29,13 @@ const PaymentFailurePage = () => {
     
     const txnid = searchParams.get('txnid');
     const error = searchParams.get('error');
+    const returnTo = searchParams.get('returnTo') || 'dashboard';
     
     const bgColor = useColorModeValue('white', 'gray.800');
     const borderColor = useColorModeValue('gray.200', 'gray.600');
     
     useEffect(() => {
-        // Show error toast and redirect to wallet page
+        // Show error toast
         toast({
             title: 'Payment Failed',
             description: 'Your payment could not be processed. Please try again.',
@@ -27,14 +44,17 @@ const PaymentFailurePage = () => {
             isClosable: true,
         });
         
-        // Redirect to wallet page after showing toast
+        // Redirect to original page after showing toast
         setTimeout(() => {
-            navigate('/vendor/wallet');
+            // Determine redirect destination based on returnTo parameter or default
+            const redirectPath = getRedirectPath(returnTo);
+            navigate(redirectPath);
         }, 2000);
-    }, [toast, navigate]);
+    }, [toast, navigate, returnTo]);
     
     const handleRetryPayment = () => {
-        navigate('/vendor/wallet');
+        const redirectPath = getRedirectPath(returnTo);
+        navigate(redirectPath);
     };
     
     const handleGoToDashboard = () => {

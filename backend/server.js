@@ -227,10 +227,44 @@ app.get('/payment-failure', (req, res) => {
   res.sendFile(path.join(buildPath, 'index.html'));
 });
 
+app.post('/payment-failure', (req, res) => {
+  // Handle POST requests to payment-failure (e.g., from form submissions or redirects)
+  // Redirect to GET version or serve the React app
+  const error = req.body.error || req.query.error;
+  const txnid = req.body.txnid || req.query.txnid;
+  const returnTo = req.body.returnTo || req.query.returnTo || 'dashboard';
+  
+  if (error || txnid) {
+    // Redirect to GET version with query parameters
+    const queryString = new URLSearchParams();
+    if (error) queryString.set('error', error);
+    if (txnid) queryString.set('txnid', txnid);
+    if (returnTo) queryString.set('returnTo', returnTo);
+    return res.redirect('/payment-failure?' + queryString.toString());
+  }
+  
+  res.sendFile(path.join(buildPath, 'index.html'));
+});
+
 // --- Fallback to index.html for React Router (SPA Handling) ---
 app.get('*', (req, res) => {
   // Serve the React app for all non-API routes
   // This allows React Router to handle client-side routing
+  res.sendFile(path.join(buildPath, 'index.html'));
+});
+
+app.post('*', (req, res) => {
+  // Handle POST requests to non-API routes
+  // This can happen when forms are submitted or payment callbacks redirect
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({
+      message: 'API route not found',
+      method: req.method,
+      url: req.url
+    });
+  }
+  
+  // For non-API POST requests, serve the React app
   res.sendFile(path.join(buildPath, 'index.html'));
 });
 

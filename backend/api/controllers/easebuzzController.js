@@ -320,7 +320,7 @@ exports.handleSuccess = async (req, res) => {
     
   } catch (error) {
     console.error('Error handling payment success:', error);
-    res.redirect('/payment-failure?error=processing_error');
+    res.redirect('/payment-failure?error=processing_error&returnTo=wallet');
   }
 };
 
@@ -344,12 +344,23 @@ exports.handleFailure = async (req, res) => {
       client.release();
     }
     
-    // Redirect to failure page
-    res.redirect('/payment-failure?txnid=' + response.txnid + '&error=' + (response.error || 'payment_failed'));
+    // Determine returnTo based on transaction type (from UDF2 or default to wallet)
+    let returnTo = 'wallet'; // Default
+    if (response.udf2) {
+      // UDF2 stores transaction type
+      if (response.udf2.includes('registration') || response.udf2.includes('register')) {
+        returnTo = 'registration';
+      } else if (response.udf2.includes('quick')) {
+        returnTo = 'quick-register';
+      }
+    }
+    
+    // Redirect to failure page with returnTo parameter
+    res.redirect('/payment-failure?txnid=' + response.txnid + '&error=' + (response.error || 'payment_failed') + '&returnTo=' + returnTo);
     
   } catch (error) {
     console.error('Error handling payment failure:', error);
-    res.redirect('/payment-failure?error=processing_error');
+    res.redirect('/payment-failure?error=processing_error&returnTo=wallet');
   }
 };
 
@@ -800,6 +811,6 @@ exports.handleRegistrationSuccess = async (req, res) => {
     
   } catch (error) {
     console.error('Error handling registration payment success:', error);
-    res.redirect('/payment-failure?error=processing_error');
+    res.redirect('/payment-failure?error=processing_error&returnTo=registration');
   }
 };
