@@ -456,3 +456,350 @@ exports.getPaymentHistory = async (req, res) => {
     });
   }
 };
+
+// Initiate registration payment (public endpoint - no auth required)
+exports.initiateRegistrationPayment = async (req, res) => {
+  try {
+    const { amount, email, phoneNumber, name } = req.body;
+    
+    // Validate required fields
+    if (!amount || !email || !phoneNumber || !name) {
+      return res.status(400).json({
+        status: 0,
+        message: 'Missing required fields: amount, email, phoneNumber, name'
+      });
+    }
+    
+    // Validate amount
+    const registrationAmount = parseFloat(amount);
+    if (isNaN(registrationAmount) || registrationAmount <= 0) {
+      return res.status(400).json({
+        status: 0,
+        message: 'Invalid amount. Please enter a valid positive amount.'
+      });
+    }
+    
+    // Generate unique transaction ID
+    const timestamp = Date.now();
+    const txnid = `REG_${email.replace('@', '_').replace('.', '_')}_${timestamp}`;
+    
+    // Prepare payment data
+    const paymentData = {
+      txnid: txnid,
+      amount: registrationAmount.toFixed(2),
+      productinfo: 'Vendor Registration Fee',
+      name: name,
+      email: email,
+      phone: phoneNumber,
+      surl: config.registration_success_url,
+      furl: config.registration_failure_url,
+      udf1: email, // Store email in UDF1
+      udf2: 'registration_payment', // Store transaction type in UDF2
+      udf3: '',
+      udf4: '',
+      udf5: '',
+      udf6: '',
+      udf7: '',
+      udf8: '',
+      udf9: '',
+      udf10: ''
+    };
+    
+    // Generate hash
+    const hash = generateHash(paymentData);
+    paymentData.hash = hash;
+    
+    // Create form data for API call
+    const formData = {
+      'key': config.key,
+      'txnid': paymentData.txnid,
+      'amount': paymentData.amount,
+      'email': paymentData.email,
+      'phone': paymentData.phone,
+      'firstname': paymentData.name,
+      'udf1': paymentData.udf1 || '',
+      'udf2': paymentData.udf2 || '',
+      'udf3': paymentData.udf3 || '',
+      'udf4': paymentData.udf4 || '',
+      'udf5': paymentData.udf5 || '',
+      'hash': paymentData.hash,
+      'productinfo': paymentData.productinfo,
+      'udf6': paymentData.udf6 || '',
+      'udf7': paymentData.udf7 || '',
+      'udf8': paymentData.udf8 || '',
+      'udf9': paymentData.udf9 || '',
+      'udf10': paymentData.udf10 || '',
+      'furl': paymentData.furl,
+      'surl': paymentData.surl
+    };
+    
+    // Store payment record in database
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // First, get the vendor ID from email
+      const vendorResult = await client.query('SELECT id FROM vendors WHERE email = $1', [email]);
+      
+      if (vendorResult.rows.length === 0) {
+        throw new Error('Vendor registration not found. Please complete the registration form first.');
+      }
+      
+      const userId = vendorResult.rows[0].id;
+      
+      // Insert into easebuzz_payments table
+      const insertQuery = `
+        INSERT INTO easebuzz_payments (
+          easebuzz_txn_id, user_id, amount, currency, productinfo,
+          customer_name, customer_email, customer_phone, payment_status,
+          success_url, failure_url, udf1, udf2, udf3, udf4, udf5,
+          udf6, udf7, udf8, udf9, udf10, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+        RETURNING id;
+      `;
+      
+      const result = await client.query(insertQuery, [
+        txnid, userId, registrationAmount, 'INR', paymentData.productinfo,
+        name, email, phoneNumber, 'initiated',
+        config.registration_success_url, config.registration_failure_url,
+        paymentData.udf1, paymentData.udf2, paymentData.udf3, paymentData.udf4, paymentData.udf5,
+        paymentData.udf6, paymentData.udf7, paymentData.udf8, paymentData.udf9, paymentData.udf10,
+        new Date()
+      ]);
+      
+      const paymentId = result.rows[0].id;
+      
+      await client.query('COMMIT');
+      
+      // Call Easebuzz API to initiate payment
+      const paymentUrl = config.getPaymentUrl();
+      const apiUrl = paymentUrl + 'payment/initiateLink';
+      
+      console.log('🔍 Easebuzz Registration Payment API Debug:');
+      console.log('Payment URL:', paymentUrl);
+      console.log('API URL:', apiUrl);
+      console.log('Form Data:', formData);
+      
+      let apiResponse;
+      try {
+        apiResponse = await makeRequest(apiUrl, formData);
+        console.log('🔍 Easebuzz API Response:', apiResponse);
+      } catch (apiError) {
+        console.error('❌ Easebuzz API Call Failed:', apiError);
+        throw new Error('Failed to connect to payment gateway: ' + apiError.message);
+      }
+      
+      if (apiResponse.status === 1 && apiResponse.data) {
+        // Update payment record with access key
+        await client.query(
+          'UPDATE easebuzz_payments SET easebuzz_payment_id = $1, gateway_response = $2 WHERE id = $3',
+          [apiResponse.data, JSON.stringify(apiResponse), paymentId]
+        );
+        
+        // Return payment URL or redirect
+        if (config.enable_iframe === '1') {
+          res.json({
+            status: 1,
+            data: {
+              payment_url: paymentUrl + 'pay/' + apiResponse.data,
+              access_key: apiResponse.data,
+              iframe_mode: true
+            }
+          });
+        } else {
+          res.json({
+            status: 1,
+            data: {
+              payment_url: paymentUrl + 'pay/' + apiResponse.data,
+              redirect_url: paymentUrl + 'pay/' + apiResponse.data
+            }
+          });
+        }
+      } else {
+        console.error('❌ Easebuzz API Error:', apiResponse);
+        throw new Error(apiResponse.data || apiResponse.message || 'Failed to initiate payment');
+      }
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    
+  } catch (error) {
+    console.error('Error initiating registration payment:', error);
+    res.status(500).json({
+      status: 0,
+      message: 'Failed to initiate payment: ' + error.message
+    });
+  }
+};
+
+// Helper function to ensure transaction_id column exists
+const ensureTransactionIdColumn = async (client) => {
+    try {
+        console.log('🔍 Checking if transaction_id column exists in vendors table...');
+        
+        const checkQuery = `
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'vendors' AND column_name = 'transaction_id'
+        `;
+        
+        const result = await client.query(checkQuery);
+        
+        if (result.rows.length === 0) {
+            console.log('⚠️ transaction_id column not found, creating it...');
+            await client.query('ALTER TABLE vendors ADD COLUMN transaction_id VARCHAR(255)');
+            console.log('✅ transaction_id column created successfully');
+        } else {
+            console.log('✅ transaction_id column already exists');
+        }
+    } catch (error) {
+        console.error('❌ Error checking/creating transaction_id column:', error.message);
+        // Continue anyway - this is not critical
+    }
+};
+
+// Handle registration payment success callback
+exports.handleRegistrationSuccess = async (req, res) => {
+  try {
+    const response = req.body;
+    
+    console.log('🔍 Registration payment success callback received:', response);
+    
+    // Validate hash
+    if (!validateResponseHash(response)) {
+      console.error('Hash validation failed for registration success callback');
+      return res.status(400).send('Hash validation failed');
+    }
+    
+    // Update payment record and complete registration
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Get the email from UDF1
+      const email = response.udf1;
+      const transactionId = response.txnid;
+      console.log('🔍 Processing registration for email:', email, 'txnid:', transactionId);
+      
+      // Update easebuzz_payments table
+      await client.query(`
+        UPDATE easebuzz_payments 
+        SET payment_status = $1, gateway_response = $2, payment_completed_at = $3, hash_verified = $4
+        WHERE easebuzz_txn_id = $5
+      `, [
+        response.status === 'success' ? 'success' : 'failed',
+        JSON.stringify(response),
+        new Date(),
+        true,
+        response.txnid
+      ]);
+      
+      // If payment is successful, complete the registration
+      if (response.status === 'success') {
+        console.log('🔍 Payment successful, completing registration...');
+        
+        const vendorResult = await client.query('SELECT id FROM vendors WHERE email = $1', [email]);
+        
+        if (vendorResult.rows.length === 0) {
+          console.error('❌ Vendor not found for email:', email);
+          throw new Error('Vendor registration not found');
+        }
+        
+        const vendorId = vendorResult.rows[0].id;
+        console.log('🔍 Found vendor ID:', vendorId);
+        
+        // Ensure transaction_id column exists
+        await ensureTransactionIdColumn(client);
+        
+        // Update transaction_id
+        await client.query(
+          'UPDATE vendors SET transaction_id = $1 WHERE id = $2',
+          [transactionId, vendorId]
+        );
+        console.log('🔍 Updated transaction_id for vendor:', vendorId);
+        
+        // Create login record with AUTO-APPROVAL
+        const loginQuery = `
+          INSERT INTO login (user_id, email, password, role, is_approved, status) 
+          VALUES ($1, $2, NULL, 'vendor', TRUE, 'active') 
+          ON CONFLICT (user_id) DO UPDATE 
+          SET is_approved = TRUE, status = 'active';
+        `;
+        await client.query(loginQuery, [vendorId, email]);
+        console.log('🔍 Created login record for vendor with auto-approval:', vendorId);
+        
+        // Get payment amount from easebuzz_payments
+        const paymentResult = await client.query(
+          'SELECT amount FROM easebuzz_payments WHERE easebuzz_txn_id = $1',
+          [transactionId]
+        );
+        
+        const registrationAmount = paymentResult.rows[0]?.amount || 0;
+        
+        // Create transaction record in transaction table
+        const transactionQuery = `
+          INSERT INTO transaction (user_id, transaction_type, amount, status, description, payment_gateway, easebuzz_payment_id)
+          VALUES ($1, $2, $3, $4, $5, $6, 
+            (SELECT id FROM easebuzz_payments WHERE easebuzz_txn_id = $7)
+          )
+          RETURNING trans_id
+        `;
+        
+        const transactionResult = await client.query(transactionQuery, [
+          vendorId,
+          'registration_payment',
+          registrationAmount,
+          'completed',
+          `Vendor registration payment - ${transactionId}`,
+          'easebuzz',
+          transactionId
+        ]);
+        
+        const internalTransactionId = transactionResult.rows[0].trans_id;
+        console.log('🔍 Created transaction record:', internalTransactionId);
+        
+        // Update easebuzz_payments table with the internal_txn_id
+        await client.query(`
+          UPDATE easebuzz_payments 
+          SET internal_txn_id = $1
+          WHERE easebuzz_txn_id = $2
+        `, [internalTransactionId, transactionId]);
+        console.log('🔍 Updated easebuzz_payments with internal_txn_id:', internalTransactionId);
+        
+        console.log('✅ Registration completed successfully with auto-approval');
+        
+        // Send admin notification email (non-blocking)
+        const { runPy } = require('../utils/emailRunner');
+        try {
+          await runPy('../utils/sendAdminNotificationEmail.py', [
+            'New vendor registration - Auto Approved',
+            `Email: ${email}\nVendorId: ${vendorId}\nTransactionId: ${transactionId}\nAmount: ₹${registrationAmount}\nStatus: Auto-approved after payment`
+          ]);
+          console.log('✅ Admin notification email sent');
+        } catch (emailError) {
+          console.error('⚠️ Admin notification email failed:', emailError);
+        }
+      }
+      
+      await client.query('COMMIT');
+      
+      // Redirect to success page
+      res.redirect('/registration-success?txnid=' + response.txnid + '&amount=' + response.amount);
+      
+    } catch (error) {
+      console.error('❌ Error processing registration payment:', error);
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    
+  } catch (error) {
+    console.error('Error handling registration payment success:', error);
+    res.redirect('/payment-failure?error=processing_error');
+  }
+};

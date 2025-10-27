@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -27,14 +27,19 @@ const LoginPage = ({ url }) => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
+  const [searchParams] = useSearchParams();
 
   const isMobile = useBreakpointValue({ base: true, md: false });
 
-  const [step, setStep] = useState('email');
+  // Check URL params for auto-fill email and setPassword mode
+  const emailFromUrl = searchParams.get('email');
+  const setPasswordFromUrl = searchParams.get('setPassword') === 'true';
+  
+  const [step, setStep] = useState(setPasswordFromUrl ? 'setPassword' : 'email');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const [identifier, setIdentifier] = useState(''); // renamed from email
+  const [identifier, setIdentifier] = useState(emailFromUrl || ''); // renamed from email, auto-fill from URL
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);

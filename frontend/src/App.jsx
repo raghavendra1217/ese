@@ -68,6 +68,7 @@ import QuickRegistrationPage from './pages/QuickRegistrationPage';
 import QuickRegistrationFormPage from './pages/QuickRegistrationFormPage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import PaymentFailurePage from './pages/PaymentFailurePage';
+import RegistrationSuccessPage from './pages/RegistrationSuccessPage';
 import NotFound from './components/NotFound';
 
 
@@ -96,6 +97,7 @@ function App() {
                 <Route path="/quick-register-public" element={<QuickRegistrationFormPage url={url} />} />
                 <Route path="/payment-success" element={<PaymentSuccessPage />} />
                 <Route path="/payment-failure" element={<PaymentFailurePage />} />
+                <Route path="/registration-success" element={<RegistrationSuccessPage />} />
               </Route>
             </Route>
 

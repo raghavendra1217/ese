@@ -235,8 +235,33 @@ app.get('*', (req, res) => {
 });
 
 // --- Start Server ---
+// Global error handlers to prevent crashes
+process.on('uncaughtException', (error) => {
+  console.error('❌ UNCAUGHT EXCEPTION - Application will continue running:', error);
+  // Log but don't crash
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ UNHANDLED REJECTION at:', promise, 'reason:', reason);
+  // Log but don't crash
+});
+
+process.on('SIGTERM', () => {
+  console.log('🛑 SIGTERM signal received: closing HTTP server');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('🛑 SIGINT signal received: closing HTTP server');
+  process.exit(0);
+});
+
 const startServer = async () => {
   try {
+    // Log Easebuzz configuration on startup
+    const easebuzzConfig = require('./api/config/easebuzz');
+    easebuzzConfig.logConfig();
+    
     console.log('🟡 Attempting to connect to the database...');
     const result = await db.query('SELECT NOW()');
     console.log(`✅ Database connection successful. DB time: ${result.rows[0].now}`);

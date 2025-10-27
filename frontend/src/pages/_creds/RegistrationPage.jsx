@@ -108,6 +108,7 @@ const RegistrationPage = ({ url }) => {
       const registrationData = {
         email: formData.email,
         vendorName: formData.vendorName,
+        phoneNumber: formData.phoneNumber,
       };
       sessionStorage.setItem('registrationData', JSON.stringify(registrationData));
       navigate('/payment');

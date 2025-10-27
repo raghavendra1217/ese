@@ -34,6 +34,12 @@ pool.on('error', (err, client) => {
     idleClients: pool.idleCount,
     waitingClients: pool.waitingCount
   });
+  
+  // Don't let the error crash the app
+  // The error is logged above, and the pool will handle reconnection
+  if (client && !client._ending) {
+    console.log('🔄 Attempting to reconnect client...');
+  }
 });
 
 // Enhanced query wrapper with better error handling
@@ -90,9 +96,33 @@ const checkConnectionHealth = async () => {
   }
 };
 
+// Get connection with retry logic
+const getConnectionWithRetry = async (maxRetries = 3, retryDelay = 1000) => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const client = await pool.connect();
+      // Test the connection with a simple query
+      await client.query('SELECT 1');
+      console.log(`✅ Database connection established successfully (attempt ${attempt}/${maxRetries})`);
+      return client;
+    } catch (error) {
+      console.error(`❌ Database connection failed (attempt ${attempt}/${maxRetries}):`, error.message);
+      
+      if (attempt < maxRetries) {
+        console.log(`🔄 Retrying connection in ${retryDelay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      } else {
+        console.error('❌ All connection attempts failed');
+        throw new Error(`Failed to connect to database after ${maxRetries} attempts: ${error.message}`);
+      }
+    }
+  }
+};
+
 module.exports = {
   query: queryWithRetry,
-  connect: () => pool.connect(),
+  connect: () => getConnectionWithRetry(),
+  connectDirect: () => pool.connect(), // For cases where we don't want retry
   pool,
   checkConnectionHealth,
 }; 

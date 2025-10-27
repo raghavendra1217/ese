@@ -8,11 +8,17 @@ const {
   handleFailure,
   handleWebhook,
   getPaymentStatus,
-  getPaymentHistory
+  getPaymentHistory,
+  initiateRegistrationPayment,
+  handleRegistrationSuccess
 } = require('../controllers/easebuzzController');
 
 // Payment initiation route (protected)
 router.post('/initiate', protect, initiatePayment);
+
+// Registration payment routes (public - no auth required)
+router.post('/registration/initiate', initiateRegistrationPayment);
+router.post('/registration/success', handleRegistrationSuccess);
 
 // Payment callback routes (public - called by Easebuzz)
 router.post('/success', handleSuccess);
@@ -47,6 +53,7 @@ router.get('/test', (req, res) => {
 router.get('/config', (req, res) => {
   res.json({
     minDepositAmount: parseFloat(process.env.MIN_DEPOSIT_AMOUNT) || 100,
+    registrationFee: parseFloat(process.env.REGISTRATION_FEE) || 4999,
     currency: 'INR'
   });
 });

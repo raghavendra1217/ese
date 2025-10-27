@@ -1,32 +1,25 @@
-import React, { useState, useEffect } from 'react'; // Removed useRef
+import React, { useState, useEffect } from 'react';
 import {
-  Box, Button, FormControl, FormLabel, Input, VStack, Heading,
-  useColorModeValue, Center, Divider, Text, useToast, Image, Alert, AlertIcon,
-  HStack, useClipboard
+  Box, Button, VStack, Heading,
+  useColorModeValue, Divider, Text, useToast, Alert, AlertIcon
 } from '@chakra-ui/react';
-
-import { Tooltip } from "@chakra-ui/react";
-import { CopyIcon } from "@chakra-ui/icons";
 import { useNavigate } from 'react-router-dom';
 
 const PaymentPage = ({ url }) => {
   const toast = useToast();
   const navigate = useNavigate();
-  // --- REMOVED: paymentScreenshotRef ---
 
   const cardBg = useColorModeValue('white', 'gray.800');
   const cardBorder = useColorModeValue('gray.200', 'gray.700');
   const headingColor = useColorModeValue('gray.700', 'white');
-  const upiIdBg = useColorModeValue('gray.100', 'gray.700');
-  const upiIdColor = useColorModeValue('gray.800', 'gray.200');
 
   const [email, setEmail] = useState('');
-  const [transactionId, setTransactionId] = useState('');
-  // --- REMOVED: paymentScreenshot state ---
+  const [vendorName, setVendorName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPaymentButton, setShowPaymentButton] = useState(true);
+  const [registrationFee, setRegistrationFee] = useState(4999); // Default value
 
-  const upiId = '9676861888@ybl';
-  const { onCopy, hasCopied } = useClipboard(upiId);
   const backgroundColor = useColorModeValue('gray.5', 'gray.900');
 
   useEffect(() => {
@@ -44,46 +37,74 @@ const PaymentPage = ({ url }) => {
     }
     const registrationData = JSON.parse(registrationDataString);
     setEmail(registrationData.email);
-  }, [navigate, toast]);
+    setVendorName(registrationData.vendorName);
+    setPhoneNumber(registrationData.phoneNumber);
 
-  const registrationFee = 4999;
-  const totalAmount = registrationFee;
+    // Fetch registration fee from API
+    const fetchRegistrationFee = async () => {
+      try {
+        const response = await fetch(`${url}/api/payment/easebuzz/config`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.registrationFee) {
+            setRegistrationFee(data.registrationFee);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch registration fee:', error);
+        // Keep default value
+      }
+    };
 
-  const handlePaymentSubmit = async (e) => {
-    e.preventDefault();
+    fetchRegistrationFee();
+  }, [navigate, toast, url]);
+
+  const handlePaymentGateway = async () => {
     setIsLoading(true);
-
-    // --- MODIFIED: FormData no longer includes the screenshot ---
-    const paymentData = new FormData();
-    paymentData.append('email', email);
-    paymentData.append('transactionId', transactionId);
+    setShowPaymentButton(false);
 
     try {
-        const response = await fetch(`${url}/api/auth/submit-payment`, {
-            method: 'POST',
-            body: paymentData,
-        });
-        const contentType = response.headers.get("content-type");
-        if (!response.ok || !contentType || !contentType.includes("application/json")) {
-            throw new Error(`Server responded with an error (Status: ${response.status}). Please check the API connection.`);
-        }
-        const data = await response.json();
-        toast({
-            title: 'Registration Submitted!',
-            description: data.message,
-            status: 'success',
-            duration: 9000,
-            isClosable: true,
-            position: 'top',
-        });
-        sessionStorage.removeItem('registrationData');
-        navigate('/login');
+      const response = await fetch(`${url}/api/payment/easebuzz/registration/initiate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          amount: registrationFee,
+          email: email,
+          phoneNumber: phoneNumber,
+          name: vendorName
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to initiate payment');
+      }
+
+      if (data.status === 1 && data.data.payment_url) {
+        // Redirect to payment gateway
+        window.location.href = data.data.payment_url;
+      } else {
+        throw new Error('Failed to get payment URL');
+      }
+
     } catch (err) {
-        toast({ title: 'Submission Failed', description: err.message, status: 'error', duration: 5000, isClosable: true });
-    } finally {
-        setIsLoading(false);
+      console.error('Payment initiation error:', err);
+      toast({
+        title: 'Payment Failed',
+        description: err.message || 'Failed to initiate payment gateway',
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
+      setIsLoading(false);
+      setShowPaymentButton(true);
     }
   };
+
+  const totalAmount = registrationFee;
 
   if (!sessionStorage.getItem('registrationData')) return null;
 
@@ -118,7 +139,7 @@ const PaymentPage = ({ url }) => {
             boxShadow="lg" 
             bg={cardBg} 
           >
-            <VStack as="form" onSubmit={handlePaymentSubmit} spacing={6}>
+            <VStack spacing={6}>
                 <Heading size="md" color="teal.500">Registration Payment</Heading>
                 
                 <Alert status='info' borderRadius="md" w="full">
@@ -129,58 +150,29 @@ const PaymentPage = ({ url }) => {
                     </Box>
                 </Alert>
 
-                <Text textAlign="center">Please scan the QR code below or use the UPI ID to complete the payment.</Text>
-                
-                <Image
-                    w={{ base: '200px', md: '250px' }}
-                    h="auto"
-                    objectFit="contain"
-                    src="/images/payment-qr-code.png"
-                    alt="QR Code for payment"
-                    fallbackSrc="https://via.placeholder.com/250"
-                />
+                <Text textAlign="center">
+                  Click the button below to proceed with secure payment through our payment gateway.
+                  You will be redirected to complete the payment.
+                </Text>
 
-                <Box p={3} bg={upiIdBg} borderRadius="md" w="full" maxW="350px">
-                    <HStack justify="space-between" align="center">
-                        <Text fontFamily="monospace" fontSize="sm" color={upiIdColor}>
-                            {upiId}
-                        </Text>
-                        <Tooltip
-                            label={hasCopied ? "Copied!" : ""}
-                            placement="bottom"
-                            hasArrow
-                            closeOnClick={false}
-                            openDelay={0}
-                          >
-                          <Button
-                            onClick={onCopy}
-                            size="sm"
-                            p={4}
-                            colorScheme={hasCopied ? "gray" : "blue"}
-                            leftIcon={
-                              <CopyIcon
-                                boxSize={4}
-                                color={hasCopied ? "blue.300" : "gray.300"}
-                                filter={hasCopied ? "drop-shadow(0 0 6px #48BB78)" : "none"}
-                              />
-                            }
-                          >
-                          </Button>
-                        </Tooltip>
-                    </HStack>
-                </Box>
+                {showPaymentButton && (
+                  <Button 
+                    colorScheme="teal" 
+                    w="full" 
+                    size="lg" 
+                    onClick={handlePaymentGateway}
+                    isLoading={isLoading}
+                    loadingText="Processing..."
+                  >
+                    Proceed to Payment Gateway
+                  </Button>
+                )}
 
-                <FormControl isRequired>
-                    <FormLabel htmlFor="transactionId">Transaction ID</FormLabel>
-                    <Input id="transactionId" value={transactionId} onChange={(e) => setTransactionId(e.target.value)} placeholder="Enter the UPI/Bank transaction ID"/>
-                </FormControl>
-                
-                {/* --- REMOVED: FormControl for Payment Screenshot --- */}
-
-                {/* --- MODIFIED: Button's disabled condition --- */}
-                <Button type="submit" colorScheme="teal" w="full" size="lg" isLoading={isLoading} disabled={!transactionId}>
-                    Complete Registration
-                </Button>
+                {!showPaymentButton && (
+                  <Text color="blue.500" textAlign="center">
+                    Redirecting to payment gateway...
+                  </Text>
+                )}
             </VStack>
         </Box>
       </VStack>

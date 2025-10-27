@@ -94,7 +94,14 @@ exports.registerAndProceedToPayment = async (req, res) => {
         return res.status(400).json({ message: 'Email and Vendor Name are required.' });
     }
 
-    const client = await db.connect();
+    let client;
+    try {
+        client = await db.connect();
+        console.log('✅ Database connection obtained successfully');
+    } catch (connError) {
+        console.error('❌ Failed to get database connection:', connError);
+        return res.status(500).json({ message: 'Database connection failed. Please try again.' });
+    }
     try {
         await client.query('BEGIN');
 
@@ -199,7 +206,12 @@ exports.registerAndProceedToPayment = async (req, res) => {
         
         res.status(200).json({ message: 'Details saved successfully. Please proceed to payment.' });
     } catch (error) {
-        await client.query('ROLLBACK');
+        try {
+            await client.query('ROLLBACK');
+        } catch (rollbackError) {
+            console.error('❌ Failed to rollback transaction:', rollbackError);
+        }
+        
         if (error.code === '23505') {
             let userMessage = 'A record with one of these unique details already exists.';
             if (error.constraint === 'vendors_pan_card_number_key') userMessage = 'This PAN card is already registered.';
@@ -210,7 +222,14 @@ exports.registerAndProceedToPayment = async (req, res) => {
         console.error('❌ Error in registerAndProceedToPayment:', error);
         res.status(500).json({ message: error.message || 'An unexpected server error occurred.' });
     } finally {
-        client.release();
+        if (client) {
+            try {
+                client.release();
+                console.log('✅ Database client released successfully');
+            } catch (releaseError) {
+                console.error('❌ Failed to release database client:', releaseError);
+            }
+        }
     }
 };
 
