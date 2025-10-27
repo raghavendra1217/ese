@@ -524,7 +524,8 @@ const InvestorModal = ({
                     <option value="10k">10k</option>
                     <option value="50k">50k</option>
                     <option value="1 lakh">1 lakh</option>
-                    <option value="5 lakh">5 lakh</option>
+                    <option value="5 lakh">5 lakh (15-day)</option>
+                    <option value="5 lakh_alt">5 lakh (30-day)</option>
                     <option value="10 lakh">10 lakh</option>
                   </Select>
                 </FormControl>
@@ -599,7 +600,7 @@ const InvestorModal = ({
                       if (formData.select_plan === '10k') return '10,000';
                       if (formData.select_plan === '50k') return '50,000';
                       if (formData.select_plan === '1 lakh') return '1,00,000';
-                      if (formData.select_plan === '5 lakh') return '5,00,000';
+                      if (formData.select_plan === '5 lakh' || formData.select_plan === '5 lakh_alt') return '5,00,000';
                       if (formData.select_plan === '10 lakh') return '10,00,000';
                       return '0';
                     })()} → Return ₹{(() => {
@@ -614,8 +615,11 @@ const InvestorModal = ({
                       if (formData.select_plan === '50k' && formData.plan_type === '240 days') return '90,000';
                       if (formData.select_plan === '1 lakh' && formData.plan_type === '180 days') return '1,60,000';
                       if (formData.select_plan === '1 lakh' && formData.plan_type === '240 days') return '1,80,000';
+                      if (formData.select_plan === '5 lakh' && formData.plan_type === '180 days') return '8,00,000';
+                      if (formData.select_plan === '5 lakh_alt' && formData.plan_type === '180 days') return '8,00,000';
                       if (formData.select_plan === '5 lakh' && formData.plan_type === '240 days') return '9,00,000';
                       if (formData.select_plan === '5 lakh' && formData.plan_type === '360 days') return '11,00,000';
+                      if (formData.select_plan === '10 lakh' && formData.plan_type === '180 days') return '16,00,000';
                       if (formData.select_plan === '10 lakh' && formData.plan_type === '360 days') return '22,00,000';
                       return '0';
                     })()}
@@ -627,6 +631,8 @@ const InvestorModal = ({
                       if (formData.plan_type === '60 days') return '4';
                       if (formData.plan_type === '90 days') return '4';
                       if (formData.plan_type === '120 days') return '8';
+                      if (formData.plan_type === '180 days' && formData.select_plan === '5 lakh_alt') return '7';
+                      if (formData.plan_type === '180 days' && formData.select_plan === '10 lakh') return '7';
                       if (formData.plan_type === '180 days') return '13';
                       if (formData.plan_type === '240 days') return '17';
                       if (formData.plan_type === '360 days') return '25';
@@ -634,6 +640,8 @@ const InvestorModal = ({
                     })()} payments every {(() => {
                       if (formData.plan_type === '32 days') return '8';
                       if (formData.plan_type === '90 days') return '30';
+                      if (formData.select_plan === '5 lakh_alt' && formData.plan_type === '180 days') return '30';
+                      if (formData.select_plan === '10 lakh' && formData.plan_type === '180 days') return '30';
                       return '15';
                     })()} days
                   </Text>
@@ -650,8 +658,11 @@ const InvestorModal = ({
                       if (formData.select_plan === '50k' && formData.plan_type === '240 days') return '2,500 (first 16) + 50,000 (17th)';
                       if (formData.select_plan === '1 lakh' && formData.plan_type === '180 days') return '5,000 (first 12) + 1,00,000 (13th)';
                       if (formData.select_plan === '1 lakh' && formData.plan_type === '240 days') return '5,000 (first 16) + 1,00,000 (17th)';
+                      if (formData.select_plan === '5 lakh' && formData.plan_type === '180 days') return '25,000 (first 12) + 5,00,000 (13th)';
+                      if (formData.select_plan === '5 lakh_alt' && formData.plan_type === '180 days') return '50,000 (first 6) + 5,00,000 (7th)';
                       if (formData.select_plan === '5 lakh' && formData.plan_type === '240 days') return '25,000 (first 16) + 5,00,000 (17th)';
                       if (formData.select_plan === '5 lakh' && formData.plan_type === '360 days') return '25,000 (first 24) + 5,00,000 (25th)';
+                      if (formData.select_plan === '10 lakh' && formData.plan_type === '180 days') return '1,00,000 (first 6) + 10,00,000 (7th)';
                       if (formData.select_plan === '10 lakh' && formData.plan_type === '360 days') return '50,000 (first 24) + 10,00,000 (25th)';
                       return '0';
                     })()}
@@ -692,10 +703,16 @@ const InvestorModal = ({
                         return { count: 13, interval: 15, amount: '5,000', specialPlan: true, principleReturnDay: 181, principleAmount: '1,00,000' };
                       } else if (formData.select_plan === '1 lakh' && formData.plan_type === '240 days') {
                         return { count: 17, interval: 15, amount: '5,000', specialPlan: true, principleReturnDay: 241, principleAmount: '1,00,000' };
+                      } else if (formData.select_plan === '5 lakh' && formData.plan_type === '180 days') {
+                        return { count: 13, interval: 15, amount: '25,000', specialPlan: true, principleReturnDay: 181, principleAmount: '5,00,000' };
+                      } else if (formData.select_plan === '5 lakh_alt' && formData.plan_type === '180 days') {
+                        return { count: 7, interval: 30, amount: '50,000', specialPlan: true, principleReturnDay: 181, principleAmount: '5,00,000' };
                       } else if (formData.select_plan === '5 lakh' && formData.plan_type === '240 days') {
                         return { count: 17, interval: 15, amount: '25,000', specialPlan: true, principleReturnDay: 241, principleAmount: '5,00,000' };
                       } else if (formData.select_plan === '5 lakh' && formData.plan_type === '360 days') {
                         return { count: 25, interval: 15, amount: '25,000', specialPlan: true, principleReturnDay: 361, principleAmount: '5,00,000' };
+                      } else if (formData.select_plan === '10 lakh' && formData.plan_type === '180 days') {
+                        return { count: 7, interval: 30, amount: '1,00,000', specialPlan: true, principleReturnDay: 181, principleAmount: '10,00,000' };
                       } else if (formData.select_plan === '10 lakh' && formData.plan_type === '360 days') {
                         return { count: 25, interval: 15, amount: '50,000', specialPlan: true, principleReturnDay: 361, principleAmount: '10,00,000' };
                       }

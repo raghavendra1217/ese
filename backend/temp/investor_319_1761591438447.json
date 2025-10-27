@@ -1,0 +1,15 @@
+{
+  "investor": {
+    "id": "319",
+    "first_name": "testing",
+    "mobile_number": "1234",
+    "bank_account_number": "123",
+    "bank_name": "123",
+    "branch_name": "123",
+    "ifsc_code": "123",
+    "address": "bv",
+    "select_plan": "5 lakh",
+    "investment_date": "2025-10-28"
+  },
+  "disbursement_schedule": null
+}

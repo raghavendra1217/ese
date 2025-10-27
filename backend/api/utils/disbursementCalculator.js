@@ -111,14 +111,32 @@ function calculateDisbursementSchedule({ investmentAmount, selectPlan, planType,
                 numDisbursements: 13,
                 specialPlan: true // Flag for special handling
             },
+            '5 lakh': {
+                investment: 500000,
+                profit: 300000,
+                totalReturn: 800000,
+                durationDays: 180,
+                intervalDays: 15,
+                numDisbursements: 13,
+                specialPlan: true // 15-day interval plan (₹25K × 12 + ₹5L principle)
+            },
+            '5 lakh_alt': {
+                investment: 500000,
+                profit: 300000,
+                totalReturn: 800000,
+                durationDays: 180,
+                intervalDays: 30,
+                numDisbursements: 7,
+                specialPlan: true // NEW 30-day interval plan (₹50K × 6 + ₹5L principle)
+            },
             '10 lakh': {
                 investment: 1000000,
                 profit: 600000,
                 totalReturn: 1600000,
                 durationDays: 180,
-                intervalDays: 15,
-                numDisbursements: 13,
-                specialPlan: true // Flag for special handling
+                intervalDays: 30,
+                numDisbursements: 7,
+                specialPlan: true // UPDATED to 30-day interval plan (₹1L × 6 + ₹10L principle)
             }
         },
         // 240 days plans
@@ -203,7 +221,11 @@ function calculateDisbursementSchedule({ investmentAmount, selectPlan, planType,
         } else if (selectPlan === '10 lakh' && planType === '360 days') {
             disbursementAmount = 50000; // First 24 disbursements are 50k each
         } else if (selectPlan === '10 lakh' && planType === '180 days') {
-            disbursementAmount = 50000; // First 12 disbursements are 50k each
+            disbursementAmount = 100000; // First 6 disbursements are 1L each (30-day interval)
+        } else if (selectPlan === '5 lakh_alt' && planType === '180 days') {
+            disbursementAmount = 50000; // First 6 disbursements are 50k each (30-day interval)
+        } else if (selectPlan === '5 lakh' && planType === '180 days') {
+            disbursementAmount = 25000; // First 12 disbursements are 25k each (15-day interval)
         } else {
             disbursementAmount = totalReturn / numDisbursements;
         }
@@ -387,17 +409,55 @@ function calculateDisbursementSchedule({ investmentAmount, selectPlan, planType,
                         isPrincipleAmount: true
                     });
                 }
-            } else if (selectPlan === '10 lakh' && planType === '180 days') {
+            } else if (selectPlan === '5 lakh' && planType === '180 days') {
                 if (i <= 12) {
-                    // First 12 disbursements: every 15 days, 50k each
+                    // First 12 disbursements: every 15 days, 25k each
+                    disbursementDate.setDate(startDate.getDate() + (i * intervalDays));
+                    disbursementDates.push({
+                        disbursementNumber: i,
+                        disbursementDate: disbursementDate.toISOString().split('T')[0],
+                        disbursementAmount: 25000
+                    });
+                } else if (i === 13) {
+                    // 13th disbursement: 181st day, 5 lakh (principle)
+                    disbursementDate.setDate(startDate.getDate() + 181);
+                    disbursementDates.push({
+                        disbursementNumber: i,
+                        disbursementDate: disbursementDate.toISOString().split('T')[0],
+                        disbursementAmount: 500000,
+                        isPrincipleAmount: true
+                    });
+                }
+            } else if (selectPlan === '5 lakh_alt' && planType === '180 days') {
+                if (i <= 6) {
+                    // First 6 disbursements: every 30 days, 50k each
                     disbursementDate.setDate(startDate.getDate() + (i * intervalDays));
                     disbursementDates.push({
                         disbursementNumber: i,
                         disbursementDate: disbursementDate.toISOString().split('T')[0],
                         disbursementAmount: 50000
                     });
-                } else if (i === 13) {
-                    // 13th disbursement: 181st day, 10 lakh (principle)
+                } else if (i === 7) {
+                    // 7th disbursement: 181st day, 5 lakh (principle)
+                    disbursementDate.setDate(startDate.getDate() + 181);
+                    disbursementDates.push({
+                        disbursementNumber: i,
+                        disbursementDate: disbursementDate.toISOString().split('T')[0],
+                        disbursementAmount: 500000,
+                        isPrincipleAmount: true
+                    });
+                }
+            } else if (selectPlan === '10 lakh' && planType === '180 days') {
+                if (i <= 6) {
+                    // First 6 disbursements: every 30 days, 1L each
+                    disbursementDate.setDate(startDate.getDate() + (i * intervalDays));
+                    disbursementDates.push({
+                        disbursementNumber: i,
+                        disbursementDate: disbursementDate.toISOString().split('T')[0],
+                        disbursementAmount: 100000
+                    });
+                } else if (i === 7) {
+                    // 7th disbursement: 181st day, 10 lakh (principle)
                     disbursementDate.setDate(startDate.getDate() + 181);
                     disbursementDates.push({
                         disbursementNumber: i,
