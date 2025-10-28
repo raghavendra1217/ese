@@ -15,6 +15,82 @@ import InvestorDashboard from '../../components/admin/InvestorDashboard';
 
 const ADMIN_SIDEBAR_W = '80px';
 
+// Investment Plans Data
+const INVESTMENT_PLANS = [
+  { planName: '5k', duration: '32 days', investment: 5000, profit: 1000, totalReturn: 6000, disbursements: 4, interval: '8 days', notes: 'Profit: ₹1,500 × 3 + ₹10k (principle)' },
+  { planName: '10k', duration: '30 days', investment: 10000, profit: 1500, totalReturn: 11500, disbursements: 2, interval: '15 days', notes: 'Simple profit distribution' },
+  { planName: '10k', duration: '90 days', investment: 10000, profit: 4500, totalReturn: 14500, disbursements: 4, interval: '30 days', notes: '₹1,500 × 3 + ₹10k (principle)' },
+  { planName: '50k', duration: '60 days', investment: 50000, profit: 10000, totalReturn: 60000, disbursements: 4, interval: '15 days', notes: 'Simple profit distribution' },
+  { planName: '50k', duration: '120 days', investment: 50000, profit: 18000, totalReturn: 68000, disbursements: 8, interval: '15 days', notes: 'Simple profit distribution' },
+  { planName: '50k', duration: '180 days', investment: 50000, profit: 30000, totalReturn: 80000, disbursements: 13, interval: '15 days', notes: '₹2,500 × 12 + ₹50k (principle)' },
+  { planName: '50k', duration: '240 days', investment: 50000, profit: 40000, totalReturn: 90000, disbursements: 17, interval: '15 days', notes: '₹2,500 × 16 + ₹50k (principle)' },
+  { planName: '1 lakh', duration: '60 days', investment: 100000, profit: 20000, totalReturn: 120000, disbursements: 4, interval: '15 days', notes: 'Simple profit distribution' },
+  { planName: '1 lakh', duration: '120 days', investment: 100000, profit: 38000, totalReturn: 138000, disbursements: 8, interval: '15 days', notes: 'Simple profit distribution' },
+  { planName: '1 lakh', duration: '180 days', investment: 100000, profit: 60000, totalReturn: 160000, disbursements: 13, interval: '15 days', notes: '₹5,000 × 12 + ₹1L (principle)' },
+  { planName: '1 lakh', duration: '240 days', investment: 100000, profit: 80000, totalReturn: 180000, disbursements: 17, interval: '15 days', notes: '₹5,000 × 16 + ₹1L (principle)' },
+  { planName: '5 lakh (15-day)', duration: '180 days', investment: 500000, profit: 300000, totalReturn: 800000, disbursements: 13, interval: '15 days', notes: '₹25k × 12 + ₹5L (principle)' },
+  { planName: '5 lakh (30-day)', duration: '180 days', investment: 500000, profit: 300000, totalReturn: 800000, disbursements: 7, interval: '30 days', notes: '₹50k × 6 + ₹5L (principle)' },
+  { planName: '5 lakh (15-day)', duration: '240 days', investment: 500000, profit: 400000, totalReturn: 900000, disbursements: 17, interval: '15 days', notes: '₹25k × 16 + ₹5L (principle)' },
+  { planName: '5 lakh (15-day)', duration: '360 days', investment: 500000, profit: 600000, totalReturn: 1100000, disbursements: 25, interval: '15 days', notes: '₹25k × 24 + ₹5L (principle)' },
+  { planName: '10 lakh', duration: '180 days', investment: 1000000, profit: 600000, totalReturn: 1600000, disbursements: 7, interval: '30 days', notes: '₹1L × 6 + ₹10L (principle)' },
+  { planName: '10 lakh', duration: '360 days', investment: 1000000, profit: 1200000, totalReturn: 2200000, disbursements: 25, interval: '15 days', notes: '₹50k × 24 + ₹10L (principle)' },
+];
+
+const InvestmentPlansTable = ({ tableBg }) => {
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  return (
+    <Box bg={tableBg} borderRadius="lg" overflow="hidden" boxShadow="sm">
+      <Table variant="simple">
+        <Thead bg="gray.50">
+          <Tr>
+            <Th>Plan Name</Th>
+            <Th>Duration</Th>
+            <Th>Investment</Th>
+            <Th>Profit</Th>
+            <Th>Total Return</Th>
+            <Th>Disbursements</Th>
+            <Th>Interval</Th>
+            <Th>Payment Structure</Th>
+          </Tr>
+        </Thead>
+        <Tbody>
+          {INVESTMENT_PLANS.map((plan, index) => (
+            <Tr key={index}>
+              <Td fontWeight="bold" color="blue.600">
+                {plan.planName}
+              </Td>
+              <Td>
+                <Badge colorScheme="purple">{plan.duration}</Badge>
+              </Td>
+              <Td fontFamily="monospace">{formatCurrency(plan.investment)}</Td>
+              <Td fontFamily="monospace" color="green.600">
+                {formatCurrency(plan.profit)}
+              </Td>
+              <Td fontFamily="monospace" color="blue.600" fontWeight="bold">
+                {formatCurrency(plan.totalReturn)}
+              </Td>
+              <Td>
+                <Badge colorScheme="teal">{plan.disbursements} payments</Badge>
+              </Td>
+              <Td>{plan.interval}</Td>
+              <Td fontSize="sm" color="gray.600">
+                {plan.notes}
+              </Td>
+            </Tr>
+          ))}
+        </Tbody>
+      </Table>
+    </Box>
+  );
+};
+
 const InvestorModal = ({
   isOpen,
   onClose,
@@ -112,6 +188,15 @@ const InvestorModal = ({
   const handleSelectChange = (name, value) => {
     let newFormData = { ...formData, [name]: value };
 
+    // Validation: 5k can only be combined with 32 days
+    if (name === 'select_plan' && value === '5k') {
+      if (newFormData.plan_type && newFormData.plan_type !== '32 days') {
+        newFormData.plan_type = '32 days'; // Default to 32 days if invalid combination
+      }
+    } else if (name === 'plan_type' && newFormData.select_plan === '5k' && value !== '32 days') {
+      newFormData.select_plan = ''; // Clear plan if type changes to invalid combination for 5k
+    }
+
     // Validation: 10k can be combined with 30 days or 90 days
     if (name === 'select_plan' && value === '10k') {
       if (newFormData.plan_type && newFormData.plan_type !== '30 days' && newFormData.plan_type !== '90 days') {
@@ -119,6 +204,51 @@ const InvestorModal = ({
       }
     } else if (name === 'plan_type' && newFormData.select_plan === '10k' && value !== '30 days' && value !== '90 days') {
       newFormData.select_plan = ''; // Clear plan if type changes to invalid combination for 10k
+    }
+
+    // Validation: 50k can be combined with 60, 120, 180, or 240 days
+    if (name === 'select_plan' && value === '50k') {
+      if (newFormData.plan_type && newFormData.plan_type !== '60 days' && newFormData.plan_type !== '120 days' && newFormData.plan_type !== '180 days' && newFormData.plan_type !== '240 days') {
+        newFormData.plan_type = '60 days'; // Default to 60 days if invalid combination
+      }
+    } else if (name === 'plan_type' && newFormData.select_plan === '50k' && value !== '60 days' && value !== '120 days' && value !== '180 days' && value !== '240 days') {
+      newFormData.select_plan = ''; // Clear plan if type changes to invalid combination for 50k
+    }
+
+    // Validation: 1 lakh can be combined with 60, 120, 180, or 240 days
+    if (name === 'select_plan' && value === '1 lakh') {
+      if (newFormData.plan_type && newFormData.plan_type !== '60 days' && newFormData.plan_type !== '120 days' && newFormData.plan_type !== '180 days' && newFormData.plan_type !== '240 days') {
+        newFormData.plan_type = '60 days'; // Default to 60 days if invalid combination
+      }
+    } else if (name === 'plan_type' && newFormData.select_plan === '1 lakh' && value !== '60 days' && value !== '120 days' && value !== '180 days' && value !== '240 days') {
+      newFormData.select_plan = ''; // Clear plan if type changes to invalid combination for 1 lakh
+    }
+
+    // Validation: 5 lakh (15-day) can be combined with 180, 240, or 360 days
+    if (name === 'select_plan' && value === '5 lakh') {
+      if (newFormData.plan_type && newFormData.plan_type !== '180 days' && newFormData.plan_type !== '240 days' && newFormData.plan_type !== '360 days') {
+        newFormData.plan_type = '180 days'; // Default to 180 days if invalid combination
+      }
+    } else if (name === 'plan_type' && newFormData.select_plan === '5 lakh' && value !== '180 days' && value !== '240 days' && value !== '360 days') {
+      newFormData.select_plan = ''; // Clear plan if type changes to invalid combination for 5 lakh
+    }
+
+    // Validation: 5 lakh_alt (30-day) can only be combined with 180 days
+    if (name === 'select_plan' && value === '5 lakh_alt') {
+      if (newFormData.plan_type && newFormData.plan_type !== '180 days') {
+        newFormData.plan_type = '180 days'; // Default to 180 days
+      }
+    } else if (name === 'plan_type' && newFormData.select_plan === '5 lakh_alt' && value !== '180 days') {
+      newFormData.select_plan = ''; // Clear plan if type changes to invalid combination for 5 lakh_alt
+    }
+
+    // Validation: 10 lakh can only be combined with 180 or 360 days
+    if (name === 'select_plan' && value === '10 lakh') {
+      if (newFormData.plan_type && newFormData.plan_type !== '180 days' && newFormData.plan_type !== '360 days') {
+        newFormData.plan_type = '180 days'; // Default to 180 days if invalid combination
+      }
+    } else if (name === 'plan_type' && newFormData.select_plan === '10 lakh' && value !== '180 days' && value !== '360 days') {
+      newFormData.select_plan = ''; // Clear plan if type changes to invalid combination for 10 lakh
     }
 
     setFormData(newFormData);
@@ -1132,11 +1262,12 @@ const InvestorModal = ({
             Investor Management
           </Heading>
   
-          {/* Tabs for Dashboard and Investors */}
+          {/* Tabs for Dashboard, Investors, and Investment Plans */}
           <Tabs variant="enclosed" colorScheme="blue">
             <TabList>
               <Tab>Dashboard</Tab>
               <Tab>Investors</Tab>
+              <Tab>Investment Plans</Tab>
             </TabList>
   
             <TabPanels>
@@ -1278,6 +1409,11 @@ const InvestorModal = ({
                     </Table>
                   </Box>
                 )}
+              </TabPanel>
+
+              {/* Investment Plans Tab */}
+              <TabPanel px={0}>
+                <InvestmentPlansTable tableBg={tableBg} />
               </TabPanel>
             </TabPanels>
           </Tabs>

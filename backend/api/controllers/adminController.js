@@ -1945,9 +1945,7 @@ const approveInvestor = async (req, res) => {
             [investorId]
         );
         
-        if (existingSchedule.rows.length > 0) {
-            console.log(`✅ Disbursement schedule already exists for investor ${investorId}, skipping creation`);
-        } else {
+        if (existingSchedule.rows.length === 0) {
             // Debug logging
             console.log('🔍 Investor data for disbursement calculation:', {
                 id: investor.id,
@@ -1994,15 +1992,17 @@ const approveInvestor = async (req, res) => {
             
             // Insert disbursement schedule
             const scheduleResult = await client.query(
-                `INSERT INTO disbursement_schedules (investor_id, investment_amount, plan_type, select_plan, investment_date, total_disbursements)
-                 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+                `INSERT INTO disbursement_schedules (investor_id, investment_amount, total_return, duration_days, interval_days, num_disbursements, disbursement_amount, investment_date)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
                 [
                     investorId,
                     disbursementSchedule.investmentAmount,
-                    investor.plan_type,
-                    investor.select_plan,
-                    investor.investment_date,
-                    disbursementSchedule.disbursementDates.length
+                    disbursementSchedule.totalReturn,
+                    disbursementSchedule.durationDays,
+                    disbursementSchedule.intervalDays,
+                    disbursementSchedule.numDisbursements,
+                    disbursementSchedule.disbursementAmount,
+                    disbursementSchedule.investmentDate
                 ]
             );
             
@@ -2011,19 +2011,21 @@ const approveInvestor = async (req, res) => {
             // Insert individual disbursement details
             for (const disbursement of disbursementSchedule.disbursementDates) {
                 await client.query(
-                    `INSERT INTO disbursement_detail (schedule_id, disbursement_date, disbursement_amount, status)
-                     VALUES ($1, $2, $3, 'pending')`,
-                    [scheduleId, disbursement.disbursementDate, disbursement.disbursementAmount]
+                    `INSERT INTO disbursement_detail (schedule_id, disbursement_number, disbursement_date, disbursement_amount, status)
+                     VALUES ($1, $2, $3, $4, 'pending')`,
+                    [scheduleId, disbursement.disbursementNumber, disbursement.disbursementDate, disbursement.disbursementAmount]
                 );
             }
             
             console.log(`✅ Created disbursement schedule for investor ${investorId}`);
+        } else {
+            console.log(`✅ Disbursement schedule already exists for investor ${investorId}, skipping creation`);
         }
         
-        // Update investor approval status AFTER creating disbursement records
+        // Update investor approval status
         await client.query(
             'UPDATE investordetails SET approval_status = $1, approved_by = $2, approved_at = NOW() WHERE id = $3',
-            ['approved', req.user.user_id, investorId]
+            ['approved', req.user?.user_id || req.user?.id || null, investorId]
         );
         
         await client.query('COMMIT');
@@ -2035,11 +2037,21 @@ const approveInvestor = async (req, res) => {
         });
         
     } catch (error) {
-        await client.query('ROLLBACK');
-        console.error('❌ Error approving investor:', error);
+        try {
+            await client.query('ROLLBACK');
+        } catch (rollbackError) {
+            console.error('❌ Error during rollback:', rollbackError);
+        }
+        console.error('❌ Error approving investor:', {
+            message: error.message,
+            stack: error.stack,
+            investorId: investorId,
+            errorDetails: error
+        });
         res.status(500).json({ 
             success: false,
-            message: 'Failed to approve investor.' 
+            message: 'Failed to approve investor.',
+            error: error.message 
         });
     } finally {
         client.release();
