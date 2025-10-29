@@ -33,9 +33,15 @@ const WithdrawModal = ({ isOpen, onClose, url, currentBalance, onWithdrawalSucce
             return;
         }
 
+        // Minimum withdrawal limit validation
+        if (numericAmount < 50) {
+            setError('Minimum withdrawal amount is ₹50. Please enter an amount of ₹50 or more.');
+            return;
+        }
+
         // Maximum withdrawal limit validation
-        if (numericAmount > 50000) {
-            setError('Maximum withdrawal amount is ₹50,000. Please enter an amount of ₹50,000 or less.');
+        if (numericAmount > 25000) {
+            setError('Maximum withdrawal amount is ₹25,000. Please enter an amount of ₹25,000 or less.');
             return;
         }
 
@@ -93,8 +99,8 @@ const WithdrawModal = ({ isOpen, onClose, url, currentBalance, onWithdrawalSucce
                             <AlertIcon />
                             <VStack align="start" spacing={1} fontSize="sm">
                                 <Text fontWeight="bold">Withdrawal Guidelines:</Text>
-                                <Text>• Minimum withdrawal amount is ₹1,000</Text>
-                                <Text>• Maximum withdrawal amount is ₹50,000</Text>
+                                <Text>• Minimum withdrawal amount is ₹50</Text>
+                                <Text>• Maximum withdrawal amount is ₹25,000</Text>
                                 <Text>• Withdrawal requests must be submitted between 6:00 AM to 6:00 PM</Text>
                                 <Text>• All requests are subject to approval and processing time</Text>
                             </VStack>
@@ -103,13 +109,13 @@ const WithdrawModal = ({ isOpen, onClose, url, currentBalance, onWithdrawalSucce
                          <FormControl isRequired>
                             <FormLabel>Amount to Withdraw</FormLabel>
                             <NumberInput
-                                max={Math.min(currentBalance, 50000)}
-                                min={1}
+                                max={Math.min(currentBalance, 25000)}
+                                min={50}
                                 value={amount}
                                 onChange={(val) => setAmount(val)}
                                 precision={2}
                             >
-                                <NumberInputField placeholder={`Max: ₹${Math.min(currentBalance, 50000).toFixed(2)}`} />
+                                <NumberInputField placeholder={`Min: ₹50, Max: ₹${Math.min(currentBalance, 25000).toFixed(2)}`} />
                             </NumberInput>
                         </FormControl>
 

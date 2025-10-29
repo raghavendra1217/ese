@@ -190,17 +190,17 @@ exports.requestWithdrawal = async (req, res) => {
         return res.status(400).json({ message: 'A valid, positive withdrawal amount is required.' });
     }
 
-    // Validate withdrawal amount is at least ₹1,000
-    if (withdrawalAmount < 1000) {
+    // Validate withdrawal amount is at least ₹50
+    if (withdrawalAmount < 50) {
         return res.status(400).json({
-            message: 'Minimum withdrawal amount is ₹1,000. Please enter an amount of ₹1,000 or more.'
+            message: 'Minimum withdrawal amount is ₹50. Please enter an amount of ₹50 or more.'
         });
     }
 
-    // Validate withdrawal amount does not exceed ₹50,000
-    if (withdrawalAmount > 50000) {
+    // Validate withdrawal amount does not exceed ₹25,000
+    if (withdrawalAmount > 25000) {
         return res.status(400).json({
-            message: 'Maximum withdrawal amount is ₹50,000. Please enter an amount of ₹50,000 or less.'
+            message: 'Maximum withdrawal amount is ₹25,000. Please enter an amount of ₹25,000 or less.'
         });
     }
 
