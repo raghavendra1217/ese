@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 // ✅ Import the new controller functions
-const { getWallet, requestDeposit, requestWithdrawal, getDepositHistory, getWithdrawalHistory, cancelWithdrawal } = require('../controllers/walletController');
+const { getWallet, requestDeposit, requestWithdrawal, getDepositHistory, getWithdrawalHistory, cancelWithdrawal, getWithdrawalWindowStatus } = require('../controllers/walletController');
 const { protect } = require('../middleware/authMiddleware');
 const multer = require('multer');
 
@@ -26,6 +26,9 @@ router.get('/withdrawals', protect, getWithdrawalHistory);
 
 // PUT /api/wallet/cancel-withdrawal - Cancel user's own pending withdrawal request
 router.put('/cancel-withdrawal', protect, cancelWithdrawal);
+
+// GET /api/wallet/withdrawal-window - Window status for UI visibility/disable
+router.get('/withdrawal-window', protect, getWithdrawalWindowStatus);
 
 // 🧪 TEST ENDPOINT - Remove this after testing
 router.get('/test', (req, res) => {

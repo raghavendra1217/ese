@@ -100,4 +100,8 @@ router.put('/vendors/bulk-product-visibility', protect, authorize('admin', 'coor
 router.post('/add-manual-deposit', protect, authorize('admin', 'coordinator'), adminController.addManualDeposit);
 router.get('/manual-deposits', protect, authorize('admin', 'coordinator'), adminController.getManualDeposits);
 
+// ================= Withdrawal Settings (Admin Toggle) =================
+router.get('/withdrawals/settings', protect, authorize('admin'), adminController.getWithdrawalSettings);
+router.put('/withdrawals/settings', protect, authorize('admin'), adminController.updateWithdrawalSettings);
+
 module.exports = router;

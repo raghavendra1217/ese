@@ -25,6 +25,41 @@ const calculateStockStatus = (availableStock) => {
     }
 };
 
+// ================= Withdrawal Settings (Admin Toggle) =================
+// Persisted in system_settings (id=1). Timings are controlled via env.
+
+const getWithdrawalSettings = async (req, res) => {
+    try {
+        const { rows } = await db.query(
+            'SELECT withdrawals_enabled FROM system_settings WHERE id = 1'
+        );
+        const row = rows[0] || { withdrawals_enabled: true };
+        res.json(row);
+    } catch (e) {
+        console.error('getWithdrawalSettings error', e);
+        res.status(500).json({ message: 'Failed to load withdrawal settings' });
+    }
+};
+
+const updateWithdrawalSettings = async (req, res) => {
+    try {
+        const { withdrawals_enabled } = req.body || {};
+        await db.query('INSERT INTO system_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING');
+        const { rows } = await db.query(
+            `UPDATE system_settings
+             SET withdrawals_enabled = COALESCE($1, withdrawals_enabled),
+                 updated_at = NOW()
+             WHERE id = 1
+             RETURNING withdrawals_enabled`,
+            [withdrawals_enabled]
+        );
+        res.json(rows[0]);
+    } catch (e) {
+        console.error('updateWithdrawalSettings error', e);
+        res.status(500).json({ message: 'Failed to update withdrawal settings' });
+    }
+};
+
 // const { spawn } = require('child_process');
 
 // const sendAdminNotificationEmail = (subject, message) => {
@@ -2818,4 +2853,8 @@ module.exports = {
     // Manual Deposit Management
     addManualDeposit,
     getManualDeposits,
+
+    // Withdrawal Settings
+    getWithdrawalSettings,
+    updateWithdrawalSettings,
 };

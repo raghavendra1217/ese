@@ -499,6 +499,7 @@ const WalletPage = ({ url }) => {
   const [isWithdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [depositHistory, setDepositHistory] = useState(null);
   const [withdrawalHistory, setWithdrawalHistory] = useState(null);
+  const [withdrawalWindow, setWithdrawalWindow] = useState({ allowed: true });
   const [totalProfit, setTotalProfit] = useState(0);
   const [totalProfitLoading, setTotalProfitLoading] = useState(false);
   const [isCancellingWithdrawal, setIsCancellingWithdrawal] = useState(false);
@@ -586,6 +587,18 @@ const WalletPage = ({ url }) => {
     }
   }, [token, url]);
 
+  const fetchWithdrawalWindow = useCallback(async () => {
+    try {
+      const res = await fetch(`${url}/api/wallet/withdrawal-window`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setWithdrawalWindow(data || { allowed: true });
+    } catch (err) {
+      setWithdrawalWindow({ allowed: true });
+    }
+  }, [token, url]);
+
   const handleCancelWithdrawal = useCallback((transactionId) => {
     // Find the transaction to get the amount for display
     const transaction = withdrawalHistory?.find(tx => tx.trans_id === transactionId);
@@ -664,6 +677,7 @@ const WalletPage = ({ url }) => {
   useEffect(() => {
     if (!token) return;
     fetchWalletBalance();
+    fetchWithdrawalWindow();
     switch (activeView) {
       case 'investments': fetchActiveTrades(); break;
       case 'history': 
@@ -674,7 +688,7 @@ const WalletPage = ({ url }) => {
       case 'withdrawals': fetchWithdrawalHistory(); break;
       default: break;
     }
-  }, [token, activeView, fetchWalletBalance, fetchActiveTrades, fetchSoldTrades, fetchDepositHistory, fetchWithdrawalHistory, fetchTotalProfit]);
+  }, [token, activeView, fetchWalletBalance, fetchActiveTrades, fetchSoldTrades, fetchDepositHistory, fetchWithdrawalHistory, fetchTotalProfit, fetchWithdrawalWindow]);
 
   // Fetch total profit when soldTrades changes
   useEffect(() => {
@@ -825,9 +839,13 @@ const WalletPage = ({ url }) => {
             <WalletHeader
               digitalMoney={digitalMoney}
               onAddMoneyClick={() => setAddMoneyOpen(true)}
-              onWithdrawClick={() => setWithdrawModalOpen(true)}
+              onWithdrawClick={() => {
+                if (!withdrawalWindow?.allowed) return;
+                setWithdrawModalOpen(true);
+              }}
               hasPendingWithdrawal={hasPendingWithdrawal}
               onOpenNav={onOpen}   // <-- opens Drawer from the header hamburger
+              withdrawalWindow={withdrawalWindow}
             />
 
             <Grid templateColumns={{ base: 'repeat(3, 1fr)', md: 'repeat(6, 1fr)' }} gap={{ base: 2, md: 3 }} my={{ base: 6, md: 8 }}>

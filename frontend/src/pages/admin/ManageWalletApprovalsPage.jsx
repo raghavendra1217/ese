@@ -490,6 +490,44 @@ const ManageWalletApprovalsPage = ({ url }) => {
   const [uiEndDate, setUiEndDate] = useState('');
   const [uiStatus, setUiStatus] = useState('');
 
+  const [withdrawalsEnabled, setWithdrawalsEnabled] = useState(true);
+  const [toggleLoading, setToggleLoading] = useState(false);
+
+  const fetchWithdrawalSettings = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${url}/api/admin/withdrawals/settings`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || 'Failed to load settings');
+      setWithdrawalsEnabled(!!data.withdrawals_enabled);
+    } catch (e) {
+      console.error('Failed to load withdrawal settings', e);
+    }
+  }, [token, url]);
+
+  const handleToggleWithdrawals = useCallback(async () => {
+    if (!token) return;
+    setToggleLoading(true);
+    try {
+      const next = !withdrawalsEnabled;
+      const res = await fetch(`${url}/api/admin/withdrawals/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ withdrawals_enabled: next })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.message || 'Failed to update settings');
+      setWithdrawalsEnabled(!!data.withdrawals_enabled);
+      toast({ title: 'Updated', description: `Withdrawals ${next ? 'enabled' : 'disabled'}`, status: 'success', duration: 2500 });
+    } catch (e) {
+      toast({ title: 'Error', description: e.message, status: 'error', duration: 4000 });
+    } finally {
+      setToggleLoading(false);
+    }
+  }, [token, url, withdrawalsEnabled, toast]);
+
   const fetchPendingTransactions = useCallback(async () => {
     if (!token) return;
     setIsLoading(true);
@@ -562,7 +600,8 @@ const ManageWalletApprovalsPage = ({ url }) => {
   useEffect(() => { 
     fetchPendingTransactions(); 
     fetchWithdrawalStats();
-  }, [fetchPendingTransactions, fetchWithdrawalStats]);
+    fetchWithdrawalSettings();
+  }, [fetchPendingTransactions, fetchWithdrawalStats, fetchWithdrawalSettings]);
 
   const handleReview = async (transactionId, decision, comment = null) => {
     setIsSubmitting(true);
@@ -672,9 +711,34 @@ const ManageWalletApprovalsPage = ({ url }) => {
                 Review, approve, or reject vendor deposits and withdrawals.
               </Text>
             </Box>
+            {/* Right side header actions: Toggle + Stats */}
+            <HStack spacing={4} display={{ base: 'none', md: 'flex' }} align="stretch">
+              <Box
+                bg={cardBg}
+                p={4}
+                borderRadius="lg"
+                borderWidth="2px"
+                borderColor={borderColor}
+                minW="180px"
+                h="full"
+                display="flex"
+                alignItems="center"
+                justifyContent="space-between"
+                gap={3}
+              >
+                <Text fontSize="sm" color={textColor} fontWeight="semibold">Withdrawals</Text>
+                <Button
+                  size="sm"
+                  onClick={handleToggleWithdrawals}
+                  isLoading={toggleLoading}
+                  colorScheme={withdrawalsEnabled ? 'green' : 'red'}
+                  variant={withdrawalsEnabled ? 'solid' : 'outline'}
+                >
+                  {withdrawalsEnabled ? 'Enabled' : 'Disabled'}
+                </Button>
+              </Box>
 
-            {/* Withdrawal Statistics */}
-            <HStack spacing={4} display={{ base: 'none', md: 'flex' }}>
+              {/* Withdrawal Statistics */}
               <Box 
                 bg={pendingBg} 
                 p={4} 
@@ -705,6 +769,7 @@ const ManageWalletApprovalsPage = ({ url }) => {
                 borderWidth="2px" 
                 borderColor={approvedBorder}
                 minW="180px"
+                h="full"
               >
                 <Text fontSize="xs" fontWeight="semibold" color={approvedTitle} mb={1}>
                   Total Approved
@@ -722,6 +787,27 @@ const ManageWalletApprovalsPage = ({ url }) => {
               </Box>
             </HStack>
           </Flex>
+
+          {/* Mobile Toggle + Statistics - Below Header */}
+          <Box display={{ base: 'block', md: 'none' }}>
+            <Box
+              bg={cardBg}
+              p={3}
+              borderRadius="lg"
+              borderWidth="2px"
+              borderColor={borderColor}
+              mb={4}
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+              gap={3}
+            >
+              <Text fontSize="sm" color={textColor} fontWeight="semibold">Withdrawals</Text>
+              <Button size="sm" onClick={handleToggleWithdrawals} isLoading={toggleLoading} colorScheme={withdrawalsEnabled ? 'green' : 'red'} variant={withdrawalsEnabled ? 'solid' : 'outline'}>
+                {withdrawalsEnabled ? 'Enabled' : 'Disabled'}
+              </Button>
+            </Box>
+          </Box>
 
           {/* Mobile Statistics - Below Header */}
           <SimpleGrid columns={2} spacing={4} display={{ base: 'grid', md: 'none' }}>

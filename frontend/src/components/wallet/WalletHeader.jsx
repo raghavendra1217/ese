@@ -274,6 +274,7 @@ const WalletHeader = ({
   onWithdrawClick,
   hasPendingWithdrawal,
   onOpenNav,
+  withdrawalWindow,
 }) => {
   const { width } = useWindowDimensions();
   const isMobile = width <= 480;
@@ -334,8 +335,8 @@ const WalletHeader = ({
             Add
           </Button>
           <Tooltip
-            label="A withdrawal request is already pending"
-            isDisabled={!hasPendingWithdrawal}
+            label={hasPendingWithdrawal ? 'A withdrawal request is already pending' : (withdrawalWindow && !withdrawalWindow.allowed ? (withdrawalWindow.reason || 'Withdrawals are closed right now') : '')}
+            isDisabled={!(hasPendingWithdrawal || (withdrawalWindow && !withdrawalWindow.allowed))}
             hasArrow
             placement="top"
           >
@@ -345,7 +346,7 @@ const WalletHeader = ({
                 colorScheme="orange"
                 variant="outline"
                 onClick={onWithdrawClick}
-                isDisabled={hasPendingWithdrawal}
+                isDisabled={hasPendingWithdrawal || (withdrawalWindow && !withdrawalWindow.allowed)}
               >
                 Withdraw
               </Button>
@@ -381,8 +382,8 @@ const WalletHeader = ({
             Add
           </Button>
           <Tooltip
-            label="A withdrawal request is already pending"
-            isDisabled={!hasPendingWithdrawal}
+            label={hasPendingWithdrawal ? 'A withdrawal request is already pending' : (withdrawalWindow && !withdrawalWindow.allowed ? (withdrawalWindow.reason || 'Withdrawals are closed right now') : '')}
+            isDisabled={!(hasPendingWithdrawal || (withdrawalWindow && !withdrawalWindow.allowed))}
             hasArrow
             placement="top"
           >
@@ -392,7 +393,7 @@ const WalletHeader = ({
                 colorScheme="orange"
                 variant="outline"
                 onClick={onWithdrawClick}
-                isDisabled={hasPendingWithdrawal}
+                isDisabled={hasPendingWithdrawal || (withdrawalWindow && !withdrawalWindow.allowed)}
               >
                 Withdraw
               </Button>

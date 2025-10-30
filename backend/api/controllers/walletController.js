@@ -5,6 +5,7 @@ const { formatTimestampsForDisplay } = require('../utils/timeUtils');
 const path = require('path');
 const { uploadFileToR2 } = require('../utils/cloudflareR2'); // Keep for new functions
 const { runPy } = require('../utils/emailRunner');
+const { getWithdrawalWindow } = require('../utils/withdrawalWindow');
 const { autoSendTransactionToAPI } = require('./integrationController');
 
 exports.getWallet = async (req, res) => {
@@ -182,6 +183,19 @@ exports.requestDeposit = async (req, res) => {
 exports.requestWithdrawal = async (req, res) => {
     const userId = req.user.user_id;
     const { amount } = req.body;
+    // Enforce withdrawal window before any processing
+    try {
+        const windowStatus = await getWithdrawalWindow();
+        if (!windowStatus.allowed) {
+            return res.status(403).json({
+                message: windowStatus.reason || 'Withdrawals are currently closed.',
+                window: windowStatus
+            });
+        }
+    } catch (e) {
+        console.error('❌ Error checking withdrawal window:', e);
+        return res.status(500).json({ message: 'Unable to verify withdrawal window. Please try again later.' });
+    }
     if (!amount) {
         return res.status(400).json({ message: 'Withdrawal amount is required.' });
     }
@@ -357,5 +371,16 @@ exports.cancelWithdrawal = async (req, res) => {
         res.status(500).json({ message: error.message || 'Server error while cancelling withdrawal.' });
     } finally {
         client.release();
+    }
+};
+
+// Public status endpoint for frontend to know whether to show/enable Withdraw
+exports.getWithdrawalWindowStatus = async (req, res) => {
+    try {
+        const status = await getWithdrawalWindow();
+        res.json(status);
+    } catch (e) {
+        console.error('❌ Error in getWithdrawalWindowStatus:', e);
+        res.status(500).json({ allowed: false, reason: 'Unable to determine withdrawal window.' });
     }
 };

@@ -110,11 +110,17 @@ function parseQuotaTimeSlotsFromEnv() {
  */
 function isInPersonalQuotaPhase() {
     try {
-        // INDIVIDUAL QUOTA SYSTEM DISABLED - Always return false (shared pool phase)
-        console.log('🔍 Quota Phase Check: INDIVIDUAL QUOTAS DISABLED - Always using shared pool');
-        console.log('⚠️ Individual quota system has been permanently disabled');
-        
-        return false; // Always return false to disable individual quotas
+        const quotaSlots = parseQuotaTimeSlotsFromEnv();
+        const inPersonalPhase = isWithinAllowedTimeSlots(quotaSlots);
+
+        console.log('🔍 Quota Phase Check:', inPersonalPhase ? 'PERSONAL_QUOTA' : 'SHARED_POOL');
+        if (inPersonalPhase) {
+            console.log('✅ Individual quota phase active for current slot. Slots:', quotaSlots.map(s => `${s.start}-${s.end}`).join(', '));
+        } else {
+            console.log('ℹ️ Outside personal quota slots, using shared pool. Slots:', quotaSlots.map(s => `${s.start}-${s.end}`).join(', '));
+        }
+
+        return inPersonalPhase;
         
     } catch (err) {
         console.error("❌ Error checking quota phase:", err);
