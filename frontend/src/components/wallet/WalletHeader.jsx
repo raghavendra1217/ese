@@ -260,7 +260,7 @@
 
 
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Flex, Box, Text, Button, HStack, useColorModeValue, IconButton, VStack, Heading, useToast,
 } from '@chakra-ui/react';
@@ -287,6 +287,13 @@ const WalletHeader = ({
 
   const buttonSize = isMobile ? 'sm' : 'md';
   const iconSize = isMobile ? 16 : isTablet ? 20 : 22;
+
+  const [showWithdrawButton, setShowWithdrawButton] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowWithdrawButton(true), 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const isDisabled = hasPendingWithdrawal || (withdrawalWindow && !withdrawalWindow.allowed);
   const disabledReason = hasPendingWithdrawal
@@ -354,21 +361,23 @@ const WalletHeader = ({
           >
             Add
           </Button>
-          <Box
-            onClick={handleWithdrawClick}
-            cursor={isDisabled ? 'not-allowed' : 'pointer'}
-            display="inline-block"
-          >
-            <Button
-              size={buttonSize}
-              colorScheme="orange"
-              variant="outline"
-              pointerEvents="none"
-              isDisabled={isDisabled}
+          {showWithdrawButton && (
+            <Box
+              onClick={handleWithdrawClick}
+              cursor={isDisabled ? 'not-allowed' : 'pointer'}
+              display="inline-block"
             >
-              Withdraw
-            </Button>
-          </Box>
+              <Button
+                size={buttonSize}
+                colorScheme="orange"
+                variant="outline"
+                pointerEvents="none"
+                isDisabled={isDisabled}
+              >
+                Withdraw
+              </Button>
+            </Box>
+          )}
         </HStack>
       </Flex>
 
@@ -398,21 +407,23 @@ const WalletHeader = ({
           >
             Add
           </Button>
-          <Box
-            onClick={handleWithdrawClick}
-            cursor={isDisabled ? 'not-allowed' : 'pointer'}
-            display="inline-block"
-          >
-            <Button
-              size={buttonSize}
-              colorScheme="orange"
-              variant="outline"
-              pointerEvents="none"
-              isDisabled={isDisabled}
+          {showWithdrawButton && (
+            <Box
+              onClick={handleWithdrawClick}
+              cursor={isDisabled ? 'not-allowed' : 'pointer'}
+              display="inline-block"
             >
-              Withdraw
-            </Button>
-          </Box>
+              <Button
+                size={buttonSize}
+                colorScheme="orange"
+                variant="outline"
+                pointerEvents="none"
+                isDisabled={isDisabled}
+              >
+                Withdraw
+              </Button>
+            </Box>
+          )}
         </HStack>
       </Flex>
     </Box>
