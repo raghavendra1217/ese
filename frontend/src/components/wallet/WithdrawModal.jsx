@@ -7,17 +7,18 @@ import {
 import { useAuth } from '../../AppContext';
 
 // --- UPDATED COMPONENT: Now accepts 'onWithdrawalSuccess' ---
+const FIXED_WITHDRAWAL_AMOUNT = 25000;
+
 const WithdrawModal = ({ isOpen, onClose, url, currentBalance, onWithdrawalSuccess }) => {
     const { token } = useAuth();
     const toast = useToast();
 
-    
-    const [amount, setAmount] = useState('');
+    const [amount, setAmount] = useState(FIXED_WITHDRAWAL_AMOUNT.toString());
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
     const resetAndClose = () => {
-        setAmount('');
+        setAmount(FIXED_WITHDRAWAL_AMOUNT.toString());
         setError('');
         setIsLoading(false);
         onClose();
@@ -27,21 +28,20 @@ const WithdrawModal = ({ isOpen, onClose, url, currentBalance, onWithdrawalSucce
         e.preventDefault();
         const numericAmount = parseFloat(amount);
 
+        if (Number.isNaN(numericAmount)) {
+            setError('Withdrawal amount must be ₹25,000.');
+            return;
+        }
+
         // Client-side validation
         if (numericAmount > currentBalance) {
             setError('Withdrawal amount cannot be greater than your current balance.');
             return;
         }
 
-        // Minimum withdrawal limit validation
-        if (numericAmount < 50) {
-            setError('Minimum withdrawal amount is ₹50. Please enter an amount of ₹50 or more.');
-            return;
-        }
-
-        // Maximum withdrawal limit validation
-        if (numericAmount > 25000) {
-            setError('Maximum withdrawal amount is ₹25,000. Please enter an amount of ₹25,000 or less.');
+        // Withdrawal amount must be exactly the fixed amount
+        if (numericAmount !== FIXED_WITHDRAWAL_AMOUNT) {
+            setError('Withdrawal amount must be ₹25,000.');
             return;
         }
 
@@ -92,15 +92,14 @@ const WithdrawModal = ({ isOpen, onClose, url, currentBalance, onWithdrawalSucce
                 <ModalCloseButton />
                 <ModalBody>
                     <VStack spacing={4}>
-                        <Text>Your request will be processed by the next day of your request.</Text>
+                        <Text>Your withdrawal request will be processed within 3 bank working days.</Text>
                         
                         {/* Withdrawal Rules Information */}
                         <Alert status="info" borderRadius="md">
                             <AlertIcon />
                             <VStack align="start" spacing={1} fontSize="sm">
                                 <Text fontWeight="bold">Withdrawal Guidelines:</Text>
-                                <Text>• Minimum withdrawal amount is ₹50</Text>
-                                <Text>• Maximum withdrawal amount is ₹25,000</Text>
+                                <Text>• Withdrawal amount is fixed at ₹25,000</Text>
                                 <Text>• All requests are subject to approval and processing time</Text>
                             </VStack>
                         </Alert>
@@ -108,13 +107,13 @@ const WithdrawModal = ({ isOpen, onClose, url, currentBalance, onWithdrawalSucce
                          <FormControl isRequired>
                             <FormLabel>Amount to Withdraw</FormLabel>
                             <NumberInput
-                                max={Math.min(currentBalance, 25000)}
-                                min={50}
                                 value={amount}
-                                onChange={(val) => setAmount(val)}
+                                min={FIXED_WITHDRAWAL_AMOUNT}
+                                max={FIXED_WITHDRAWAL_AMOUNT}
+                                isReadOnly
                                 precision={2}
                             >
-                                <NumberInputField placeholder={`Min: ₹50, Max: ₹${Math.min(currentBalance, 25000).toFixed(2)}`} />
+                                <NumberInputField placeholder="25000" />
                             </NumberInput>
                         </FormControl>
 
