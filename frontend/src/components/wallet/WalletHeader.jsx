@@ -262,7 +262,7 @@
 
 import React from 'react';
 import {
-  Flex, Box, Text, Button, HStack, Tooltip, useColorModeValue, IconButton, VStack, Heading,
+  Flex, Box, Text, Button, HStack, useColorModeValue, IconButton, VStack, Heading, useToast,
 } from '@chakra-ui/react';
 import { HamburgerIcon } from '@chakra-ui/icons';
 import { Plus } from 'lucide-react';
@@ -276,6 +276,7 @@ const WalletHeader = ({
   onOpenNav,
   withdrawalWindow,
 }) => {
+  const toast = useToast();
   const { width } = useWindowDimensions();
   const isMobile = width <= 480;
   const isTablet = width > 480 && width <= 1024;
@@ -287,10 +288,29 @@ const WalletHeader = ({
   const buttonSize = isMobile ? 'sm' : 'md';
   const iconSize = isMobile ? 16 : isTablet ? 20 : 22;
 
+  const isDisabled = hasPendingWithdrawal || (withdrawalWindow && !withdrawalWindow.allowed);
+  const disabledReason = hasPendingWithdrawal
+    ? 'A withdrawal request is already pending'
+    : (withdrawalWindow && !withdrawalWindow.allowed ? (withdrawalWindow.reason || 'Withdrawals are closed right now') : '');
+
   const balanceText =
     typeof digitalMoney === 'number'
       ? `₹ ${digitalMoney.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       : '₹ ...';
+
+  const handleWithdrawClick = () => {
+    if (isDisabled) {
+      toast({
+        title: 'Withdrawal Unavailable',
+        description: disabledReason,
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    onWithdrawClick();
+  };
 
   return (
     <Box w="100%" px={{ base: 2, md: 4 }} py={{ base: 2, md: 4 }} mb={3}>
@@ -334,24 +354,21 @@ const WalletHeader = ({
           >
             Add
           </Button>
-          <Tooltip
-            label={hasPendingWithdrawal ? 'A withdrawal request is already pending' : (withdrawalWindow && !withdrawalWindow.allowed ? (withdrawalWindow.reason || 'Withdrawals are closed right now') : '')}
-            isDisabled={!(hasPendingWithdrawal || (withdrawalWindow && !withdrawalWindow.allowed))}
-            hasArrow
-            placement="top"
+          <Box
+            onClick={handleWithdrawClick}
+            cursor={isDisabled ? 'not-allowed' : 'pointer'}
+            display="inline-block"
           >
-            <Box>
-              <Button
-                size={buttonSize}
-                colorScheme="orange"
-                variant="outline"
-                onClick={onWithdrawClick}
-                isDisabled={hasPendingWithdrawal || (withdrawalWindow && !withdrawalWindow.allowed)}
-              >
-                Withdraw
-              </Button>
-            </Box>
-          </Tooltip>
+            <Button
+              size={buttonSize}
+              colorScheme="orange"
+              variant="outline"
+              pointerEvents="none"
+              isDisabled={isDisabled}
+            >
+              Withdraw
+            </Button>
+          </Box>
         </HStack>
       </Flex>
 
@@ -381,24 +398,21 @@ const WalletHeader = ({
           >
             Add
           </Button>
-          <Tooltip
-            label={hasPendingWithdrawal ? 'A withdrawal request is already pending' : (withdrawalWindow && !withdrawalWindow.allowed ? (withdrawalWindow.reason || 'Withdrawals are closed right now') : '')}
-            isDisabled={!(hasPendingWithdrawal || (withdrawalWindow && !withdrawalWindow.allowed))}
-            hasArrow
-            placement="top"
+          <Box
+            onClick={handleWithdrawClick}
+            cursor={isDisabled ? 'not-allowed' : 'pointer'}
+            display="inline-block"
           >
-            <Box>
-              <Button
-                size={buttonSize}
-                colorScheme="orange"
-                variant="outline"
-                onClick={onWithdrawClick}
-                isDisabled={hasPendingWithdrawal || (withdrawalWindow && !withdrawalWindow.allowed)}
-              >
-                Withdraw
-              </Button>
-            </Box>
-          </Tooltip>
+            <Button
+              size={buttonSize}
+              colorScheme="orange"
+              variant="outline"
+              pointerEvents="none"
+              isDisabled={isDisabled}
+            >
+              Withdraw
+            </Button>
+          </Box>
         </HStack>
       </Flex>
     </Box>

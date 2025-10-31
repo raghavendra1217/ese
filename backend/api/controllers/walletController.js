@@ -249,7 +249,7 @@ exports.requestWithdrawal = async (req, res) => {
             console.error('Admin email failed (withdrawal request):', e?.message || e);
         }
 
-        res.status(201).json({ message: 'Your withdrawal request has been submitted and will be processed to your registered bank account.' });
+        res.status(201).json({ message: 'Your withdrawal request has been submitted and will be processed by the next day of your request.' });
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('❌ Error in requestWithdrawal:', error);

@@ -42,8 +42,8 @@ async function getSettings() {
 
     return {
         enabled: enabledFromDb,
-        start: process.env.WITHDRAWALS_START || '08:30',
-        end: process.env.WITHDRAWALS_END || '17:30',
+        start: process.env.WITHDRAWALS_START || '06:00',
+        end: process.env.WITHDRAWALS_END || '18:00',
     };
 }
 

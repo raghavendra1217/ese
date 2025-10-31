@@ -92,7 +92,7 @@ const WithdrawModal = ({ isOpen, onClose, url, currentBalance, onWithdrawalSucce
                 <ModalCloseButton />
                 <ModalBody>
                     <VStack spacing={4}>
-                        <Text>Your request will be processed to your registered bank account within 24 hours.</Text>
+                        <Text>Your request will be processed by the next day of your request.</Text>
                         
                         {/* Withdrawal Rules Information */}
                         <Alert status="info" borderRadius="md">
@@ -101,7 +101,6 @@ const WithdrawModal = ({ isOpen, onClose, url, currentBalance, onWithdrawalSucce
                                 <Text fontWeight="bold">Withdrawal Guidelines:</Text>
                                 <Text>• Minimum withdrawal amount is ₹50</Text>
                                 <Text>• Maximum withdrawal amount is ₹25,000</Text>
-                                <Text>• Withdrawal requests must be submitted between 6:00 AM to 6:00 PM</Text>
                                 <Text>• All requests are subject to approval and processing time</Text>
                             </VStack>
                         </Alert>
