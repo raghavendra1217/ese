@@ -179,6 +179,8 @@ const ProductCard = ({ product, onBuyClick, url }) => {
     
     const displayUnits = isPersonalQuota ? product.vendor_remaining_quota : product.available_stock;
     console.log(`🔍 [FRONTEND] Will display: ${displayUnits} units`);
+
+    const sellingDays = product.selling_days ?? product.sellingDays;
     
     return (
         <Box borderWidth="1px" borderRadius="lg" overflow="hidden" bg="gray.700">
@@ -193,6 +195,12 @@ const ProductCard = ({ product, onBuyClick, url }) => {
                         {displayUnits} units
                     </Text>
                 </Text>
+
+                {sellingDays !== undefined && sellingDays !== null && (
+                    <Text mt={2} color="yellow.300" fontWeight="semibold">
+                        Selling Days: {sellingDays} day{sellingDays === 1 ? '' : 's'}
+                    </Text>
+                )}
                 
                 <Text fontSize="xl" fontWeight="bold" color="cyan.400" mt={2}>₹{product.price_per_slot} / slot</Text>
                 <Button mt={4} w="full" colorScheme="blue" onClick={() => onBuyClick(product)}>Buy Stock</Button>
