@@ -687,6 +687,14 @@ const BuyProduct = ({ url }) => {
                 // Check quota phase and calculate display units
                 const isPersonalQuota = product.quota_phase === 'personal_quota';
                 const displayUnits = isPersonalQuota ? product.vendor_remaining_quota : product.available_stock;
+                const sellingDaysRaw = product.selling_days ?? product.sellingDays ?? product.selling_days_count ?? product.sellingDaysCount;
+                const sellingDays = (() => {
+                  if (sellingDaysRaw === undefined || sellingDaysRaw === null || sellingDaysRaw === '') {
+                    return 7;
+                  }
+                  const parsed = Number(sellingDaysRaw);
+                  return Number.isNaN(parsed) || parsed <= 0 ? 7 : parsed;
+                })();
                 
                 console.log(`🔍 [FRONTEND] Product ${product.product_id}:`, {
                   quota_phase: product.quota_phase,
@@ -704,6 +712,9 @@ const BuyProduct = ({ url }) => {
                       <Text fontWeight="bold">Available: {displayUnits} units</Text>
                       <Text fontWeight="bold" color="green.600" fontSize="sm">
                         Profit: ₹{product.selling_price && product.price_per_slot ? (product.selling_price - product.price_per_slot).toFixed(2) : 'N/A'}
+                      </Text>
+                      <Text fontWeight="bold" color="orange.500" fontSize="sm">
+                        Selling Days: {sellingDays}
                       </Text>
                       <Heading size="sm" mt={2} fontWeight="bold">₹{product.price_per_slot}</Heading>
                       <Text fontSize="xs" color="gray.500" textAlign="center">
