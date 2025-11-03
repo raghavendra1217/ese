@@ -60,6 +60,74 @@ const PaymentPage = ({ url }) => {
   }, [navigate, toast, url]);
 
   const handlePaymentGateway = async () => {
+    // Validate parameters before sending request
+    const trimmedEmail = email ? email.trim() : '';
+    const trimmedPhoneNumber = phoneNumber ? phoneNumber.trim() : '';
+    const trimmedName = vendorName ? vendorName.trim() : '';
+    
+    // Check for missing required fields
+    if (!trimmedEmail || !trimmedPhoneNumber || !trimmedName || !registrationFee) {
+      toast({
+        title: 'Validation Error',
+        description: 'Missing required fields. Please ensure all registration data is available.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
+      return;
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Invalid email format. Please enter a valid email address.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
+      return;
+    }
+    
+    // Validate phone number format (10 digits)
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(trimmedPhoneNumber)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Invalid phone number format. Please enter a valid 10-digit phone number.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
+      return;
+    }
+    
+    // Validate name (minimum length)
+    if (trimmedName.length < 2) {
+      toast({
+        title: 'Validation Error',
+        description: 'Name must be at least 2 characters long.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
+      return;
+    }
+    
+    // Validate amount
+    const amountNum = parseFloat(registrationFee);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      toast({
+        title: 'Validation Error',
+        description: 'Invalid registration fee amount.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true
+      });
+      return;
+    }
+    
     setIsLoading(true);
     setShowPaymentButton(false);
 
@@ -70,10 +138,10 @@ const PaymentPage = ({ url }) => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          amount: registrationFee,
-          email: email,
-          phoneNumber: phoneNumber,
-          name: vendorName
+          amount: amountNum,
+          email: trimmedEmail,
+          phoneNumber: trimmedPhoneNumber,
+          name: trimmedName
         })
       });
 

@@ -471,13 +471,44 @@ exports.getPaymentHistory = async (req, res) => {
 // Initiate registration payment (public endpoint - no auth required)
 exports.initiateRegistrationPayment = async (req, res) => {
   try {
-    const { amount, email, phoneNumber, name } = req.body;
+    let { amount, email, phoneNumber, name } = req.body;
     
-    // Validate required fields
+    // Trim whitespace from all string fields
+    if (typeof email === 'string') email = email.trim();
+    if (typeof phoneNumber === 'string') phoneNumber = phoneNumber.trim();
+    if (typeof name === 'string') name = name.trim();
+    
+    // Validate required fields (check after trimming)
     if (!amount || !email || !phoneNumber || !name) {
       return res.status(400).json({
         status: 0,
         message: 'Missing required fields: amount, email, phoneNumber, name'
+      });
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        status: 0,
+        message: 'Invalid email format. Please enter a valid email address.'
+      });
+    }
+    
+    // Validate phone number format (10 digits)
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(phoneNumber)) {
+      return res.status(400).json({
+        status: 0,
+        message: 'Invalid phone number format. Please enter a valid 10-digit phone number.'
+      });
+    }
+    
+    // Validate name (not empty after trim, minimum length)
+    if (name.length < 2) {
+      return res.status(400).json({
+        status: 0,
+        message: 'Name must be at least 2 characters long.'
       });
     }
     
