@@ -470,26 +470,59 @@ exports.getPaymentHistory = async (req, res) => {
 
 // Initiate registration payment (public endpoint - no auth required)
 exports.initiateRegistrationPayment = async (req, res) => {
+  const startTime = Date.now();
+  const requestId = `REQ_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
   try {
-    console.log('🔍 Registration Payment Initiation - Request Body:', JSON.stringify(req.body, null, 2));
+    console.log('\n========== REGISTRATION PAYMENT INITIATION ==========');
+    console.log(`📋 Request ID: ${requestId}`);
+    console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
+    console.log('📥 Request Body:', JSON.stringify(req.body, null, 2));
+    
     let { amount, email, phoneNumber, name } = req.body;
+    console.log('📝 Raw Parameters:', { amount, email, phoneNumber, name });
     
     // Trim whitespace from all string fields
+    const originalEmail = email;
+    const originalPhone = phoneNumber;
+    const originalName = name;
+    
     if (typeof email === 'string') email = email.trim();
     if (typeof phoneNumber === 'string') phoneNumber = phoneNumber.trim();
     if (typeof name === 'string') name = name.trim();
     
+    console.log('✂️  After Trimming:', {
+      email: { original: originalEmail, trimmed: email, changed: originalEmail !== email },
+      phoneNumber: { original: originalPhone, trimmed: phoneNumber, changed: originalPhone !== phoneNumber },
+      name: { original: originalName, trimmed: name, changed: originalName !== name }
+    });
+    
     // Validate required fields (check after trimming)
     if (!amount || !email || !phoneNumber || !name) {
+      const missingFields = [];
+      if (!amount) missingFields.push('amount');
+      if (!email) missingFields.push('email');
+      if (!phoneNumber) missingFields.push('phoneNumber');
+      if (!name) missingFields.push('name');
+      
+      console.error('❌ Validation Failed - Missing Fields:', missingFields);
+      console.log('==================================================\n');
+      
       return res.status(400).json({
         status: 0,
-        message: 'Missing required fields: amount, email, phoneNumber, name'
+        message: `Missing required fields: ${missingFields.join(', ')}`
       });
     }
     
     // Validate email format
+    console.log('📧 Validating Email Format...');
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    const emailValid = emailRegex.test(email);
+    console.log(`   Email: "${email}" - Valid: ${emailValid}`);
+    
+    if (!emailValid) {
+      console.error('❌ Email validation failed');
+      console.log('==================================================\n');
       return res.status(400).json({
         status: 0,
         message: 'Invalid email format. Please enter a valid email address.'
@@ -497,8 +530,14 @@ exports.initiateRegistrationPayment = async (req, res) => {
     }
     
     // Validate phone number format (10 digits)
+    console.log('📱 Validating Phone Number Format...');
     const phoneRegex = /^\d{10}$/;
-    if (!phoneRegex.test(phoneNumber)) {
+    const phoneValid = phoneRegex.test(phoneNumber);
+    console.log(`   Phone: "${phoneNumber}" (length: ${phoneNumber.length}) - Valid: ${phoneValid}`);
+    
+    if (!phoneValid) {
+      console.error('❌ Phone validation failed');
+      console.log('==================================================\n');
       return res.status(400).json({
         status: 0,
         message: 'Invalid phone number format. Please enter a valid 10-digit phone number.'
@@ -506,7 +545,12 @@ exports.initiateRegistrationPayment = async (req, res) => {
     }
     
     // Validate name (not empty after trim, minimum length)
+    console.log('👤 Validating Name...');
+    console.log(`   Name: "${name}" (length: ${name.length})`);
+    
     if (name.length < 2) {
+      console.error('❌ Name validation failed - too short');
+      console.log('==================================================\n');
       return res.status(400).json({
         status: 0,
         message: 'Name must be at least 2 characters long.'
@@ -514,17 +558,74 @@ exports.initiateRegistrationPayment = async (req, res) => {
     }
     
     // Validate amount
+    console.log('💰 Validating Amount...');
     const registrationAmount = parseFloat(amount);
-    if (isNaN(registrationAmount) || registrationAmount <= 0) {
+    const amountValid = !isNaN(registrationAmount) && registrationAmount > 0;
+    console.log(`   Amount: ${amount} -> Parsed: ${registrationAmount} - Valid: ${amountValid}`);
+    
+    if (!amountValid) {
+      console.error('❌ Amount validation failed');
+      console.log('==================================================\n');
       return res.status(400).json({
         status: 0,
         message: 'Invalid amount. Please enter a valid positive amount.'
       });
     }
     
-    // Generate unique transaction ID
+    console.log('✅ All validations passed!');
+    
+    // Connect to database and lookup vendor BEFORE generating transaction ID
+    console.log('\n💾 Connecting to Database for Vendor Lookup...');
+    const vendorLookupClient = await db.connect();
+    let vendorId = null;
+    
+    try {
+      // Look up vendor by email first (simple query, no transaction needed)
+      console.log(`🔍 Looking up vendor with email: "${email}"`);
+      const vendorLookupStart = Date.now();
+      const vendorResult = await vendorLookupClient.query('SELECT id FROM vendors WHERE email = $1', [email]);
+      const vendorLookupTime = Date.now() - vendorLookupStart;
+      
+      console.log('   📊 Vendor Lookup Result:', {
+        rowCount: vendorResult.rows.length,
+        found: vendorResult.rows.length > 0,
+        vendorId: vendorResult.rows.length > 0 ? vendorResult.rows[0].id : null,
+        lookupTime: `${vendorLookupTime}ms`
+      });
+      
+      if (vendorResult.rows.length === 0) {
+        console.error('❌ Vendor not found for email:', email);
+        console.log('   💡 Tip: Make sure registration form was submitted successfully');
+        vendorLookupClient.release();
+        console.log('==================================================\n');
+        
+        return res.status(404).json({
+          status: 0,
+          message: 'Vendor registration not found. Please complete the registration form first. Make sure you have submitted the registration form before proceeding to payment.'
+        });
+      }
+      
+      vendorId = vendorResult.rows[0].id;
+      console.log(`   ✅ Vendor found with ID: ${vendorId}`);
+      vendorLookupClient.release();
+      
+    } catch (error) {
+      console.error('❌ Error during vendor lookup:', error);
+      vendorLookupClient.release();
+      
+      return res.status(500).json({
+        status: 0,
+        message: 'Failed to lookup vendor: ' + error.message
+      });
+    }
+    
+    // Generate unique transaction ID using vendor ID (similar to wallet deposit format)
+    console.log('\n🔐 Generating Transaction Details...');
     const timestamp = Date.now();
-    const txnid = `REG_${email.replace('@', '_').replace('.', '_')}_${timestamp}`;
+    // Use vendor ID instead of sanitized email for transaction ID (matches wallet deposit format)
+    const txnid = `REG_${vendorId}_${timestamp}`;
+    console.log(`   Transaction ID: ${txnid}`);
+    console.log(`   Vendor ID: ${vendorId}`);
     
     // Prepare payment data
     const paymentData = {
@@ -548,11 +649,27 @@ exports.initiateRegistrationPayment = async (req, res) => {
       udf10: ''
     };
     
+    console.log('📦 Payment Data Prepared:', {
+      txnid: paymentData.txnid,
+      amount: paymentData.amount,
+      productinfo: paymentData.productinfo,
+      name: paymentData.name,
+      email: paymentData.email,
+      phone: paymentData.phone,
+      surl: paymentData.surl,
+      furl: paymentData.furl,
+      udf1: paymentData.udf1,
+      udf2: paymentData.udf2
+    });
+    
     // Generate hash
+    console.log('🔑 Generating Hash...');
     const hash = generateHash(paymentData);
     paymentData.hash = hash;
+    console.log(`   Hash: ${hash.substring(0, 20)}...${hash.substring(hash.length - 10)} (length: ${hash.length})`);
     
     // Create form data for API call
+    console.log('\n📋 Preparing Form Data for Easebuzz API...');
     const formData = {
       'key': config.key,
       'txnid': paymentData.txnid,
@@ -576,90 +693,136 @@ exports.initiateRegistrationPayment = async (req, res) => {
       'surl': paymentData.surl
     };
     
+    console.log('📤 Form Data (sanitized):', {
+      key: config.key ? '***SET***' : '***MISSING***',
+      txnid: formData.txnid,
+      amount: formData.amount,
+      email: formData.email,
+      phone: formData.phone,
+      firstname: formData.firstname,
+      productinfo: formData.productinfo,
+      hash: formData.hash ? `${formData.hash.substring(0, 15)}...` : 'MISSING',
+      surl: formData.surl,
+      furl: formData.furl,
+      udf1: formData.udf1,
+      udf2: formData.udf2
+    });
+    
     // Store payment record in database
+    console.log('\n💾 Connecting to Database for Payment Record...');
     const client = await db.connect();
+    const dbStartTime = Date.now();
+    
     try {
       await client.query('BEGIN');
+      console.log('   ✅ Database transaction started');
       
-      // First, get the vendor ID from email
-      console.log('🔍 Looking up vendor with email:', email);
-      const vendorResult = await client.query('SELECT id FROM vendors WHERE email = $1', [email]);
-      console.log('🔍 Vendor lookup result:', {
-        rowCount: vendorResult.rows.length,
-        found: vendorResult.rows.length > 0,
-        vendorId: vendorResult.rows.length > 0 ? vendorResult.rows[0].id : null
-      });
-      
-      if (vendorResult.rows.length === 0) {
-        console.error('❌ Vendor not found for email:', email);
-        await client.query('ROLLBACK');
-        return res.status(404).json({
-          status: 0,
-          message: 'Vendor registration not found. Please complete the registration form first. Make sure you have submitted the registration form before proceeding to payment.'
-        });
-      }
-      
-      const userId = vendorResult.rows[0].id;
-      console.log('✅ Vendor found with ID:', userId);
+      // Use vendor ID we already obtained earlier
+      const userId = vendorId;
+      console.log(`   ✅ Using vendor ID: ${userId} (from earlier lookup)`);
       
       // Insert into easebuzz_payments table
+      console.log('\n💾 Inserting payment record into database...');
+      // Note: internal_txn_id is explicitly set to NULL during initiation
+      // It will be updated after payment succeeds and transaction record is created
       const insertQuery = `
         INSERT INTO easebuzz_payments (
           easebuzz_txn_id, user_id, amount, currency, productinfo,
           customer_name, customer_email, customer_phone, payment_status,
           success_url, failure_url, udf1, udf2, udf3, udf4, udf5,
-          udf6, udf7, udf8, udf9, udf10, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
-        RETURNING id;
+          udf6, udf7, udf8, udf9, udf10, internal_txn_id, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+        RETURNING id, internal_txn_id;
       `;
       
+      const insertStart = Date.now();
       const result = await client.query(insertQuery, [
         txnid, userId, registrationAmount, 'INR', paymentData.productinfo,
         name, email, phoneNumber, 'initiated',
         config.registration_success_url, config.registration_failure_url,
         paymentData.udf1, paymentData.udf2, paymentData.udf3, paymentData.udf4, paymentData.udf5,
         paymentData.udf6, paymentData.udf7, paymentData.udf8, paymentData.udf9, paymentData.udf10,
+        null, // internal_txn_id - will be set after payment success
         new Date()
       ]);
+      const insertTime = Date.now() - insertStart;
       
       const paymentId = result.rows[0].id;
+      const insertedInternalTxnId = result.rows[0].internal_txn_id;
+      console.log(`   ✅ Payment record inserted with ID: ${paymentId} (took ${insertTime}ms)`);
+      console.log(`   📋 Internal Txn ID: ${insertedInternalTxnId === null ? 'NULL (will be set after payment success)' : insertedInternalTxnId}`);
       
       await client.query('COMMIT');
+      console.log('   ✅ Database transaction committed');
+      const dbTime = Date.now() - dbStartTime;
+      console.log(`   ⏱️  Total database operation time: ${dbTime}ms`);
       
       // Call Easebuzz API to initiate payment
+      console.log('\n🌐 Calling Easebuzz Payment Gateway API...');
       const paymentUrl = config.getPaymentUrl();
       const apiUrl = paymentUrl + 'payment/initiateLink';
       
-      console.log('🔍 Easebuzz Registration Payment API Debug:');
-      console.log('Payment URL:', paymentUrl);
-      console.log('API URL:', apiUrl);
-      console.log('Form Data:', formData);
+      console.log('   📍 URLs:', {
+        basePaymentUrl: paymentUrl,
+        apiEndpoint: apiUrl,
+        successUrl: config.registration_success_url,
+        failureUrl: config.registration_failure_url
+      });
       
+      const apiCallStart = Date.now();
       let apiResponse;
       try {
+        console.log('   📤 Sending request to Easebuzz...');
         apiResponse = await makeRequest(apiUrl, formData);
-        console.log('🔍 Easebuzz API Response:', apiResponse);
+        const apiCallTime = Date.now() - apiCallStart;
+        
+        console.log(`   ✅ API Response received (took ${apiCallTime}ms):`, {
+          status: apiResponse.status,
+          hasData: !!apiResponse.data,
+          message: apiResponse.message || 'N/A',
+          fullResponse: JSON.stringify(apiResponse, null, 2)
+        });
       } catch (apiError) {
-        console.error('❌ Easebuzz API Call Failed:', apiError);
+        const apiCallTime = Date.now() - apiCallStart;
+        console.error(`   ❌ Easebuzz API Call Failed (after ${apiCallTime}ms):`, {
+          error: apiError.message,
+          stack: apiError.stack,
+          name: apiError.name
+        });
         throw new Error('Failed to connect to payment gateway: ' + apiError.message);
       }
       
       if (apiResponse.status === 1 && apiResponse.data) {
+        console.log('\n✅ Payment Initiation Successful!');
+        console.log(`   Payment Access Key: ${apiResponse.data}`);
+        
         // Update payment record with access key
+        console.log('💾 Updating payment record with gateway response...');
+        const updateStart = Date.now();
+        
         await client.query(
           'UPDATE easebuzz_payments SET easebuzz_payment_id = $1, gateway_response = $2 WHERE id = $3',
           [apiResponse.data, JSON.stringify(apiResponse), paymentId]
         );
         
         await client.query('COMMIT');
-        console.log('✅ Payment initiated successfully, payment ID:', paymentId);
+        const updateTime = Date.now() - updateStart;
+        console.log(`   ✅ Payment record updated (took ${updateTime}ms)`);
+        console.log(`   💰 Payment ID: ${paymentId}`);
+        
+        const finalPaymentUrl = paymentUrl + 'pay/' + apiResponse.data;
+        console.log(`   🔗 Payment URL: ${finalPaymentUrl}`);
+        
+        const totalTime = Date.now() - startTime;
+        console.log(`\n⏱️  Total processing time: ${totalTime}ms`);
+        console.log('========== REGISTRATION PAYMENT SUCCESS ==========\n');
         
         // Return payment URL or redirect
         if (config.enable_iframe === '1') {
           res.json({
             status: 1,
             data: {
-              payment_url: paymentUrl + 'pay/' + apiResponse.data,
+              payment_url: finalPaymentUrl,
               access_key: apiResponse.data,
               iframe_mode: true
             }
@@ -668,14 +831,21 @@ exports.initiateRegistrationPayment = async (req, res) => {
           res.json({
             status: 1,
             data: {
-              payment_url: paymentUrl + 'pay/' + apiResponse.data,
-              redirect_url: paymentUrl + 'pay/' + apiResponse.data
+              payment_url: finalPaymentUrl,
+              redirect_url: finalPaymentUrl
             }
           });
         }
       } else {
-        console.error('❌ Easebuzz API Error:', JSON.stringify(apiResponse, null, 2));
+        console.error('\n❌ Easebuzz API Returned Error:');
+        console.error('   Response:', JSON.stringify(apiResponse, null, 2));
+        console.error('   Status:', apiResponse.status);
+        console.error('   Message:', apiResponse.message || apiResponse.data || 'Unknown error');
+        
         await client.query('ROLLBACK');
+        console.log('   🔄 Database transaction rolled back');
+        console.log('==================================================\n');
+        
         return res.status(500).json({
           status: 0,
           message: apiResponse.data || apiResponse.message || 'Failed to initiate payment with gateway'
@@ -683,19 +853,36 @@ exports.initiateRegistrationPayment = async (req, res) => {
       }
       
     } catch (error) {
-      console.error('❌ Database transaction error:', error);
-      await client.query('ROLLBACK');
+      console.error('\n❌ Database Transaction Error:');
+      console.error('   Error:', error.message);
+      console.error('   Stack:', error.stack);
+      console.error('   Type:', error.name);
+      
+      try {
+        await client.query('ROLLBACK');
+        console.log('   🔄 Database transaction rolled back');
+      } catch (rollbackError) {
+        console.error('   ❌ Rollback failed:', rollbackError.message);
+      }
       throw error;
     } finally {
       client.release();
+      console.log('   🔌 Database connection released');
     }
     
   } catch (error) {
-    console.error('❌ Error initiating registration payment:', {
+    const totalTime = Date.now() - startTime;
+    console.error('\n❌ REGISTRATION PAYMENT INITIATION FAILED');
+    console.error(`   Request ID: ${requestId}`);
+    console.error(`   Duration: ${totalTime}ms`);
+    console.error('   Error Details:', {
       message: error.message,
       stack: error.stack,
-      name: error.name
+      name: error.name,
+      code: error.code
     });
+    console.error('==================================================\n');
+    
     const statusCode = error.statusCode || 500;
     res.status(statusCode).json({
       status: 0,
@@ -828,15 +1015,34 @@ exports.handleRegistrationSuccess = async (req, res) => {
         ]);
         
         const internalTransactionId = transactionResult.rows[0].trans_id;
-        console.log('🔍 Created transaction record:', internalTransactionId);
+        console.log('🔍 Created transaction record in transaction table:');
+        console.log(`   Transaction ID (trans_id): ${internalTransactionId}`);
+        console.log(`   Transaction Type: registration_payment`);
+        console.log(`   Amount: ₹${registrationAmount}`);
         
         // Update easebuzz_payments table with the internal_txn_id
-        await client.query(`
+        // This links easebuzz_payments to transaction table via foreign key
+        console.log('\n🔗 Linking easebuzz_payments to transaction table...');
+        console.log(`   Updating easebuzz_payments.internal_txn_id = ${internalTransactionId}`);
+        console.log(`   WHERE easebuzz_txn_id = ${transactionId}`);
+        
+        const updateResult = await client.query(`
           UPDATE easebuzz_payments 
           SET internal_txn_id = $1
           WHERE easebuzz_txn_id = $2
         `, [internalTransactionId, transactionId]);
-        console.log('🔍 Updated easebuzz_payments with internal_txn_id:', internalTransactionId);
+        
+        console.log(`   ✅ Updated ${updateResult.rowCount} row(s) in easebuzz_payments`);
+        console.log(`   ✅ Foreign key relationship established: easebuzz_payments.internal_txn_id -> transaction.trans_id`);
+        
+        // Verify the update
+        const verifyResult = await client.query(
+          'SELECT internal_txn_id FROM easebuzz_payments WHERE easebuzz_txn_id = $1',
+          [transactionId]
+        );
+        if (verifyResult.rows.length > 0) {
+          console.log(`   ✅ Verification: internal_txn_id = ${verifyResult.rows[0].internal_txn_id}`);
+        }
         
         console.log('✅ Registration completed successfully with auto-approval');
         
