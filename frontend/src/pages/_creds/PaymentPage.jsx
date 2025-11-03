@@ -12,6 +12,8 @@ const PaymentPage = ({ url }) => {
   const cardBg = useColorModeValue('white', 'gray.800');
   const cardBorder = useColorModeValue('gray.200', 'gray.700');
   const headingColor = useColorModeValue('gray.700', 'white');
+  const backgroundColor = useColorModeValue('gray.5', 'gray.900');
+  const detailsBoxBg = useColorModeValue('gray.50', 'gray.700');
 
   const [email, setEmail] = useState('');
   const [vendorName, setVendorName] = useState('');
@@ -19,8 +21,6 @@ const PaymentPage = ({ url }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPaymentButton, setShowPaymentButton] = useState(true);
   const [registrationFee, setRegistrationFee] = useState(4999); // Default value
-
-  const backgroundColor = useColorModeValue('gray.5', 'gray.900');
 
   useEffect(() => {
     const registrationDataString = sessionStorage.getItem('registrationData');
@@ -301,7 +301,7 @@ const PaymentPage = ({ url }) => {
 
                 {/* Display registration details for verification */}
                 {(email || vendorName || phoneNumber) && (
-                  <Box w="full" p={4} bg={useColorModeValue('gray.50', 'gray.700')} borderRadius="md">
+                  <Box w="full" p={4} bg={detailsBoxBg} borderRadius="md">
                     <Text fontSize="sm" fontWeight="bold" mb={2}>Registration Details:</Text>
                     <VStack align="stretch" spacing={1} fontSize="sm">
                       {email && <Text>Email: {email}</Text>}
