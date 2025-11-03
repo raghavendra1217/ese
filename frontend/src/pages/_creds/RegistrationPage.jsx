@@ -105,12 +105,30 @@ const RegistrationPage = ({ url }) => {
         isClosable: true,
       });
 
+      // Trim and validate data before storing
+      const trimmedEmail = (formData.email || '').trim();
+      const trimmedVendorName = (formData.vendorName || '').trim();
+      const trimmedPhoneNumber = (formData.phoneNumber || '').trim();
+
+      // Validate again before storing (safety check)
+      if (!trimmedEmail || !trimmedVendorName || !trimmedPhoneNumber) {
+        toast({
+          title: 'Data Error',
+          description: 'Some required fields are missing. Please fill all required fields.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
+
       const registrationData = {
-        email: formData.email,
-        vendorName: formData.vendorName,
-        phoneNumber: formData.phoneNumber,
+        email: trimmedEmail,
+        vendorName: trimmedVendorName,
+        phoneNumber: trimmedPhoneNumber,
       };
       sessionStorage.setItem('registrationData', JSON.stringify(registrationData));
+      console.log('✅ Registration data stored:', registrationData);
       navigate('/payment');
 
     } catch (err) {

@@ -35,10 +35,49 @@ const PaymentPage = ({ url }) => {
       navigate('/register');
       return;
     }
-    const registrationData = JSON.parse(registrationDataString);
-    setEmail(registrationData.email);
-    setVendorName(registrationData.vendorName);
-    setPhoneNumber(registrationData.phoneNumber);
+    
+    try {
+      const registrationData = JSON.parse(registrationDataString);
+      console.log('🔍 PaymentPage - Registration data loaded:', registrationData);
+      
+      // Trim and set data with defensive checks
+      const emailValue = (registrationData.email || '').trim();
+      const vendorNameValue = (registrationData.vendorName || '').trim();
+      const phoneNumberValue = (registrationData.phoneNumber || '').trim();
+      
+      console.log('🔍 PaymentPage - Trimmed values:', { emailValue, vendorNameValue, phoneNumberValue });
+      
+      if (!emailValue || !vendorNameValue || !phoneNumberValue) {
+        const missingFields = [];
+        if (!emailValue) missingFields.push('Email');
+        if (!vendorNameValue) missingFields.push('Vendor Name');
+        if (!phoneNumberValue) missingFields.push('Phone Number');
+        
+        toast({
+          title: 'Registration Data Error',
+          description: `Missing required data: ${missingFields.join(', ')}. Please complete registration again.`,
+          status: 'error',
+          duration: 7000,
+          isClosable: true,
+        });
+        navigate('/register');
+        return;
+      }
+      
+      setEmail(emailValue);
+      setVendorName(vendorNameValue);
+      setPhoneNumber(phoneNumberValue);
+    } catch (parseError) {
+      console.error('❌ Error parsing registration data:', parseError);
+      toast({
+        title: 'Data Error',
+        description: 'Failed to load registration data. Please start the registration process again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      navigate('/register');
+    }
 
     // Fetch registration fee from API
     const fetchRegistrationFee = async () => {
@@ -65,13 +104,30 @@ const PaymentPage = ({ url }) => {
     const trimmedPhoneNumber = phoneNumber ? phoneNumber.trim() : '';
     const trimmedName = vendorName ? vendorName.trim() : '';
     
-    // Check for missing required fields
-    if (!trimmedEmail || !trimmedPhoneNumber || !trimmedName || !registrationFee) {
+    console.log('🔍 PaymentPage - Payment initiation with data:', {
+      email: trimmedEmail,
+      phoneNumber: trimmedPhoneNumber,
+      name: trimmedName,
+      registrationFee,
+      emailLength: trimmedEmail.length,
+      phoneLength: trimmedPhoneNumber.length,
+      nameLength: trimmedName.length
+    });
+    
+    // Check for missing required fields with specific error messages
+    const missingFields = [];
+    if (!trimmedEmail) missingFields.push('Email');
+    if (!trimmedPhoneNumber) missingFields.push('Phone Number');
+    if (!trimmedName) missingFields.push('Vendor Name');
+    if (!registrationFee || registrationFee <= 0) missingFields.push('Registration Fee');
+    
+    if (missingFields.length > 0) {
+      console.error('❌ PaymentPage - Missing fields:', missingFields);
       toast({
         title: 'Validation Error',
-        description: 'Missing required fields. Please ensure all registration data is available.',
+        description: `Missing required fields: ${missingFields.join(', ')}. Current values - Email: "${trimmedEmail}", Phone: "${trimmedPhoneNumber}", Name: "${trimmedName}", Fee: ${registrationFee}. Please go back and complete registration again.`,
         status: 'error',
-        duration: 5000,
+        duration: 8000,
         isClosable: true
       });
       return;
@@ -147,24 +203,47 @@ const PaymentPage = ({ url }) => {
 
       const data = await response.json();
 
+      console.log('🔍 PaymentPage - API Response:', {
+        status: data.status,
+        hasPaymentUrl: !!(data.data && data.data.payment_url),
+        responseData: data
+      });
+
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to initiate payment');
+        console.error('❌ PaymentPage - API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          data: data
+        });
+        throw new Error(data.message || `Failed to initiate payment (Status: ${response.status})`);
       }
 
-      if (data.status === 1 && data.data.payment_url) {
+      if (data.status === 1 && data.data && data.data.payment_url) {
+        console.log('✅ PaymentPage - Redirecting to payment gateway:', data.data.payment_url);
         // Redirect to payment gateway
         window.location.href = data.data.payment_url;
       } else {
-        throw new Error('Failed to get payment URL');
+        console.error('❌ PaymentPage - Invalid response structure:', data);
+        throw new Error(data.message || 'Failed to get payment URL from gateway response');
       }
 
     } catch (err) {
-      console.error('Payment initiation error:', err);
+      console.error('❌ PaymentPage - Payment initiation error:', {
+        error: err,
+        message: err.message,
+        stack: err.stack,
+        currentData: {
+          email: trimmedEmail,
+          phoneNumber: trimmedPhoneNumber,
+          name: trimmedName,
+          amount: amountNum
+        }
+      });
       toast({
         title: 'Payment Failed',
-        description: err.message || 'Failed to initiate payment gateway',
+        description: err.message || 'Failed to initiate payment gateway. Please check your registration data and try again.',
         status: 'error',
-        duration: 5000,
+        duration: 7000,
         isClosable: true
       });
       setIsLoading(false);
@@ -217,6 +296,18 @@ const PaymentPage = ({ url }) => {
                         <Text fontWeight="bold" fontSize="lg">Total Amount to Pay: ₹{totalAmount.toLocaleString('en-IN')}</Text>
                     </Box>
                 </Alert>
+
+                {/* Display registration details for verification */}
+                {(email || vendorName || phoneNumber) && (
+                  <Box w="full" p={4} bg={useColorModeValue('gray.50', 'gray.700')} borderRadius="md">
+                    <Text fontSize="sm" fontWeight="bold" mb={2}>Registration Details:</Text>
+                    <VStack align="stretch" spacing={1} fontSize="sm">
+                      {email && <Text>Email: {email}</Text>}
+                      {vendorName && <Text>Name: {vendorName}</Text>}
+                      {phoneNumber && <Text>Phone: {phoneNumber}</Text>}
+                    </VStack>
+                  </Box>
+                )}
 
                 <Text textAlign="center">
                   Click the button below to proceed with secure payment through our payment gateway.
