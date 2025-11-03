@@ -22,6 +22,9 @@ const PaymentPage = ({ url }) => {
   const [showPaymentButton, setShowPaymentButton] = useState(true);
   const [registrationFee, setRegistrationFee] = useState(4999); // Default value
 
+
+  // #helo
+
   useEffect(() => {
     const registrationDataString = sessionStorage.getItem('registrationData');
     if (!registrationDataString) {
@@ -205,19 +208,22 @@ const PaymentPage = ({ url }) => {
 
       const data = await response.json();
 
-      console.log('🔍 PaymentPage - API Response:', {
+      console.log('🔍 PaymentPage - API Response:', JSON.stringify({
         status: data.status,
         hasPaymentUrl: !!(data.data && data.data.payment_url),
         responseData: data
-      });
+      }, null, 2));
 
       if (!response.ok) {
-        console.error('❌ PaymentPage - API Error Response:', {
+        const errorDetails = {
           status: response.status,
           statusText: response.statusText,
-          data: data
-        });
-        throw new Error(data.message || `Failed to initiate payment (Status: ${response.status})`);
+          data: data,
+          dataString: JSON.stringify(data, null, 2)
+        };
+        console.error('❌ PaymentPage - API Error Response:', JSON.stringify(errorDetails, null, 2));
+        const errorMessage = data.message || data.error || `Failed to initiate payment (Status: ${response.status})`;
+        throw new Error(errorMessage);
       }
 
       if (data.status === 1 && data.data && data.data.payment_url) {

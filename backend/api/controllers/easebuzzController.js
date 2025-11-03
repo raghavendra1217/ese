@@ -471,6 +471,7 @@ exports.getPaymentHistory = async (req, res) => {
 // Initiate registration payment (public endpoint - no auth required)
 exports.initiateRegistrationPayment = async (req, res) => {
   try {
+    console.log('🔍 Registration Payment Initiation - Request Body:', JSON.stringify(req.body, null, 2));
     let { amount, email, phoneNumber, name } = req.body;
     
     // Trim whitespace from all string fields
@@ -581,13 +582,25 @@ exports.initiateRegistrationPayment = async (req, res) => {
       await client.query('BEGIN');
       
       // First, get the vendor ID from email
+      console.log('🔍 Looking up vendor with email:', email);
       const vendorResult = await client.query('SELECT id FROM vendors WHERE email = $1', [email]);
+      console.log('🔍 Vendor lookup result:', {
+        rowCount: vendorResult.rows.length,
+        found: vendorResult.rows.length > 0,
+        vendorId: vendorResult.rows.length > 0 ? vendorResult.rows[0].id : null
+      });
       
       if (vendorResult.rows.length === 0) {
-        throw new Error('Vendor registration not found. Please complete the registration form first.');
+        console.error('❌ Vendor not found for email:', email);
+        await client.query('ROLLBACK');
+        return res.status(404).json({
+          status: 0,
+          message: 'Vendor registration not found. Please complete the registration form first. Make sure you have submitted the registration form before proceeding to payment.'
+        });
       }
       
       const userId = vendorResult.rows[0].id;
+      console.log('✅ Vendor found with ID:', userId);
       
       // Insert into easebuzz_payments table
       const insertQuery = `
@@ -638,6 +651,9 @@ exports.initiateRegistrationPayment = async (req, res) => {
           [apiResponse.data, JSON.stringify(apiResponse), paymentId]
         );
         
+        await client.query('COMMIT');
+        console.log('✅ Payment initiated successfully, payment ID:', paymentId);
+        
         // Return payment URL or redirect
         if (config.enable_iframe === '1') {
           res.json({
@@ -658,11 +674,16 @@ exports.initiateRegistrationPayment = async (req, res) => {
           });
         }
       } else {
-        console.error('❌ Easebuzz API Error:', apiResponse);
-        throw new Error(apiResponse.data || apiResponse.message || 'Failed to initiate payment');
+        console.error('❌ Easebuzz API Error:', JSON.stringify(apiResponse, null, 2));
+        await client.query('ROLLBACK');
+        return res.status(500).json({
+          status: 0,
+          message: apiResponse.data || apiResponse.message || 'Failed to initiate payment with gateway'
+        });
       }
       
     } catch (error) {
+      console.error('❌ Database transaction error:', error);
       await client.query('ROLLBACK');
       throw error;
     } finally {
@@ -670,8 +691,13 @@ exports.initiateRegistrationPayment = async (req, res) => {
     }
     
   } catch (error) {
-    console.error('Error initiating registration payment:', error);
-    res.status(500).json({
+    console.error('❌ Error initiating registration payment:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({
       status: 0,
       message: 'Failed to initiate payment: ' + error.message
     });
