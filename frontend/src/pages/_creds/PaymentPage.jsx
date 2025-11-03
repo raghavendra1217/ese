@@ -63,6 +63,8 @@ const PaymentPage = ({ url }) => {
         navigate('/register');
         return;
       }
+
+      // #hello
       
       setEmail(emailValue);
       setVendorName(vendorNameValue);
