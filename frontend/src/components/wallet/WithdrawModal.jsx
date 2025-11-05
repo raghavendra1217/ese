@@ -7,18 +7,19 @@ import {
 import { useAuth } from '../../AppContext';
 
 // --- UPDATED COMPONENT: Now accepts 'onWithdrawalSuccess' ---
-const FIXED_WITHDRAWAL_AMOUNT = 25000;
+const MIN_WITHDRAWAL_AMOUNT = 50;
+const MAX_WITHDRAWAL_AMOUNT = 25000;
 
 const WithdrawModal = ({ isOpen, onClose, url, currentBalance, onWithdrawalSuccess }) => {
     const { token } = useAuth();
     const toast = useToast();
 
-    const [amount, setAmount] = useState(FIXED_WITHDRAWAL_AMOUNT.toString());
+    const [amount, setAmount] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
     const resetAndClose = () => {
-        setAmount(FIXED_WITHDRAWAL_AMOUNT.toString());
+        setAmount('');
         setError('');
         setIsLoading(false);
         onClose();
@@ -28,20 +29,26 @@ const WithdrawModal = ({ isOpen, onClose, url, currentBalance, onWithdrawalSucce
         e.preventDefault();
         const numericAmount = parseFloat(amount);
 
-        if (Number.isNaN(numericAmount)) {
-            setError('Withdrawal amount must be ₹25,000.');
+        if (Number.isNaN(numericAmount) || numericAmount <= 0) {
+            setError('Please enter a valid withdrawal amount.');
             return;
         }
 
-        // Client-side validation
+        // Client-side validation: Minimum amount
+        if (numericAmount < MIN_WITHDRAWAL_AMOUNT) {
+            setError(`Minimum withdrawal amount is ₹${MIN_WITHDRAWAL_AMOUNT.toLocaleString('en-IN')}. Please enter an amount of ₹${MIN_WITHDRAWAL_AMOUNT.toLocaleString('en-IN')} or more.`);
+            return;
+        }
+
+        // Client-side validation: Maximum amount
+        if (numericAmount > MAX_WITHDRAWAL_AMOUNT) {
+            setError(`Maximum withdrawal amount is ₹${MAX_WITHDRAWAL_AMOUNT.toLocaleString('en-IN')}. Please enter an amount of ₹${MAX_WITHDRAWAL_AMOUNT.toLocaleString('en-IN')} or less.`);
+            return;
+        }
+
+        // Client-side validation: Sufficient balance
         if (numericAmount > currentBalance) {
             setError('Withdrawal amount cannot be greater than your current balance.');
-            return;
-        }
-
-        // Withdrawal amount must be exactly the fixed amount
-        if (numericAmount !== FIXED_WITHDRAWAL_AMOUNT) {
-            setError('Withdrawal amount must be ₹25,000.');
             return;
         }
 
@@ -99,7 +106,8 @@ const WithdrawModal = ({ isOpen, onClose, url, currentBalance, onWithdrawalSucce
                             <AlertIcon />
                             <VStack align="start" spacing={1} fontSize="sm">
                                 <Text fontWeight="bold">Withdrawal Guidelines:</Text>
-                                <Text>• Withdrawal amount is fixed at ₹25,000</Text>
+                                <Text>• Minimum withdrawal amount: ₹{MIN_WITHDRAWAL_AMOUNT.toLocaleString('en-IN')}</Text>
+                                <Text>• Maximum withdrawal amount: ₹{MAX_WITHDRAWAL_AMOUNT.toLocaleString('en-IN')}</Text>
                                 <Text>• All requests are subject to approval and processing time</Text>
                             </VStack>
                         </Alert>
@@ -108,12 +116,12 @@ const WithdrawModal = ({ isOpen, onClose, url, currentBalance, onWithdrawalSucce
                             <FormLabel>Amount to Withdraw</FormLabel>
                             <NumberInput
                                 value={amount}
-                                min={FIXED_WITHDRAWAL_AMOUNT}
-                                max={FIXED_WITHDRAWAL_AMOUNT}
-                                isReadOnly
+                                onChange={(valueString) => setAmount(valueString)}
+                                min={MIN_WITHDRAWAL_AMOUNT}
+                                max={MAX_WITHDRAWAL_AMOUNT}
                                 precision={2}
                             >
-                                <NumberInputField placeholder="25000" />
+                                <NumberInputField placeholder={`Enter amount (₹${MIN_WITHDRAWAL_AMOUNT.toLocaleString('en-IN')} - ₹${MAX_WITHDRAWAL_AMOUNT.toLocaleString('en-IN')})`} />
                             </NumberInput>
                         </FormControl>
 
