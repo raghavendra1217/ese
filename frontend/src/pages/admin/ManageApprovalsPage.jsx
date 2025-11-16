@@ -203,15 +203,15 @@ import AdminNavBar from '../../components/layout/AdminNavBar';
 
 const ADMIN_SIDEBAR_W = '80px';
 
-const VendorApprovalCard = ({ vendor, onApprove, onReject }) => {
+const VendorApprovalCard = ({ vendor, onApprove, onReject, registrationFee }) => {
   const cardBg = useColorModeValue('white', 'gray.700');
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [currentImage, setCurrentImage] = useState('');
 
-  const employeeCount = parseInt(vendor.employee_count, 10) || 0;
-  const perEmployeeFee = 5000;
-  const oneTimeFee = 4999;
-  const totalAmount = (employeeCount * perEmployeeFee) + oneTimeFee;
+  // Use registrationFee from backend config so UI matches current settings
+  const normalizedRegistrationFee = typeof registrationFee === 'number' && !isNaN(registrationFee)
+    ? registrationFee
+    : 0;
 
   const viewImage = (imageUrl) => { setCurrentImage(imageUrl); onOpen(); };
 
@@ -224,7 +224,9 @@ const VendorApprovalCard = ({ vendor, onApprove, onReject }) => {
         <Divider />
         <Box>
           <Text fontWeight="bold">Payment Details:</Text>
-          <Text pl={4}><strong>Calculated Amount:</strong> ₹{totalAmount.toLocaleString('en-IN')}</Text>
+          <Text pl={4}>
+            <strong>Registration Fee:</strong> ₹{normalizedRegistrationFee.toLocaleString('en-IN')}
+          </Text>
           <Text pl={4}><strong>Transaction ID:</strong> {vendor.transaction_id}</Text>
         </Box>
         <SimpleGrid columns={2} spacing={2} pt={2}>
@@ -260,6 +262,7 @@ const ManageVendorApprovalsPage = ({ url }) => {
 
   const [vendors, setVendors] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [registrationFee, setRegistrationFee] = useState(0);
 
   useEffect(() => {
     const fetchPendingVendors = async () => {
@@ -277,6 +280,23 @@ const ManageVendorApprovalsPage = ({ url }) => {
     };
     fetchPendingVendors();
   }, [toast, token, url]);
+
+  // Fetch current registration fee so the calculated amount reflects REGISTRATION_FEE (including zero)
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const response = await fetch(`${url}/api/payment/easebuzz/config`);
+        if (!response.ok) return;
+        const data = await response.json();
+        if (typeof data.registrationFee === 'number') {
+          setRegistrationFee(data.registrationFee);
+        }
+      } catch (err) {
+        console.error('Failed to fetch registration fee for ManageVendorApprovalsPage:', err);
+      }
+    };
+    fetchConfig();
+  }, [url]);
 
   const handleApproveVendor = async (vendorId) => {
     try {
@@ -346,6 +366,7 @@ const ManageVendorApprovalsPage = ({ url }) => {
                 <VendorApprovalCard
                   key={vendor.id}
                   vendor={vendor}
+                  registrationFee={registrationFee}
                   onApprove={handleApproveVendor}
                   onReject={handleRejectVendor}
                 />

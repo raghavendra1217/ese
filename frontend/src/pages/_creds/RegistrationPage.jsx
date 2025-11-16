@@ -97,11 +97,15 @@ const RegistrationPage = ({ url }) => {
         throw new Error(data.message || 'Registration failed. Please try again.');
       }
 
+      const requiresPayment = data && typeof data.requiresPayment === 'boolean' ? data.requiresPayment : true;
+
       toast({
         title: 'Details Saved!',
-        description: 'Your information has been saved. Redirecting to payment...',
+        description: requiresPayment
+          ? 'Your information has been saved. Redirecting to payment...'
+          : 'Your registration has been submitted. Your account is pending administrator approval. No payment is required.',
         status: 'success',
-        duration: 3000,
+        duration: 4000,
         isClosable: true,
       });
 
@@ -129,7 +133,13 @@ const RegistrationPage = ({ url }) => {
       };
       sessionStorage.setItem('registrationData', JSON.stringify(registrationData));
       console.log('✅ Registration data stored:', registrationData);
-      navigate('/payment');
+
+      if (requiresPayment) {
+        navigate('/payment');
+      } else {
+        // For free registration, send user to login so they can see "pending approval" status
+        navigate(`/login?email=${encodeURIComponent(trimmedEmail)}`);
+      }
 
     } catch (err) {
       toast({ title: 'Submission Error', description: err.message, status: 'error', duration: 5000, isClosable: true });

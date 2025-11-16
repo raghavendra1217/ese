@@ -94,6 +94,20 @@ exports.registerAndProceedToPayment = async (req, res) => {
         return res.status(400).json({ message: 'Email and Vendor Name are required.' });
     }
 
+    // Determine if registration is free (REGISTRATION_FEE <= 0)
+    let isFreeRegistration = false;
+    try {
+        const feeRaw = process.env.REGISTRATION_FEE;
+        if (feeRaw !== undefined) {
+            const fee = parseFloat(feeRaw);
+            if (!isNaN(fee) && fee <= 0) {
+                isFreeRegistration = true;
+            }
+        }
+    } catch (envError) {
+        console.warn('⚠️ Could not parse REGISTRATION_FEE from environment. Falling back to paid flow.', envError?.message || envError);
+    }
+
     let client;
     try {
         client = await db.connect();
@@ -102,6 +116,7 @@ exports.registerAndProceedToPayment = async (req, res) => {
         console.error('❌ Failed to get database connection:', connError);
         return res.status(500).json({ message: 'Database connection failed. Please try again.' });
     }
+
     try {
         await client.query('BEGIN');
 
@@ -189,6 +204,42 @@ exports.registerAndProceedToPayment = async (req, res) => {
             console.log(`✅ [DEBUG] Successfully added vendor ${vendorId} to referrer ${trimmedReferralId}'s referral list`);
         }
 
+        // ------------------------------------------------------------------
+        // If registration is FREE (REGISTRATION_FEE <= 0), create login row
+        // and mark account as pending admin approval, WITHOUT any payment.
+        // ------------------------------------------------------------------
+        if (isFreeRegistration) {
+            console.log(`🆓 REGISTRATION_FEE is 0 or less. Creating pending login without payment for vendor ${vendorId}`);
+
+            const loginQuery = `
+                INSERT INTO login (user_id, email, password, role, is_approved, status) 
+                VALUES ($1, $2, NULL, 'vendor', FALSE, 'pending_approval') 
+                ON CONFLICT (user_id) DO UPDATE 
+                SET email = EXCLUDED.email,
+                    is_approved = EXCLUDED.is_approved,
+                    status = EXCLUDED.status
+            `;
+
+            try {
+                await client.query(loginQuery, [vendorId, email]);
+                console.log('✅ Pending login record created/updated successfully for free registration');
+            } catch (loginError) {
+                console.error('❌ Failed to create pending login record for free registration:', loginError);
+                throw new Error(`Login creation failed for free registration: ${loginError.message}`);
+            }
+
+            // Try to notify admin, but do NOT fail registration if email fails
+            try {
+                await runPy('../utils/sendAdminNotificationEmail.py', [
+                    'New vendor registration - Pending Approval (No Fee)',
+                    `Email: ${email}\nVendorId: ${vendorId}\nRegistrationFee: 0\nStatus: Pending admin approval (no payment required)`
+                ]);
+                console.log('✅ Admin notification email sent for free registration');
+            } catch (emailError) {
+                console.error('⚠️ Admin notification email failed for free registration:', emailError?.message || emailError);
+            }
+        }
+
         await client.query('COMMIT');
         console.log(`✅ [DEBUG] Transaction committed successfully for vendor ${vendorId}`);
         
@@ -204,7 +255,20 @@ exports.registerAndProceedToPayment = async (req, res) => {
             }
         }
         
-        res.status(200).json({ message: 'Details saved successfully. Please proceed to payment.' });
+        if (isFreeRegistration) {
+            // No payment required – account now awaits admin approval
+            return res.status(201).json({
+                message: 'Registration submitted successfully. Your account is pending administrator approval. No payment is required.',
+                requiresPayment: false
+            });
+        }
+
+        // Paid flow (existing behavior)
+        return res.status(200).json({
+            message: 'Details saved successfully. Please proceed to payment.',
+            requiresPayment: true
+        });
+
     } catch (error) {
         try {
             await client.query('ROLLBACK');

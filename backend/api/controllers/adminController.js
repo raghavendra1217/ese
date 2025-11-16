@@ -564,16 +564,33 @@ const approveVendor = async (req, res) => {
             return res.status(404).json({ message: 'No pending vendor found with this ID. They may have already been approved.' });
         }
 
-        // --- Step 3: Record the registration fee in the 'transaction' table ---
-        const registrationFee = 4999;
-        const transactionDescription = 'Initial registration fee paid upon approval.';
-        
-        const insertTransactionQuery = `
-            INSERT INTO transaction 
-                (user_id, transaction_type, amount, status, description)
-            VALUES ($1, 'registration_fee', $2, 'approved', $3)`;
+        // --- Step 3: Optionally record the registration fee in the 'transaction' table ---
+        // If REGISTRATION_FEE <= 0 (free registration), we SKIP creating a transaction record.
+        let registrationFee = 4999;
+        try {
+            const feeRaw = process.env.REGISTRATION_FEE;
+            if (feeRaw !== undefined) {
+                const fee = parseFloat(feeRaw);
+                if (!isNaN(fee)) {
+                    registrationFee = fee;
+                }
+            }
+        } catch (envError) {
+            console.warn('⚠️ Could not parse REGISTRATION_FEE in approveVendor. Using default 4999.', envError?.message || envError);
+        }
+
+        if (registrationFee > 0) {
+            const transactionDescription = 'Initial registration fee paid upon approval.';
             
-        await client.query(insertTransactionQuery, [vendorId, registrationFee, transactionDescription]);
+            const insertTransactionQuery = `
+                INSERT INTO transaction 
+                    (user_id, transaction_type, amount, status, description)
+                VALUES ($1, 'registration_fee', $2, 'approved', $3)`;
+                
+            await client.query(insertTransactionQuery, [vendorId, registrationFee, transactionDescription]);
+        } else {
+            console.log(`🆓 REGISTRATION_FEE is 0 or less. Skipping registration fee transaction for vendor ${vendorId}.`);
+        }
 
         // --- Step 4: Commit the transaction if both operations succeed ---
         await client.query('COMMIT');

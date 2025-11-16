@@ -274,7 +274,7 @@ exports.generateInvestorReport = async (req, res) => {
                     (investorData.select_plan === '5 lakh' && investorData.plan_type === '180 days' && index === 12) ||
                     (investorData.select_plan === '5 lakh_alt' && investorData.plan_type === '180 days' && index === 6) ||
                     (investorData.select_plan === '5 lakh' && investorData.plan_type === '240 days' && index === 16) ||
-                    (investorData.select_plan === '5 lakh' && investorData.plan_type === '360 days' && index === 24) ||
+                    ((investorData.select_plan === '5 lakh' || investorData.select_plan === '5 lakh_alt') && investorData.plan_type === '360 days' && index === 12) ||
                     (investorData.select_plan === '10 lakh' && investorData.plan_type === '180 days' && index === 6) ||
                     (investorData.select_plan === '10 lakh' && investorData.plan_type === '360 days' && index === 24)) {
                     console.log(`🔍 Skipping final principle disbursement for special plan: ${investorData.select_plan}/${investorData.plan_type}`);
@@ -326,7 +326,7 @@ exports.generateInvestorReport = async (req, res) => {
                     (investorData.select_plan === '5 lakh' && investorData.plan_type === '180 days') ||
                     (investorData.select_plan === '5 lakh_alt' && investorData.plan_type === '180 days') ||
                     (investorData.select_plan === '5 lakh' && investorData.plan_type === '240 days') ||
-                    (investorData.select_plan === '5 lakh' && investorData.plan_type === '360 days') ||
+                    ((investorData.select_plan === '5 lakh' || investorData.select_plan === '5 lakh_alt') && investorData.plan_type === '360 days') ||
                     (investorData.select_plan === '10 lakh' && investorData.plan_type === '180 days') ||
                     (investorData.select_plan === '10 lakh' && investorData.plan_type === '360 days')) {
                     // For special plans: only show Date and Milk Profit (disbursement amount)
@@ -388,7 +388,7 @@ exports.generateInvestorReport = async (req, res) => {
                 (investor.select_plan === '5 lakh' && investor.plan_type === '180 days') ||
                 (investor.select_plan === '5 lakh_alt' && investor.plan_type === '180 days') ||
                 (investor.select_plan === '5 lakh' && investor.plan_type === '240 days') ||
-                (investor.select_plan === '5 lakh' && investor.plan_type === '360 days') ||
+                ((investor.select_plan === '5 lakh' || investor.select_plan === '5 lakh_alt') && investor.plan_type === '360 days') ||
                 (investor.select_plan === '10 lakh' && investor.plan_type === '180 days') ||
                 (investor.select_plan === '10 lakh' && investor.plan_type === '360 days')) {
                 
@@ -424,9 +424,9 @@ exports.generateInvestorReport = async (req, res) => {
                 } else if (investor.select_plan === '5 lakh' && investor.plan_type === '240 days') {
                     sampleAmount = 25000; // 25k per disbursement for 5L/240d plan
                     numDisbursements = 16;
-                } else if (investor.select_plan === '5 lakh' && investor.plan_type === '360 days') {
-                    sampleAmount = 25000; // 25k per disbursement for 5L/360d plan
-                    numDisbursements = 24;
+                } else if ((investor.select_plan === '5 lakh' || investor.select_plan === '5 lakh_alt') && investor.plan_type === '360 days') {
+                    sampleAmount = 50000; // 50k per disbursement for 5L/360d plan (30-day interval)
+                    numDisbursements = 12;
                 } else if (investor.select_plan === '10 lakh' && investor.plan_type === '360 days') {
                     sampleAmount = 50000; // 50k per disbursement for 10L/360d plan
                     numDisbursements = 24;
@@ -458,7 +458,8 @@ exports.generateInvestorReport = async (req, res) => {
                     if (investor.select_plan === '10k' && investor.plan_type === '90 days') {
                         date.setDate(date.getDate() + (i + 1) * 30); // Every 30 days for 10k/90d plan
                     } else if ((investor.select_plan === '5 lakh_alt' && investor.plan_type === '180 days') ||
-                               (investor.select_plan === '10 lakh' && investor.plan_type === '180 days')) {
+                               (investor.select_plan === '10 lakh' && investor.plan_type === '180 days') ||
+                               ((investor.select_plan === '5 lakh' || investor.select_plan === '5 lakh_alt') && investor.plan_type === '360 days')) {
                         date.setDate(date.getDate() + (i + 1) * 30); // Every 30 days for 30-day interval plans
                     } else {
                         date.setDate(date.getDate() + (i + 1) * 15); // Every 15 days for other plans

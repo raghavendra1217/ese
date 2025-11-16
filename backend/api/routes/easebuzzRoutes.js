@@ -51,9 +51,36 @@ router.get('/test', (req, res) => {
 
 // Get payment configuration for frontend
 router.get('/config', (req, res) => {
+  let minDepositAmount = 100;
+  let registrationFee = 4999;
+
+  try {
+    const minRaw = process.env.MIN_DEPOSIT_AMOUNT;
+    if (minRaw !== undefined) {
+      const parsedMin = parseFloat(minRaw);
+      if (!isNaN(parsedMin)) {
+        minDepositAmount = parsedMin;
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Failed to parse MIN_DEPOSIT_AMOUNT, using default 100.', err?.message || err);
+  }
+
+  try {
+    const regRaw = process.env.REGISTRATION_FEE;
+    if (regRaw !== undefined) {
+      const parsedReg = parseFloat(regRaw);
+      if (!isNaN(parsedReg)) {
+        registrationFee = parsedReg;
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Failed to parse REGISTRATION_FEE, using default 4999.', err?.message || err);
+  }
+
   res.json({
-    minDepositAmount: parseFloat(process.env.MIN_DEPOSIT_AMOUNT) || 100,
-    registrationFee: parseFloat(process.env.REGISTRATION_FEE) || 4999,
+    minDepositAmount,
+    registrationFee,
     currency: 'INR'
   });
 });
