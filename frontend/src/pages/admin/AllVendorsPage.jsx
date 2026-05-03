@@ -21,6 +21,8 @@ const AllVendorsPage = ({ url }) => {
   const pageBg = useColorModeValue('gray.50', 'gray.900');
   const headingColor = useColorModeValue('gray.800', 'gray.200');
 
+  document.title = "NAVIU | All Vendors";
+
   const handleBackToDashboard = () => {
     navigate('/admin/dashboard');
   };

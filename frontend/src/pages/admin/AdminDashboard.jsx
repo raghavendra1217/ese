@@ -227,7 +227,7 @@ const AdminDashboard = ({ url }) => {
   const cardBg = useColorModeValue('white', 'gray.800');
   const cardBorder = useColorModeValue('gray.200', 'gray.700');
 
-
+  document.title = "NAVIU | Admin Dashboard";
 
   return (
     <Flex minH="100vh" bg={pageBg}>

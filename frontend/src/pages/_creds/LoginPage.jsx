@@ -59,6 +59,8 @@ const LoginPage = ({ url }) => {
 
   const cardBg = useColorModeValue('white', 'gray.700');
 
+  document.title = "NAVIU | Login";
+
   const navigateToDashboard = (userRole) => {
     switch (userRole) {
       case 'admin':

@@ -375,6 +375,7 @@ const WildProductManagementPage = ({ url }) => {
     }
   };
 
+  document.title = "NAVIU | Wild Products";
 
   return (
     <Flex minH="100vh" bg={pageBg}>

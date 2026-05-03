@@ -63,6 +63,8 @@ const VendorDashboard = ({ url }) => {
   const headingColor = useColorModeValue('gray.800', 'gray.200');
   const iconColor = useColorModeValue('black', 'whiteAlpha.900');
 
+  document.title = "NAVIU | Vendor Dashboard";
+
   return (
     <Flex minH="100vh" bg={mainBg}>
       {/* Sidebar (desktop only) */}
@@ -94,14 +96,14 @@ const VendorDashboard = ({ url }) => {
             _hover={{ bg: 'blackAlpha.100', _dark: { bg: 'whiteAlpha.200' } }}
           />
           <Heading as="h1" fontSize="lg" color={headingColor} lineHeight="1.2">
-                <Image src="/eselogo.png" alt="ESE Paper Trading" h="50px" objectFit="contain" />
+                <Image src="/naviu.png" alt="NAVIU" h="50px" objectFit="contain" />
        
           </Heading>
         </Flex>
 
         {/* Desktop title */}
         <Heading as="h1" fontSize="2xl" color={headingColor} mb={6} display={{ base: 'none', md: 'block' }}>
-            <Image src="/eselogo.png" alt="ESE Paper Trading" h="60px" objectFit="contain" />
+            <Image src="/naviu.png" alt="NAVIU" h="60px" objectFit="contain" />
         </Heading>
 
         <VendorTradingSection stats={stats} url={url} />

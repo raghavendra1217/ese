@@ -13,6 +13,9 @@ router.get('/admin/:coordinatorId', authorize('admin'), coordinatorController.ge
 router.put('/admin/:coordinatorId', authorize('admin'), coordinatorController.updateCoordinator);
 router.delete('/admin/:coordinatorId', authorize('admin'), coordinatorController.deleteCoordinator);
 
+// Support POST / without /admin prefix for consistency with frontend AddCoordinatorPage
+router.post('/', authorize('admin'), coordinatorController.addCoordinator);
+
 // Coordinator profile route (accessible by coordinators)
 router.get('/profile', coordinatorController.getCoordinatorProfile);
 
@@ -117,5 +120,11 @@ router.get('/test-role', (req, res) => {
         timestamp: new Date().toISOString()
     });
 });
+
+// Admin-only parameterized routes (fallback for when /admin prefix is missing)
+// These are placed at the end to avoid matching specific routes like /profile or /vendors
+router.get('/:coordinatorId', authorize('admin'), coordinatorController.getCoordinatorById);
+router.put('/:coordinatorId', authorize('admin'), coordinatorController.updateCoordinator);
+router.delete('/:coordinatorId', authorize('admin'), coordinatorController.deleteCoordinator);
 
 module.exports = router;

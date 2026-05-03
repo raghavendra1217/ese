@@ -61,7 +61,7 @@ const CoordinatorDashboardHeader = ({ stats, url }) => {
   const referralLink = `https://esepapertrading.onrender.com/register`;
   const handleRegisterAndLogout = () => {
     logout();
-    window.location.href = 'https://esepapertrading.onrender.com/register';
+    window.location.href = 'https://naviu.onrender.com/register';
   };
 
   // Fetch coordinator profile data

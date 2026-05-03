@@ -34,6 +34,8 @@ const PaymentFailurePage = () => {
     const bgColor = useColorModeValue('white', 'gray.800');
     const borderColor = useColorModeValue('gray.200', 'gray.600');
     
+    document.title = "NAVIU | Payment Failed";
+
     useEffect(() => {
         // Show error toast
         toast({

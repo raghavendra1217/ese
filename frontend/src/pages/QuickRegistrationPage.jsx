@@ -28,6 +28,8 @@ const QuickRegistrationPage = ({ url }) => {
   const navBg = useColorModeValue('white', 'gray.800');
   const navBorder = useColorModeValue('gray.200', 'gray.700');
 
+  document.title = "NAVIU | Quick Registration";
+
   const validatePhoneNumber = (phone) => /^\d{10}$/.test(phone);
 
   const handleInputChange = (e) => {
@@ -135,9 +137,9 @@ const QuickRegistrationPage = ({ url }) => {
       >
         <Flex justify="space-between" align="center" maxW="7xl" mx="auto">
           <Flex align="center" gap={3}>
-            <Image src="/eselogo.png" alt="ESE Paper Trading" h="40px" objectFit="contain" />
+            <Image src="/naviu.png" alt="NAVIU" h="40px" objectFit="contain" />
             <Heading size="md" color={textColor}>
-              ESE Paper Trading
+              NAVIU
             </Heading>
           </Flex>
           <Flex gap={2}>

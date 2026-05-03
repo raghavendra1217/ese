@@ -41,6 +41,8 @@ const VendorsLast8DaysPage = ({ url }) => {
   const tableHeaderBg = useColorModeValue('gray.50', 'gray.700');
   const tableRowHoverBg = useColorModeValue('gray.50', 'gray.700');
 
+  document.title = "NAVIU | Recent Vendors";
+
   // Fetch vendors from last 8 days with dedicated logic
   const fetchVendorsLast8Days = useCallback(async (page = 1, search = '', sort = 'created_at', order = 'DESC') => {
     if (!token) return;
@@ -227,7 +229,7 @@ const VendorsLast8DaysPage = ({ url }) => {
           />
           <VStack align="start" spacing={1}>
             <Heading size="lg" color={headingColor}>
-              Vendors from Last 8 Days
+              Recent Vendors
             </Heading>
             <Text color="gray.600" fontSize="sm">
               Showing vendors who registered in the last 8 days

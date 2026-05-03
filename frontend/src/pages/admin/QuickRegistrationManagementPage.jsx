@@ -163,6 +163,8 @@ const QuickRegistrationManagementPage = ({ url }) => {
   const iconColor = useColorModeValue('gray.600', 'gray.400');
   const tableBg = useColorModeValue('white', 'gray.800');
 
+  document.title = "NAVIU | Quick Reg Management";
+
   const fetchQuickRegistrations = useCallback(async () => {
     if (!token) return;
     

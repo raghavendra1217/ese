@@ -1,5 +1,6 @@
 # Node modules
 node_modules/
+**/node_modules/
 
 # Environment variable files
 .env
@@ -8,8 +9,10 @@ node_modules/
 **/.env.*
 
 # Build output
-/build
-/dist
+build/
+**/build/
+dist/
+**/dist/
 
 # Logs
 npm-debug.log*
@@ -27,3 +30,13 @@ yarn-error.log*
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary files
+backend/temp/
+frontend/src/utils/coordinatorInvestorDemo.js
+

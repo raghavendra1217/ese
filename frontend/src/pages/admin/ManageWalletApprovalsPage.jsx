@@ -677,6 +677,8 @@ const ManageWalletApprovalsPage = ({ url }) => {
     setPage(1);
   };
 
+  document.title = "NAVIU | Wallet Approvals";
+
   return (
     <Flex minH="100vh" bg={pageBg}>
       {/* Desktop sidebar */}

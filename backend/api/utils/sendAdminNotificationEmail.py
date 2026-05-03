@@ -33,7 +33,7 @@ try:
     s.login(FROM_EMAIL, FROM_PASSWORD)
 
     msg = MIMEMultipart()
-    msg["From"] = f"ESE Paper Trading <{FROM_EMAIL}>"
+    msg["From"] = f"NAVIU <{FROM_EMAIL}>"
     msg["To"] = ADMIN_EMAIL
     msg["Subject"] = subject
 

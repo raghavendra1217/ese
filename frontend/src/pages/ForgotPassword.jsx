@@ -20,6 +20,8 @@ const ForgotPassword = ({ url }) => {
   const [error, setError] = useState('');
   const [step, setStep] = useState('email');
 
+  document.title = "NAVIU | Forgot Password";
+
   useEffect(() => {
     setEmail(prefilledEmail);
   }, [prefilledEmail]);

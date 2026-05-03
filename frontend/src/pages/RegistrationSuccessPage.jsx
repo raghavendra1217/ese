@@ -17,6 +17,8 @@ const RegistrationSuccessPage = () => {
     const bgColor = useColorModeValue('white', 'gray.800');
     const borderColor = useColorModeValue('gray.200', 'gray.600');
     
+    document.title = "NAVIU | Registration Success";
+
     useEffect(() => {
         // Show success toast
         toast({

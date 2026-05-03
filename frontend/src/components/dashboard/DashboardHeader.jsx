@@ -289,10 +289,10 @@ const DashboardHeader = ({ stats }) => {
     const hasPendingWalletApprovals = stats?.pendingWalletApprovals > 0;
     const { isOpen, onOpen, onClose } = useDisclosure();
     const { logout } = useAuth();
-    const referralLink = `https://esepapertrading.onrender.com/register`;
+    const referralLink = `https://naviu.onrender.com/register`;
     const handleRegisterAndLogout = () => {
         logout();
-        window.location.href = 'https://esepapertrading.onrender.com/register';
+        window.location.href = 'https://naviu.onrender.com/register';
     };
 
     return (

@@ -41,6 +41,8 @@ const TodaysVendorsPage = ({ url }) => {
   const tableHeaderBg = useColorModeValue('gray.50', 'gray.700');
   const tableRowHoverBg = useColorModeValue('gray.50', 'gray.700');
 
+  document.title = "NAVIU | Today's Vendors";
+
   // Fetch today's vendors with dedicated logic
   const fetchTodaysVendors = useCallback(async (page = 1, search = '', sort = 'created_at', order = 'DESC') => {
     if (!token) return;
@@ -229,7 +231,7 @@ const TodaysVendorsPage = ({ url }) => {
               Today's Vendors
             </Heading>
             <Text color="gray.600" fontSize="sm">
-              Showing vendors who registered today
+              Showing {totalVendors} vendors who registered today
             </Text>
           </VStack>
         </HStack>

@@ -515,6 +515,8 @@ const ManageProfile = ({ url }) => {
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const cardBg = useColorModeValue('white', 'gray.800');
 
+  document.title = "NAVIU | Manage Vendor";
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {

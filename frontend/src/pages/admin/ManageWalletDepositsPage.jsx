@@ -475,6 +475,8 @@ const ManageWalletDepositsPage = ({ url }) => {
   const headingColor = useColorModeValue('gray.800', 'gray.200');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
+  document.title = "NAVIU | Wallet Deposits";
+
   return (
     <Flex minH="100vh" bg={pageBg}>
       {/* Desktop sidebar */}

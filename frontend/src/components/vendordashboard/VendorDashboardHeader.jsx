@@ -126,7 +126,7 @@ const VendorDashboardHeader = ({ url }) => {
         fetchCurrentBalance();
     }, [token, url]);
 
-    const referralLink = user?.id ? `https://esepapertrading.onrender.com/register?ref=${user.id}` : '';
+    const referralLink = user?.id ? `https://naviu.onrender.com/register?ref=${user.id}` : '';
     
     // Debug logging
     console.log('User object:', user);
@@ -158,7 +158,7 @@ const VendorDashboardHeader = ({ url }) => {
             logout();
             console.log('Logout successful, redirecting...');
             // Use the dynamic referral link instead of hardcoded URL
-            const redirectUrl = referralLink || 'https://esepapertrading.onrender.com/register';
+            const redirectUrl = referralLink || 'https://naviu.onrender.com/register';
             console.log('Redirecting to:', redirectUrl);
             window.location.href = redirectUrl;
         } catch (error) {

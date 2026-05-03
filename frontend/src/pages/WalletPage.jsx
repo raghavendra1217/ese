@@ -439,6 +439,9 @@ const WalletPage = ({ url }) => {
   const mainBg = useColorModeValue('gray.50', '#181C27');
   const sidebarBg = '#212734';
   const sidebarBorder = 'gray.700';
+
+  document.title = "NAVIU | Wallet";
+
   const cardBg = useColorModeValue('white', 'gray.800');
   const textColor = useColorModeValue('gray.800', 'whiteAlpha.900');
   const inactiveBorderColor = useColorModeValue('gray.200', 'gray.700');
@@ -798,8 +801,9 @@ const WalletPage = ({ url }) => {
 
   return (
     <>
+      {/* ✅ --- NEW LAYOUT WRAPPER --- */}
       <Flex minH="100vh" bg={mainBg}>
-        {/* Sidebar (desktop only) */}
+        {/* --- Desktop Sidebar (Fixed) --- */}
         <Box
           as="nav"
           pos="fixed"
